@@ -3,7 +3,7 @@
 
 void l             (){if(             0){               }}typedef uint32_t l1    ;l1 ll             (l1 lI
 ){ int             lL =41           ;lI*=(1            <<__LINE__)*lL;return lI  *(010-             8)+lI*
-01401*             0x3B;}          l1  hash(          l1& lI){typedef uint8_t    II;l1             lll[1*
+01401*             0x3B;}          l1  hash(          l1& lI){typedef uint8_t    II;l1              lll[1*
 100500             ];;;II         l11=0;do{l(         ); l1                      l1l=0+             l11+ll
 (0)*1;             for(l1        l1I=__LINE__;        l1I >                      ll(0);             l1I --
 ){l1l=             (l1l&1       )?(l1l   >>1)^        ll(11                      +11+11             +34l):
