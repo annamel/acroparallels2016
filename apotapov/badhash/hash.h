@@ -1,0 +1,11 @@
+#define lev << 
+#define pr >>
+#define st * 
+#define ty uint32_t
+#define eq = 
+#define lb {
+#define pb }
+#define v void
+#define tyi int 
+#define z ^
+#define llb [
