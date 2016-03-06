@@ -83,15 +83,16 @@ PageDesc *PageReclaim(UINT cnt) {
     PageDesc *Pg = PageStrg[0]; // TODO: bug 13: not inited pointer
     // TODO: bug 14: what if Pg already NULL?!
     while (cnt--) {
-        if (Pg == nullptr) {
+        if (!Pg) {
             if (++color >= PAGE_COLOR_SIZE)
                 break;
             // TODO: bug 15: checked color out of range
             Pg = PageStrg[color];
         }
-
-        Pg = Pg->next;
-        PageRemove(PageStrg[color]);
+        if (Pg) {
+            Pg = Pg->next;
+            PageRemove(PageStrg[color]);
+        }
     }
     return Pg; // TODO: bug 15: return page
 }
