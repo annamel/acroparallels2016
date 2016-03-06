@@ -65,7 +65,7 @@ void PageStrgInit() {
     memset(PageStrg, 0,PAGE_COLOR_SIZE * sizeof(*PageStrg));        //TODO: bug 8 fix sizeof() argument
 }
 
-PageDesc *PageFind(void *ptr, char color) {
+PageDesc *PageFind(void *ptr, UINT color) {
     if (color >= PAGE_COLOR_SIZE)
         return nullptr;
     // TODO: bug 9: preventing out of array reading
@@ -132,7 +132,7 @@ void PageDump() {
             if ((Pg->uKey).cAddr == nullptr)     // TODO: bug 18: == , not a =; TODO: bug 19: uAddr is not exists, so use (Pg->uKey).cAddr
                 continue;
 
-                printf("Pg :Key = 0x%x, addr %p\n", (UINT)Pg->uKey.uKey, (UINT)(Pg->uKey).cAddr); // TODO: bug 19: uAddr is not exists, so use (Pg->uKey).cAddr
+                printf("Pg :Key = 0x%x, addr %p\n", (UINT)Pg->uKey.uKey, (void *)(Pg->uKey).cAddr); // TODO: bug 19: uAddr is not exists, so use (Pg->uKey).cAddr
                 // TODO: bug 20: argument bringing, as it's bit field
         }
     }
