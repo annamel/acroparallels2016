@@ -27,7 +27,7 @@ enum PAGE_COLOR {
 union PageKey {
     struct {
         UINT cColor: 8; // TODO: bug 3: change data type: it's old bytefield sized 8 wasn't good with CHAR
-        UINT cAddr: sizeof(UINT) - 8; // TODO: bug 4: calculate field size to reach predictible behavior
+        UINT cAddr: 8*sizeof(UINT) - 8; // TODO: bug 4: calculate field size to reach predictible behavior
     };
 
     UINT uKey;
