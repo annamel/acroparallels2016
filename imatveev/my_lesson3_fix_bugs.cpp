@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <iostream>
+#include <new>
 
 enum PAGE_COLOR
 {
@@ -37,7 +38,7 @@ union PageKey
 
 
 /* Prepare from 2 chars the key of the same configuration as in PageKey */
-#define CALC_PAGE_KEY( Addr, Color )	(  (Color) + ((Addr) << 8) )          // 3 bag: order operations
+#define CALC_PAGE_KEY( Addr, Color )	(  (Color) + (((UINT)(Addr)) << 8) )        // 3 bag: order operations
 
 
 /**
@@ -70,7 +71,7 @@ PageDesc* PageFind( void* ptr, char color )
 {
     assert(color < PG_QUANTITY_OF_COLORS);                                  // aded
 	for( PageDesc* Pg = PageStrg[color]; Pg; Pg = Pg->next )                // 6 bag: don't need ;
-        if( Pg->uKey == CALC_PAGE_KEY((UINT)ptr,color) )                    // 7 bag: void* -> UINT
+        if( Pg->uKey.uKey == CALC_PAGE_KEY(ptr,color) )                    // 7 bag: void* -> UINT (in define)
            return Pg;                                                                                                                                     
     return NULL;
 }
@@ -87,11 +88,11 @@ PageDesc* PageReclaim( UINT cnt )
             if (color == PG_QUANTITY_OF_COLORS)                             // aded
                 return nullptr;
             Pg = PageStrg[ color ];
+            continue;
         }
 		Pg = Pg->next;
 		PageRemove( PageStrg[ color ] );
 		cnt--;
-		
 	}
     return Pg;                                                              // 10 bag: there is no "return"
 }
@@ -102,13 +103,13 @@ PageDesc* PageInit( void* ptr, UINT color )
     try {
         PageDesc* pg = new PageDesc;
         if( pg )
-            PAGE_INIT(*pg, (UINT)ptr, color);                                     // 11 bag: & -> *
+            PAGE_INIT(*pg, ptr, color);                                     // 11 bag: & -> *
         else
             printf("Allocation has failed\n");                              // 12 bag: exception - aded "try catch"
         return pg;
     }
-    catch (std::bad_alloc) {
-        cerr << "Bad allocation" << endl;
+    catch (std::bad_alloc& ba) {
+        std::cerr << "bad_alloc caught: "<< ba.what() << endl;
         return NULL;
     }
 }
@@ -132,7 +133,7 @@ void PageDump()
 		printf("PgStrg[(%s) %u] ********** \n", PgColorName[color], color ); // 14 bag: wrong order
 		for( PageDesc* Pg = PageStrg[color++]; Pg != NULL; Pg = Pg->next )   // 15 bag: ++ should be postfix
 		{
-			if( Pg->uKey.uAddr == NULL )                                          // 16 bag: = -> ==
+			if( Pg->uKey.uAddr == NULL )                                     // 16 bag: = -> ==
 				continue;
 
 			printf("Pg :Key = 0x%x, addr %p\n", Pg->uKey.uKey, Pg->uKey.uAddr );
