@@ -75,8 +75,8 @@ struct PageDesc
 
 /* storage for pages of all colors */
 static PageDesc* PageStrg[PG_NUMBER_OF_COLORS];			// FIXED:
-														// If "PG_NUMBER_OF_COLORS" is determined in enum
-														// it should be used here for scalability
+									// If "PG_NUMBER_OF_COLORS" is determined in enum
+									// it should be used here for scalability
 								  
 																			
 
@@ -175,12 +175,12 @@ void PageDump()
         for( PageDesc* Pg = PageStrg[color++]; Pg != NULL; Pg = Pg->next )   	// FIXED: Here should be postfix ++
 		{
             if ((Pg->uKey).cAddr == NULL)                                    	// FIXED: Change "=" on "==" 
-                continue;														// FIXED: Pg is pointer to PageDesc, so need  			
-																				// (Pg->uKey).cAddr, there is no uAddr			
+                continue;								// FIXED: Pg is pointer to PageDesc, so need  			
+														// (Pg->uKey).cAddr, there is no uAddr			
 			
 			
-			printf("Pg :Key = 0x%x, addr %p\n", (Pg->uKey).uKey, (void*)(Pg->uKey).cAddr);	// FIXED: The same as in previous 			
-																							// and %p: needed (void*)   	
+			printf("Pg :Key = 0x%x, addr %p\n", (Pg->uKey).uKey, (void*)(Pg->uKey).cAddr);// FIXED: The same as in previous 			
+															// and %p: needed (void*)   	
 		}
 	}
 	#undef PG_COLOR_NAME
