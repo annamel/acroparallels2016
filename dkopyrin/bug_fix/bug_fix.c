@@ -89,7 +89,7 @@ PageDesc* PageReclaim( UINT cnt )
 		if( Pg == NULL )
 		{
 			if (color < PG_COLOR_END - 1)
-				color++;
+				return NULL;
 			Pg = PageStrg[ color ];
 		}
 
@@ -133,12 +133,12 @@ void PageDump()
 		PG_COLOR_NAME(PG_COLOR_RED)
 	};
 
-	while( color <= PG_COLOR_RED )
+	while( color < PG_COLOR_END )
 	{
 		printf("PgStrg[(%s) %u] ********** \n", PgColorName[color], color );
 		for( PageDesc* Pg = PageStrg[color++]; Pg != NULL; Pg = Pg->next )
 		{
-			if( Pg->uAddr == NULL )
+			if( Pg->uKey.cAddr == NULL )
 				continue;
 
 			printf("Pg :Key = 0x%x, addr %p\n", (Pg->uKey).uKey, (void *)(Pg->uKey).cAddr );
