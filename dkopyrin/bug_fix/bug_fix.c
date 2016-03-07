@@ -88,7 +88,8 @@ PageDesc* PageReclaim( UINT cnt )
 	{
 		if( Pg == NULL )
 		{
-			if (color < PG_COLOR_END - 1)
+			color++;
+			if (color >= PG_COLOR_END)
 				return NULL;
 			Pg = PageStrg[ color ];
 		}
