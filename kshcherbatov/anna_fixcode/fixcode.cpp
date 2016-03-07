@@ -35,7 +35,7 @@ union PageKey {
 
 
 /* Prepare from 2 chars the key of the same configuration as in PageKey */
-#define CALC_PAGE_KEY(Addr, Color)    ((Color) + ((Addr) << 8))
+#define CALC_PAGE_KEY(Addr, Color)  ((Color) + ((Addr) << 8))
 // TODO: bug 5: added brackets to fix operator priority
 
 
@@ -50,10 +50,10 @@ struct PageDesc {
 };
 
 // TODO: bug 6: fixed define internals. It should be conluded in do {} while (0) construction
-#define PAGE_INIT(Desc, Addr, Color)            \
-do {                                            \
+#define PAGE_INIT(Desc, Addr, Color)                    \
+do {                                                    \
     (Desc).uKey.uKey = CALC_PAGE_KEY((UINT)Addr, Color ); \
-    (Desc).next = (Desc).prev = nullptr;           \
+    (Desc).next = (Desc).prev = nullptr;                \
 } while (0)
 // TODO: bug 7: (Desc).uKey was only struct PageKey
 
@@ -65,7 +65,7 @@ void PageStrgInit() {
     memset(PageStrg, 0,PAGE_COLOR_SIZE * sizeof(*PageStrg));        //TODO: bug 8 fix sizeof() argument
 }
 
-PageDesc *PageFind(void *ptr, char color) {
+PageDesc *PageFind(void *ptr, UINT color) {
     if (color >= PAGE_COLOR_SIZE)
         return nullptr;
     // TODO: bug 9: preventing out of array reading
@@ -132,7 +132,7 @@ void PageDump() {
             if ((Pg->uKey).cAddr == nullptr)     // TODO: bug 18: == , not a =; TODO: bug 19: uAddr is not exists, so use (Pg->uKey).cAddr
                 continue;
 
-                printf("Pg :Key = 0x%x, addr %p\n", (UINT)Pg->uKey.uKey, (UINT)(Pg->uKey).cAddr); // TODO: bug 19: uAddr is not exists, so use (Pg->uKey).cAddr
+                printf("Pg :Key = 0x%x, addr %p\n", (UINT)Pg->uKey.uKey, (void *)(Pg->uKey).cAddr); // TODO: bug 19: uAddr is not exists, so use (Pg->uKey).cAddr
                 // TODO: bug 20: argument bringing, as it's bit field
         }
     }
