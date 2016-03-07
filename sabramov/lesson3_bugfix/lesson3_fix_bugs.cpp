@@ -98,7 +98,7 @@ do { \
 
 PageDesc* PageFind(void* ptr, UINT color)			  // FIXED: Change char on UINT 					  
 {
-    if (color >= PG_NUMBER_OF_COLORS || ptr == nullptr || color < 0)  // FIXED: Check color to avoid + Check if ptr == NULL
+    if (color >= PG_NUMBER_OF_COLORS || ptr == nullptr)  // FIXED: Check color to avoid + Check if ptr == NULL
     	return nullptr;	  					  				  		// exit array bounds 													 	
     
 	PageDesc* pgFast = PageStrg[color];
@@ -142,7 +142,7 @@ PageDesc* PageReclaim(UINT cnt)
             
 PageDesc* PageInit(void* ptr, UINT color)
 {
-    if (color > PG_NUMBER_OF_COLORS || ptr == nullptr || color < 0)  // FIXED: Check color to avoid + Check if ptr == NULL
+    if (color > PG_NUMBER_OF_COLORS || ptr == nullptr)  // FIXED: Check color to avoid + Check if ptr == NULL
     	return nullptr;
     	
     try
