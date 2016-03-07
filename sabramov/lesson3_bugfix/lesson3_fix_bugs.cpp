@@ -86,27 +86,30 @@ void PageStrgInit()
 }																   // To initialize array memset 
 																   // needs size of arrays element 		
 																			
+#define FIND_LOOP(slow, fast) \
+do { \
+	 if (fast->next) \
+	 	fast = fast->next->next; \
+	 if ((fast == slow) && (fast->next != NULL)) \
+	 	return nullptr; \
+} while(0)
 
 
 
 PageDesc* PageFind(void* ptr, UINT color)			  // FIXED: Change char on UINT 					  
 {
-    if (color >= PG_NUMBER_OF_COLORS || ptr == nullptr)  // FIXED: Check color to avoid + Check if ptr == NULL
-    	return nullptr;	  					  				  // exit array bounds 													 	
+    if (color >= PG_NUMBER_OF_COLORS || ptr == nullptr || color < 0)  // FIXED: Check color to avoid + Check if ptr == NULL
+    	return nullptr;	  					  				  		// exit array bounds 													 	
     
-	PageDesc* Pg = PageStrg[color];
-	PageDesc* listHead = PageStrg[color];
-	
-	while (Pg)												  // FIXED: In case of circle list "for" will enter to infinite loop   
-	{		
-		if (Pg->uKey.uKey == CALC_PAGE_KEY(ptr, color)) 	  // FIXED: changed Pg->uKey to Pg->uKey.uKey	                    
-    		return Pg;   									  				
-	
-		Pg = Pg->next;
-		
-		if (Pg == listHead)
-			break; 
-	}
+	PageDesc* pgFast = PageStrg[color];
+    
+    for (PageDesc* pgSlow = PageStrg[color]; pg; pgSlow = pgSlow->next)   // FIXED: Deleted 
+ 	{																      //semicolomn in "for"                  
+		FIND_LOOP(pgSlow, pgFast);  // to avoid infinit loop    	
+    	
+    	if (pgSlow->uKey.uKey == CALC_PAGE_KEY(ptr, color)) 	  // FIXED: changed Pg->uKey to Pg->uKey.uKey	                    
+    		return pgSlow;   									  				
+    }    																	 
     
     return nullptr;											  
 }
@@ -139,7 +142,7 @@ PageDesc* PageReclaim(UINT cnt)
             
 PageDesc* PageInit(void* ptr, UINT color)
 {
-    if (color > PG_NUMBER_OF_COLORS || ptr == nullptr)  // FIXED: Check color to avoid + Check if ptr == NULL
+    if (color > PG_NUMBER_OF_COLORS || ptr == nullptr || color < 0)  // FIXED: Check color to avoid + Check if ptr == NULL
     	return nullptr;
     	
     try
@@ -159,6 +162,7 @@ PageDesc* PageInit(void* ptr, UINT color)
         return nullptr;
     }
 }
+
 
 /**
  * Print all mapped pages
@@ -181,12 +185,16 @@ void PageDump()
 	{
         printf("PgStrg[(%s) %u] ********** \n", PgColorName[color], color );    // FIXED: Wrong order of arguments
         
-        for( PageDesc* Pg = PageStrg[color++]; Pg != NULL; Pg = Pg->next )   	// FIXED: Here should be postfix ++
+        for( PageDesc* pgSlow = PageDesc* pgFast = PageStrg[color++]; Pg != NULL; Pg = Pg->next)  // FIXED: Here should be postfix ++
 		{
-            if ((Pg->uKey).cAddr == NULL)                                    	// FIXED: Change "=" on "==" 
-                continue;								// FIXED: Pg is pointer to PageDesc, so need  			
-														// (Pg->uKey).cAddr, there is no uAddr			
-			
+			FIND_LOOP(pgSlow, pgFast);         							// write fuction but I hope repeating		
+            
+            if ((Pg->uKey).cAddr == NULL)                               // of 2 lines won't be so bad     	
+            	continue;														
+            															
+            															// FIXED: Change "=" on "==" 
+                														// FIXED: Pg is pointer to PageDesc, so need  			
+																		// (Pg->uKey).cAddr, there is no uAddr			
 			
 			printf("Pg :Key = 0x%x, addr %p\n", (Pg->uKey).uKey, (void*)(Pg->uKey).cAddr);// FIXED: The same as in previous 			
 															// and %p: needed (void*)   	
@@ -194,3 +202,7 @@ void PageDump()
 	}
 	#undef PG_COLOR_NAME
 }
+
+
+
+
