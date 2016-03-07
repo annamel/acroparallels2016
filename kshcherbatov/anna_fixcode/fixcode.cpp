@@ -35,7 +35,7 @@ union PageKey {
 
 
 /* Prepare from 2 chars the key of the same configuration as in PageKey */
-#define CALC_PAGE_KEY(Addr, Color)    ((Color) + ((Addr) << 8))
+#define CALC_PAGE_KEY(Addr, Color)  do { ((Color) + ((Addr) << 8)) } while (0)
 // TODO: bug 5: added brackets to fix operator priority
 
 
@@ -50,10 +50,10 @@ struct PageDesc {
 };
 
 // TODO: bug 6: fixed define internals. It should be conluded in do {} while (0) construction
-#define PAGE_INIT(Desc, Addr, Color)            \
-do {                                            \
+#define PAGE_INIT(Desc, Addr, Color)                    \
+do {                                                    \
     (Desc).uKey.uKey = CALC_PAGE_KEY((UINT)Addr, Color ); \
-    (Desc).next = (Desc).prev = nullptr;           \
+    (Desc).next = (Desc).prev = nullptr;                \
 } while (0)
 // TODO: bug 7: (Desc).uKey was only struct PageKey
 
