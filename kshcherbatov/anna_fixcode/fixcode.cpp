@@ -35,7 +35,7 @@ union PageKey {
 
 
 /* Prepare from 2 chars the key of the same configuration as in PageKey */
-#define CALC_PAGE_KEY(Addr, Color)  do { ((Color) + ((Addr) << 8)) } while (0)
+#define CALC_PAGE_KEY(Addr, Color)  ((Color) + ((Addr) << 8))
 // TODO: bug 5: added brackets to fix operator priority
 
 
