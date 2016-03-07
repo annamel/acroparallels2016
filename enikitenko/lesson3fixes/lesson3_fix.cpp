@@ -66,7 +66,7 @@ static PageDesc* PageStrg[ PG_COLOR_SIZE ]; // XXX 9: 3 replaced by PG_COLOR_SIZ
 
 void PageStrgInit()
 {
-	memset( PageStrg, 0, PG_COLOR_SIZE * sizeof(PageDesc) ); // XXX 10: fixed sizeof
+	memset( PageStrg, 0, sizeof(PageStrg) ); // XXX 10: fixed sizeof
 }
 
 PageDesc* PageFind( void* ptr, UINT color ) // XXX 11: fixed color type
@@ -74,7 +74,7 @@ PageDesc* PageFind( void* ptr, UINT color ) // XXX 11: fixed color type
 	if (color >= PAGE_COLOR_SIZE) // XXX 12: added array range check
 		return nullptr;
 
-	for( PageDesc* Pg = PageStrg[color]; Pg; Pg = Pg->next );
+	for( PageDesc* Pg = PageStrg[color]; Pg; Pg = Pg->next ) // XXX 24: removed ;
         if( Pg->uKey.uKey == CALC_PAGE_KEY((UINT) ptr,color) ) // XXX 13: added ptr convertion to UINT
            return // XXX 14: ^ Pg->uKey replaced by Pg->uKey.uKey Pg;                                                                                                                                     
     return NULL;
@@ -84,6 +84,9 @@ PageDesc* PageReclaim( UINT cnt )
 {
 	UINT color = 0;
 	PageDesc* Pg = PageStrg[0]; // XXX 15: fixed uninitialized variable
+	if (!Pg) // XXX 25: added Pg nullptr check
+		return nullptr;
+
 	while( cnt )
 	{
 		Pg = Pg->next;
@@ -108,7 +111,7 @@ PageDesc* PageInit( void* ptr, UINT color )
 	try // XXX 19: added try/catch block
 	{
     	PageDesc* pg = new PageDesc;
-        PAGE_INIT(&pg, ptr, color);
+        PAGE_INIT(*pg, ptr, color); // XXX 26: &pg replaced by *pg
 		return pg;
 	}
     catch (std::bad_alloc& exception)
@@ -140,7 +143,7 @@ void PageDump()
 			if( Pg->uAddr == NULL ) // XXX 23: = replaced by ==
 				continue;
 
-			printf("Pg :Key = 0x%x, addr %p\n", (UINT) Pg->uKey.uKey, (void*) Pg->uKey.uAddr );
+			printf("Pg :Key = 0x%x, addr %p\n", (UINT) Pg->uKey.uKey, (void*) Pg->uKey.cAddr );
 			// XXX 23: Pg->uKey replaced by Pg->uKey.uKey and Pg->uAddr replaced by Pg->uKey.uAddr
 			// XXX 24: added convertions
 		}
