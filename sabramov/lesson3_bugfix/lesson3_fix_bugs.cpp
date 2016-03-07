@@ -89,17 +89,25 @@ void PageStrgInit()
 
 
 
-PageDesc* PageFind(void* ptr, unsigned char color)			  // FIXED: Change char on unsigned char 					  
+PageDesc* PageFind(void* ptr, UINT color)			  // FIXED: Change char on UINT 					  
 {
-    if (color >= PG_NUMBER_OF_COLORS)  		                  // FIXED: Check color to avoid 
+    if (color >= PG_NUMBER_OF_COLORS || ptr == nullptr)  // FIXED: Check color to avoid + Check if ptr == NULL
     	return nullptr;	  					  				  // exit array bounds 													 	
     
-    for (PageDesc* Pg = PageStrg[color]; Pg; Pg = Pg->next)   // FIXED: Deleted semicolomn in "for"                  
-    { 																		   
-    	if (Pg->uKey.uKey == CALC_PAGE_KEY(ptr, color)) 	  // FIXED: changed Pg->uKey to Pg->uKey.uKey	                    
+	PageDesc* Pg = PageStrg[color];
+	PageDesc* listHead = PageStrg[color];
+	
+	while (Pg)												  // FIXED: In case of circle list "for" will enter to infinite loop   
+	{		
+		if (Pg->uKey.uKey == CALC_PAGE_KEY(ptr, color)) 	  // FIXED: changed Pg->uKey to Pg->uKey.uKey	                    
     		return Pg;   									  				
-    }    																	 
-                                                                                                                                          
+	
+		Pg = Pg->next;
+		
+		if (Pg == listHead)
+			break; 
+	}
+    
     return nullptr;											  
 }
 
@@ -131,7 +139,7 @@ PageDesc* PageReclaim(UINT cnt)
             
 PageDesc* PageInit(void* ptr, UINT color)
 {
-    if (color > PG_NUMBER_OF_COLORS)
+    if (color > PG_NUMBER_OF_COLORS || ptr == nullptr)  // FIXED: Check color to avoid + Check if ptr == NULL
     	return nullptr;
     	
     try
@@ -168,7 +176,8 @@ void PageDump()
         PG_COLOR_NAME(PG_COLOR_RED)
 	};
 
-	while( color <= PG_COLOR_RED )
+		
+	while( color < PG_NUMBER_OF_COLORS)		// FIXED: Change PG_COLOR_RED  on PG_NUMBER_OF_COLORS for scalability
 	{
         printf("PgStrg[(%s) %u] ********** \n", PgColorName[color], color );    // FIXED: Wrong order of arguments
         
