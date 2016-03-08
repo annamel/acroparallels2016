@@ -10,13 +10,13 @@
 
 /*Илья Кротов <ilya.krotov@phystech.edu>,*/
 
-//#include <Windows.h>
+#include <Windows.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-typedef unsigned UINT;
-typedef char CHAR;
+//typedef unsigned UINT;
+//typedef char CHAR;
 
 
 //FIXME: begin with null
@@ -24,7 +24,8 @@ enum PAGE_COLOR
 {
 	PG_COLOR_GREEN = 0, /* page may be released without high overhead */
 	PG_COLOR_YELLOW, /* nice to have */
-	PG_COLOR_RED	/* page is actively used */
+	PG_COLOR_RED,	/* page is actively used */
+	PG_COLOR_END
 };
 
 
@@ -87,10 +88,13 @@ void PageStrgInit()
 	memset( PageStrg, 0, sizeof PageStrg);
 }
 
-PageDesc* PageFind( void* ptr, char color )
+PageDesc* PageFind( void* ptr, UINT color )
 {
+	if (PG_COLOR_END >= PG_COLOR_END)
+		return NULL;
+		
 //FIXME: extra semicolon 
-	for( PageDesc* Pg = PageStrg[(int) color]; Pg; Pg = Pg->next )
+	for( PageDesc* Pg = PageStrg[color]; Pg; Pg = Pg->next )
 //FIXME: union use as integer
         if( Pg->uKey.uKey == CALC_PAGE_KEY(ptr,color) )
            return Pg;                                                                                                                                     
@@ -110,6 +114,10 @@ PageDesc* PageReclaim( UINT cnt )
 		if( Pg == NULL )
 		{
 			color++;
+			
+			if (color >= PG_COLOR_END)
+				return NULL;
+			
 			Pg = PageStrg[ color ];
 		}
 	}
@@ -119,12 +127,26 @@ PageDesc* PageReclaim( UINT cnt )
             
 PageDesc* PageInit( void* ptr, UINT color )
 {
-    PageDesc* pg = new PageDesc;
+	//most likely exceptions will be disabled anyway
+	
+	if (color >= PG_COLOR_END)
+		return NULL;
+	
+	try
+	{
+   		PageDesc* pg = new PageDesc;
+   	}
+   	catch(...)
+   	{
+        printf("Allocation has failed (exception)\n");
+	}
+	
     if( pg )
     //FIXME: *, not &
         PAGE_INIT(pg, ptr, color);
     else
         printf("Allocation has failed\n");
+        
     return pg;
 }
 
@@ -143,7 +165,7 @@ void PageDump()
 		PG_COLOR_NAME(PG_COLOR_RED)
 	};
 
-	while( color <= PG_COLOR_RED )
+	while( color < PG_COLOR_END )
 	{
 		//FIXME:order
 		printf("PgStrg[(%s) %u] ********** \n", PgColorName[color], color );
