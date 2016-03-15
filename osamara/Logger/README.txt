@@ -1,3 +1,5 @@
+Functionality:
+	This logger provides developer with instruments for multilevel multithread logging of a c++ program, including logging call stack.
 How to use logger:
 	At the beginning of your program, call 
 		logInit(level, logFilename);
