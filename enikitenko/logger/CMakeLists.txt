@@ -13,8 +13,6 @@ list (APPEND CXXLOG_SOURCES
 	test.cpp
 	g++_demangle.cpp)
 
-list (APPEND CMAKE_EXE_LINKER_FLAGS -rdynamic)
-
 set (CMAKE_SHARED_LINKER_FLAGS -rdynamic)
 
 add_executable (clog ${SHARED_SOURCES} ${CLOG_SOURCES})
