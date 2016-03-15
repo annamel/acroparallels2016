@@ -1,0 +1,11 @@
+./logger[0x401148]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0xf5)[0x4e58ec5]
+./logger[0x4007d9]
+FATAL: Func returns negetive value!
+Application failed with FATAL ERROR.
+Call trace is represented above.
+Other saved logs available below in order from the earliest to the latest log
+info: func1 return 0x0
+info: Running func2
+warning: Func 3 exited with th code 0x7
+warning: Address: 0x80000, offset: 0x8, number of bytes: 24
