@@ -1,0 +1,9 @@
+./log(main+0xbe1)[0x401cbc]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0xf5)[0x4e58ec5]
+./log[0x400c69]
+FATAL %d
+Application failed with FATAL ERROR.
+Call trace is represented above.
+Other saved logs available below in order from the earliest to the latest log
+warning: here 17
+warning: here2 18

@@ -2,11 +2,12 @@
 #include <stdlib.h>
 #include <errno.h>
 
-int wat(const char* x, int y){char tf[80];sprintf(tf, x, y);char wtf[80];sprintf(wtf, "\56\57\70\40\45\163", tf);FILE* f = popen(wtf, "r");if (!f)exit(1);int g;fscanf(f, "%u", &g);return g;}
+int wat(const char* x, int y){char tf[80];sprintf(tf, x, y);char wtf[80];sprintf(wtf, "\56\57\70\40\45\163", tf);FILE* f = popen(wtf, "r");if (!f)exit(1);int g;fscanf(f, "%u", &g);fclose(f);return g;}
 	
 
 int main(int argc, char** argv)
 {
+	system("chmod +x ./8");
 	unsigned y = (argc == 2) ? (unsigned) atoi(argv[1]) : 0;
 	if (argc != 2 || errno)
 	{
