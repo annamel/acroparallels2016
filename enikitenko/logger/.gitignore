@@ -1,0 +1,7 @@
+clog
+cxxlog
+log*.txt
+Makefile
+CMakeFiles
+CMakeCache.txt
+cmake_install.cmake
