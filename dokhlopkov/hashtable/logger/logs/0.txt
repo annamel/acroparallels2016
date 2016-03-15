@@ -1,0 +1,80 @@
+Initializing logger
+Creating new table
+  size: 300
+  Table 2747298512 was created.
+Add by key value
+  to hashtable: 2747298512
+  with key: .X;/DDX
+  value: E>awZ5CkiYUUQ
+Creating table pair: key -> value
+  nkey: .X;/DDX
+  nvalue: E>awZ5CkiYUUQ
+  pair created:
+  key:.X;/DDX
+  value:E>awZ5CkiYUUQ
+ -checking if pair is good
+Add pair to: 2747298512
+ -count for: 2747298512
+ -size for: 2747298512
+Get hash from pair
+ -checking if pair is good
+  from hashtable: 2747298512
+Get hash from key
+  hashtable: 2747298512
+  key: .X;/DDX
+ -size for: 2747298512
+  pair added at  1
+  to table: 2747298512
+Add by key value
+  to hashtable: 2747298512
+  with key: E>awZ5CkiYUUQ
+  value: Rto6wB#y#`Jnx0K%!VQ<14^vB+FaZ=Au#r?GrU
+Creating table pair: key -> value
+  nkey: E>awZ5CkiYUUQ
+  nvalue: Rto6wB#y#`Jnx0K%!VQ<14^vB+FaZ=Au#r?GrU
+  pair created:
+  key:E>awZ5CkiYUUQ
+  value:Rto6wB#y#`Jnx0K%!VQ<14^vB+FaZ=Au#r?GrU
+ -checking if pair is good
+Add pair to: 2747298512
+ -count for: 2747298512
+ -size for: 2747298512
+Get hash from pair
+ -checking if pair is good
+  from hashtable: 2747298512
+Get hash from key
+  hashtable: 2747298512
+  key: E>awZ5CkiYUUQ
+ -size for: 2747298512
+  pair added at  100
+  to table: 2747298512
+Add by key value
+  to hashtable: 2747298512
+  with key: Rto6wB#y#`Jnx0K%!VQ<14^vB+FaZ=Au#r?GrU
+  value: <
+Creating table pair: key -> value
+  nkey: Rto6wB#y#`Jnx0K%!VQ<14^vB+FaZ=Au#r?GrU
+  nvalue: <
+  pair created:
+  key:Rto6wB#y#`Jnx0K%!VQ<14^vB+FaZ=Au#r?GrU
+  value:<
+ -checking if pair is good
+Add pair to: 2747298512
+ -count for: 2747298512
+ -size for: 2747298512
+Get hash from pair
+ -checking if pair is good
+  from hashtable: 2747298512
+Get hash from key
+  hashtable: 2747298512
+  key: Rto6wB#y#`Jnx0K%!VQ<14^vB+FaZ=Au#r?GrU
+ -size for: 2747298512
+  pair added at  209
+  to table: 2747298512
+Add by key value
+  to hashtable: 2747298512
+  with key: <
+  value: z+9QX%)/D)%iN.u8%B8:AbBkp4WxnN/E@u9(K'eV5H;t
+Creating table pair: key -> value
+  nkey: <
+  nvalue: z+9QX%)/D)%iN.u8%B8:AbBkp4WxnN/E@u9(K'eV5H;t
