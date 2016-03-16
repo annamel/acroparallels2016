@@ -3,38 +3,42 @@
 //
 
 #include <stdio.h>
+
+//#define RELEASE
+
 #include "loglib.h"
 
 void somefunc() {
-    log_write(WARN, "hello should not do that!!");
-    log_write(ERROR, "that's a trap!");
+    warning("hello should not do that!!");
+    error("that's a trap!");
 
 }
 
 int main(int argn, char ** args) {
     printf("hello world\n");
 
-//    log_init(stderr, 256, DEBUG);
-//    flogger("log", DEBUG);
-    logger(DEBUG);
+//    log_init(stderr, 256, LOG_DEBUG);
+//    flogger("log", LOG_DEBUG);
+//    logger(LOG_DEBUG);
+    logERR(LOG_DEBUG);
 
-    log_write(DEBUG, "hello world!");
+    debug("hello world!");
 
-    log_flush();
+    loggerFlush();
 
-    log_write(INFO, "paparem!");
+    info("pam-param!");
 
 
     somefunc();
 
-    log_write(DEBUG, "yups");
+    debug("yups");
 
 
-    log_set_level(WARN);
+    loggerLevel(LOG_WARN);
 
-    log_write(DEBUG, "you can't see me!");
+    debug("you can't see me!");
 
-    log_write(WARN, "I am after some DEBUG");
+    warning("I am after some LOG_DEBUG");
 
 //    log_flush();
 

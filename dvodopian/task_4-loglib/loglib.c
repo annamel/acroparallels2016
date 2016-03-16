@@ -12,12 +12,15 @@
 
 #include "loglib.h"
 
+
+//---- Logger -----------------
+
 typedef struct {
     char * buf;
     size_t buf_size;
     char * eob;
     LogLevel level;
-    FILE * stream;
+    FILE * stream;  //todo: use unbuffered output (file descriptors)
 } Logger;
 
 
@@ -30,7 +33,7 @@ typedef struct {
 Logger * _Logger_singleton_set(bool set_logger_instance, Logger * logger_instance) {
     static Logger * instance = NULL;
 
-// todo: multi-thread!
+    // todo: multi-thread!
     if (set_logger_instance) {
         instance = logger_instance;
     }
@@ -42,7 +45,7 @@ Logger * Logger_singleton() {
     return _Logger_singleton_set(false, NULL);
 }
 
-/** default log-level is 0 (DEBUG) */
+/** default log-level is 0 (LOG_DEBUG) */
 Logger * Logger_new(size_t size, FILE * stream) {
     Logger * log = (Logger *) malloc(sizeof(Logger));
 
@@ -68,28 +71,33 @@ void Logger_destruct() {
     _Logger_singleton_set(true, NULL);
 }
 
-//---- PUBLIC API -----------------
 
-/** the result is always 5 chars + \0 */
+//---- UTILS -----------------
+
 char * log_level2str(LogLevel level) {
     switch (level) {
-        case DEBUG:
+        case LOG_DEBUG:
             return "DEBUG";
-        case INFO:
+        case LOG_INFO:
             return "INFO ";
-        case WARN:
+        case LOG_WARN:
             return "WARN ";
-        case ERROR:
+        case LOG_ERROR:
             return "ERROR";
         default:
             return "     ";
     }
 }
 
+
+//---- PUBLIC API -----------------
+
+
+/** the result is always 5 chars + \0 */
 void log_init(FILE * stream, size_t size, LogLevel level) {
     if (Logger_singleton()) {
         fprintf(stderr, "FATAL> logger already exists\n");
-        log_write(_print_log_level, "FATAL:: logger already exists\n");
+        log_write(_LOG_print_log_level, "FATAL:: logger already exists\n");
         exit(EXIT_FAILURE);
     }
 
@@ -97,7 +105,7 @@ void log_init(FILE * stream, size_t size, LogLevel level) {
     atexit(Logger_destruct);
 
     time_t tm = time(NULL);
-    log_write(_print_log_level, ctime(&tm));
+    log_write(_LOG_print_log_level, ctime(&tm));
 
     log_set_level(level);
 }
@@ -124,13 +132,13 @@ void log_write(LogLevel level, char const * msg) {
     size_t size_left = log->buf + log->buf_size - log->eob - 1;
 
     // todo: multi-thread! it is not thread safe to write first and increment log->eob second
-    if (_print_log_level == level) {
+    if (_LOG_print_log_level == level) {
         log->eob += snprintf(log->eob, size_left, "%s", msg);
     } else {
         log->eob += snprintf(log->eob, size_left, "%s [%s] :: %s\n", log_level2str(level), timestamp, msg);
     }
 
-    if (ERROR == level) {
+    if (LOG_ERROR == level) {
         log_flush();
 
         void * callstack[CALLSTACK_MAX_SIZE];
@@ -167,9 +175,9 @@ void log_set_level(LogLevel level) {
         exit(EXIT_FAILURE);
     }
 
-    if (_print_log_level == level) {
+    if (_LOG_print_log_level == level) {
         fprintf(stderr, "FATAL> `_print_log_level` can not be set as a level of logging\n");
-        log_write(_print_log_level, "FATAL:: `_print_log_level` can not be set as a level of logging\n");
+        log_write(_LOG_print_log_level, "FATAL:: `_print_log_level` can not be set as a level of logging\n");
         exit(EXIT_FAILURE);
     }
 
@@ -177,5 +185,5 @@ void log_set_level(LogLevel level) {
 
     char msg[20] = {};
     snprintf(msg, sizeof(msg), "--- %s ---\n", log_level2str(level));
-    log_write(_print_log_level, msg);
+    log_write(_LOG_print_log_level, msg);
 }
