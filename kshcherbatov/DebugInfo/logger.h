@@ -5,15 +5,6 @@
 #ifndef DLOG_H
 #define DLOG_H
 
-#include <sys/types.h>
-#include <unistd.h>
-#include <stdio.h>
-
-#define LOG_MSG_MAX_SIZE 1024
-#define LOG_FILENAME "log.txt"
-
-#define DEBUG LOGLEVEL_UNUSED
-
 enum LOGLEVEL_TYPES {
     LOGLEVEL_UNUSED,
     LOGLEVEL_INFO,
@@ -23,52 +14,53 @@ enum LOGLEVEL_TYPES {
     LOGLEVEL_FATAL
 };
 
+#ifndef DEBUG
+    #define DEBUG LOGLEVEL_UNUSED
+#endif
 
 #ifdef DEBUG
+    #include <unistd.h>
+
+    #ifndef LOG_FILENAME
+        #define LOG_FILENAME "log.txt"
+    #endif
+
     struct ring_buff_t;
     extern struct ring_buff_t *Logging_system;
 
-    int ring_buff_push_msg(struct ring_buff_t *ring_buff, const char msg[]);
-
-    #define CALL_LOG_FUNC(err_log_lvl, fmt, args...)\
-    do {\
-        char msg[LOG_MSG_MAX_SIZE];\
-        snprintf(msg, LOG_MSG_MAX_SIZE, fmt, ## args);\
-        ring_buff_push_msg(Logging_system, msg);\
-    } while (0)
+    void ring_buf_push_msg(struct ring_buff_t *ring_buff, enum LOGLEVEL_TYPES log_level, pid_t pid, const char *fmt, ...);
+    void __init_log_system(int argc, char * argv[]) __attribute__ ((constructor));
+    void __deinit_log_system(void) __attribute__ ((destructor));
 
     #if DEBUG<=LOGLEVEL_FATAL
-    #define LOG_FATAL(fmt, args...) CALL_LOG_FUNC(LOGLEVEL_ERROR, fmt, ##args)
+    #define LOG_FATAL(fmt, args...) ring_buf_push_msg(Logging_system, LOGLEVEL_FATAL, getpid(), fmt, ##args)
     #else
     #define LOG_FATAL(fmt, args...)
     #endif
 
     #if DEBUG<=LOGLEVEL_ERROR
-    #define LOG_ERROR(fmt, args...) CALL_LOG_FUNC(LOGLEVEL_ERROR, fmt, ##args)
+    #define LOG_ERROR(fmt, args...) ring_buf_push_msg(Logging_system, LOGLEVEL_ERROR, getpid(), fmt, ##args)
     #else
     #define LOG_ERROR(fmt, args...)
     #endif
 
     #if DEBUG<=LOGLEVEL_WARN
-    #define LOG_WARN(fmt, args...) CALL_LOG_FUNC(LOGLEVEL_ERROR, fmt, ##args)
+    #define LOG_WARN(fmt, args...) ring_buf_push_msg(Logging_system, LOGLEVEL_WARN, getpid(), fmt, ##args)
     #else
     #define LOG_WARN(fmt, args...)
     #endif
 
     #if DEBUG<=LOGLEVEL_DEBUG
-    #define LOG_DEBUG(fmt, args...) CALL_LOG_FUNC(LOGLEVEL_ERROR, fmt, ##args)
+    #define LOG_DEBUG(fmt, args...) ring_buf_push_msg(Logging_system, LOGLEVEL_DEBUG, getpid(), fmt, ##args)
     #else
     #define LOG_DEBUG(fmt, args...)
     #endif
 
     #if DEBUG<=LOGLEVEL_INFO
-    #define LOG_INFO(fmt, args...) CALL_LOG_FUNC(LOGLEVEL_ERROR, fmt, ##args)
+    #define LOG_INFO(fmt, args...) ring_buf_push_msg(Logging_system, LOGLEVEL_INFO, getpid(), fmt, ##args)
     #else
     #define LOG_INFO(fmt, args...)
     #endif
-
-    void __init_log_system(int argc, char * argv[]) __attribute__ ((constructor));
-    void __deinit_log_system(void) __attribute__ ((destructor));
 #else
     #define LOG_FATAL(fmt, args...)
     #define LOG_ERROR(fmt, args...)
