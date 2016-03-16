@@ -38,7 +38,7 @@ enum SEM_CONTROLS {
     SEM_CONTROL_INITIAL_SYSTEM,
     SEM_CONTROL_PS_NUM,
     SEM_CONTROL_HAS_DAEMON,
-    SEM_CONTROL_DAEMON_IS_RESTARTING,
+    SEM_CONTROL_DAEMON_COULD_START,
     SEM_CONTROL_SIZE
 };
 
@@ -71,7 +71,7 @@ struct ring_buff_t {
 
 struct ring_buff_t *ring_buff_construct(const char log_filename[]);
 void ring_buff_destruct(struct ring_buff_t *ring_buff);
-static void ring_buff_destruct_all(struct ring_buff_t *ring_buff);
+static void ring_buff_destruct_shared_rosorces(struct ring_buff_t *ring_buff);
 static inline void ring_buff_fork_daemon(struct ring_buff_t *ring_buff, bool first_init);
 static inline void ring_buff_validate_daemon(struct ring_buff_t *ring_buff);
 static inline int sem_act(const int sem_id, const unsigned short num, const short int arg,  const short flag);
@@ -122,10 +122,9 @@ struct ring_buff_t *ring_buff_construct(const char log_filename[]) {
 
     if (0)
     {
-        ring_buff_destruct_all(ring_buff);
+        ring_buff_destruct_shared_rosorces(ring_buff);
         exit(EXIT_FAILURE);
     }
-
 
     if ((ring_buff->shared = (struct ring_buff_shared_t *)shmat(ring_buff->shared_fd, NULL, 0))
         == ((struct ring_buff_shared_t *)-1)) {
@@ -143,19 +142,16 @@ struct ring_buff_t *ring_buff_construct(const char log_filename[]) {
         handle_error("Failed semget");
     }
 
-    sem_act(ring_buff->sems_fd, SEM_CONTROL_PS_NUM, SEM_ACTION_RELAX, SEM_UNDO);
-
     if (!mem_were_attached) {
         DOUT("# %d:\t Memory was CREATED. Initialize it.\n", getpid());
-
         ring_buff_fork_daemon(ring_buff, true);
     } else {
         DOUT("# %d:\t Memory was ATTACHED.\n", getpid());
+        sem_act(ring_buff->sems_fd, SEM_CONTROL_PS_NUM, SEM_ACTION_RELAX, SEM_UNDO);
     }
 
-    // SEM_CONTROL_INITIAL_SYSTEM unlocks in ring_buff_fork_daemon()
+    // wait for daemon fully initialized
     sem_act(ring_buff->sems_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_CATCH, SEM_UNDO);
-    DOUT("# %d:\t looks good!\n", getpid());
     sem_act(ring_buff->sems_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_RELAX, 0);
 
     DOUT("# %d:\t __ring_buff_construct is going to exit\n", getpid());
@@ -163,37 +159,47 @@ struct ring_buff_t *ring_buff_construct(const char log_filename[]) {
 }
 
 static inline void ring_buff_validate_daemon(struct ring_buff_t *ring_buff) {
-    if ((sem_act(ring_buff->sems_fd, SEM_CONTROL_HAS_DAEMON, SEM_ACTION_WAIT0, IPC_NOWAIT) == 0) &&
-            sem_act(ring_buff->sems_fd, SEM_CONTROL_DAEMON_IS_RESTARTING, SEM_ACTION_CATCH, IPC_NOWAIT) == 0) {
+    if (sem_act(ring_buff->sems_fd, SEM_CONTROL_HAS_DAEMON, SEM_ACTION_WAIT0, IPC_NOWAIT) == 0) {
         ring_buff_fork_daemon(ring_buff, false);
     }
 }
 
 static void ring_buff_fork_daemon(struct ring_buff_t *ring_buff, bool first_init) {
     assert(ring_buff);
+    assert(sem_act(ring_buff->sems_fd, SEM_CONTROL_HAS_DAEMON, SEM_ACTION_WAIT0, IPC_NOWAIT) == 0);
+
+    short init_system_sem_falgs = SEM_UNDO;
+    if (first_init)
+        init_system_sem_falgs |= IPC_NOWAIT;
+
+    sem_act(ring_buff->sems_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_CATCH, init_system_sem_falgs);
+    if (sem_act(ring_buff->sems_fd, SEM_CONTROL_HAS_DAEMON, SEM_ACTION_WAIT0, IPC_NOWAIT) != 0)
+        return;
 
     int pid = fork();
     if (pid < 0) {
-        ring_buff_destruct_all(ring_buff);
+        ring_buff_destruct_shared_rosorces(ring_buff);
         handle_error("Failed fork");
-    } else if (pid == 0) {
+    } else if (pid > 0) {
         DOUT("# %d:\t Start Logger daemon\n", getpid());
-
-        sem_act(ring_buff->sems_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_CATCH, IPC_NOWAIT);
 
         if (first_init) {
             ring_buff->shared->msg_buff_flushstart_index = 0;
             ring_buff->shared->msg_buff_write_index = 0;
+
             for (register int i = 0; i < LOG_MSG_MAX_AMOUNT; i++)
                 ring_buff->shared->msg_buff[i].is_ready_to_flush = false;
 
             sem_act(ring_buff->sems_fd, SEM_CONTROL_FLUSH, SEM_ACTION_RELAX, 0);
+        } else {
+            // daemon is no more process to wait
+            sem_act(ring_buff->sems_fd, SEM_CONTROL_PS_NUM, SEM_ACTION_CATCH, 0);
         }
 
-        sem_act(ring_buff->sems_fd, SEM_CONTROL_DAEMON_IS_RESTARTING, SEM_ACTION_RELAX, 0);
         sem_act(ring_buff->sems_fd, SEM_CONTROL_HAS_DAEMON, SEM_ACTION_RELAX, SEM_UNDO);
-
         sem_act(ring_buff->sems_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_RELAX, 0);
+
+        sem_act(ring_buff->sems_fd, SEM_CONTROL_DAEMON_COULD_START, SEM_ACTION_CATCH, 0);
 
         // wait while other processes exists
         int end_loop_condition; // succeeded, sem_ect returns 0
@@ -209,11 +215,18 @@ static void ring_buff_fork_daemon(struct ring_buff_t *ring_buff, bool first_init
         DOUT("# %d:\t Daemon is currently not useful\n", getpid());
 
         ring_buff_flush_to_file(ring_buff);
-        ring_buff_destruct_all(ring_buff);
+        ring_buff_destruct_shared_rosorces(ring_buff);
 
         DOUT("# %d:\t Daemon process is going exit\n", getpid());
 
         exit(EXIT_SUCCESS);
+    } else {
+        sem_act(ring_buff->sems_fd, SEM_CONTROL_PS_NUM, SEM_ACTION_RELAX, SEM_UNDO);
+        sem_act(ring_buff->sems_fd, SEM_CONTROL_DAEMON_COULD_START, SEM_ACTION_RELAX, 0);
+
+        // wait for daemon init finish
+        sem_act(ring_buff->sems_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_CATCH, SEM_UNDO);
+        sem_act(ring_buff->sems_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_RELAX, 0);
     }
 }
 
@@ -280,12 +293,14 @@ static int ring_buff_flush_to_file(struct ring_buff_t *ring_buff) {
 
 void ring_buff_destruct(struct ring_buff_t *ring_buff) {
     DOUT("# %d: Called ring_buff_destruct( [ %p ] )\n", getpid(), (void*)ring_buff);
+
     if (!ring_buff)
         return;
     // destruct just a single program, not a daemon
 
     int sem_fd = ring_buff->sems_fd;
     int logfile_fd = ring_buff->logfile_fd;
+
     sem_act(sem_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_CATCH, IPC_NOWAIT);
 
     shmdt(ring_buff->shared);
@@ -299,19 +314,13 @@ void ring_buff_destruct(struct ring_buff_t *ring_buff) {
     sem_act(sem_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_RELAX, 0);
 }
 
-static void ring_buff_destruct_all(struct ring_buff_t *ring_buff) {
-    DOUT("# %d: Called ring_buff_destruct_all( [ %p ] )\n", getpid(), (void*)ring_buff);
+static void ring_buff_destruct_shared_rosorces(struct ring_buff_t *ring_buff) {
+    DOUT("# %d: Called ring_buff_destruct_shared_resources( [ %p ] )\n", getpid(), (void*)ring_buff);
     assert(ring_buff);
 
-    shmdt(ring_buff->shared);
-    ring_buff->shared = NULL;
     shmctl(ring_buff->shared_fd, IPC_RMID, NULL);
     close(ring_buff->logfile_fd);
     semctl(ring_buff->sems_fd, 0, IPC_RMID, 0);
-    ring_buff->sems_fd = -1;
-    ring_buff->shared_fd = -1;
-
-    free((void *) ring_buff);
 }
 
 int ring_buff_push_msg(struct ring_buff_t *ring_buff, const char msg[]) {

@@ -3,10 +3,10 @@
 struct ring_buff_t *logger;
 
 int main (int argc, char *argv[]) {
-    fork();
+    fork(); // it is not essential, you can run simultaneously few copies of programs using this library with 1 logfile
 
     int pid = getpid();
-    printf("%d: JUST TRY KILL THE DAEMON, PLEASE! You have 12 seconds\n", pid);
+    printf("%d: JUST TRY KILL THE DAEMON!) You have 10 seconds\n", pid);
     sleep(10);
 
     LOG_INFO("%d: Hello\n", pid);
