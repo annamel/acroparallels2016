@@ -2,9 +2,8 @@
 // Created by kir on 12.03.16.
 //
 
-#include "lmsg_ring_buff.h"
+#include "logger.h"
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <stdbool.h>
@@ -12,17 +11,17 @@
 #include <sys/shm.h>
 #include <sys/sem.h>
 #include <fcntl.h>
-#include <unistd.h>
 #include <errno.h>
 #include <string.h>
 #include <stdint.h>
 
-#define LOG_MSG_MAX_AMOUNT 128
+struct ring_buff_t *Logging_system = NULL;
 
+#define LOG_MSG_MAX_AMOUNT 128
 #define FLUSH_THREAD_SLEEP_TIME 10000
 #define LOG_FILENAME_MAX_LEN 255
 
-//#define DEBUG_MSG_RING_BUFF_INTERNAL
+#define DEBUG_MSG_RING_BUFF_INTERNAL
 
 #ifdef DEBUG_MSG_RING_BUFF_INTERNAL
 #define DOUT(fmt, args...) do {fprintf (stdout, fmt, ## args);} while (0)
@@ -35,11 +34,11 @@
 
 
 enum SEM_CONTROLS {
-    SEM_CONTROL_MSG_COUNT_INC,
     SEM_CONTROL_FLUSH,
     SEM_CONTROL_INITIAL_SYSTEM,
     SEM_CONTROL_PS_NUM,
     SEM_CONTROL_HAS_DAEMON,
+    SEM_CONTROL_DAEMON_IS_RESTARTING,
     SEM_CONTROL_SIZE
 };
 
@@ -70,9 +69,9 @@ struct ring_buff_t {
 };
 
 
-struct ring_buff_t *__ring_buff_construct(const char log_filename[]);
-void __ring_buff_destruct(struct ring_buff_t *ring_buff);
-static void ring_buff_destruct(struct ring_buff_t *ring_buff);
+struct ring_buff_t *ring_buff_construct(const char log_filename[]);
+void ring_buff_destruct(struct ring_buff_t *ring_buff);
+static void ring_buff_destruct_all(struct ring_buff_t *ring_buff);
 static inline void ring_buff_fork_daemon(struct ring_buff_t *ring_buff, bool first_init);
 static inline void ring_buff_validate_daemon(struct ring_buff_t *ring_buff);
 static inline int sem_act(const int sem_id, const unsigned short num, const short int arg,  const short flag);
@@ -81,7 +80,7 @@ static int ring_buff_flush_to_file(struct ring_buff_t *ring_buff);
 int ring_buff_push_msg(struct ring_buff_t *ring_buff, const char msg[]);
 
 
-struct ring_buff_t *__ring_buff_construct(const char log_filename[]) {
+struct ring_buff_t *ring_buff_construct(const char log_filename[]) {
     DOUT("# %d: Called ring_buff_create( \"%s\" )\n", getpid(), log_filename);
     assert(log_filename);
 
@@ -91,7 +90,7 @@ struct ring_buff_t *__ring_buff_construct(const char log_filename[]) {
     struct ring_buff_t *ring_buff = (struct ring_buff_t *)malloc(sizeof(struct ring_buff_t));
     if (!ring_buff) {
         free((void *)ring_buff);
-        handle_error("FailedFailed space allocating");
+        handle_error("Failed space allocating");
     }
 
     if ((ring_buff->logfile_fd = open(log_filename, O_WRONLY|O_CREAT|O_SYNC, 0666)) < 0) {
@@ -108,18 +107,25 @@ struct ring_buff_t *__ring_buff_construct(const char log_filename[]) {
 
     bool mem_were_attached = false;
     if ((ring_buff->shared_fd = shmget(key, sizeof(struct ring_buff_shared_t), 0666|IPC_CREAT|IPC_EXCL)) < 0)
-        if (errno != EEXIST) {
+    if (errno != EEXIST) {
+        close(ring_buff->logfile_fd);
+        free((void *)ring_buff);
+        handle_error("Failed shmget");
+    } else {
+        if ((ring_buff->shared_fd = shmget(key, sizeof(struct ring_buff_shared_t), 0)) < 0) {
             close(ring_buff->logfile_fd);
             free((void *)ring_buff);
             handle_error("Failed shmget");
-        } else {
-            if ((ring_buff->shared_fd = shmget(key, sizeof(struct ring_buff_shared_t), 0)) < 0) {
-                close(ring_buff->logfile_fd);
-                free((void *)ring_buff);
-                handle_error("Failed shmget");
-            } else
-                mem_were_attached = true;
-        }
+        } else
+            mem_were_attached = true;
+    }
+
+    if (0)
+    {
+        ring_buff_destruct_all(ring_buff);
+        exit(EXIT_FAILURE);
+    }
+
 
     if ((ring_buff->shared = (struct ring_buff_shared_t *)shmat(ring_buff->shared_fd, NULL, 0))
         == ((struct ring_buff_shared_t *)-1)) {
@@ -141,13 +147,11 @@ struct ring_buff_t *__ring_buff_construct(const char log_filename[]) {
 
     if (!mem_were_attached) {
         DOUT("# %d:\t Memory was CREATED. Initialize it.\n", getpid());
-        //strncpy(ring_buff->shared->log_filename, log_filename, LOG_FILENAME_MAX_LEN);
 
         ring_buff_fork_daemon(ring_buff, true);
     } else {
         DOUT("# %d:\t Memory was ATTACHED.\n", getpid());
     }
-
 
     // SEM_CONTROL_INITIAL_SYSTEM unlocks in ring_buff_fork_daemon()
     sem_act(ring_buff->sems_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_CATCH, SEM_UNDO);
@@ -159,8 +163,8 @@ struct ring_buff_t *__ring_buff_construct(const char log_filename[]) {
 }
 
 static inline void ring_buff_validate_daemon(struct ring_buff_t *ring_buff) {
-    if (sem_act(ring_buff->sems_fd, SEM_CONTROL_HAS_DAEMON, SEM_ACTION_WAIT0, IPC_NOWAIT) == 0) {
-        //TODO: works only on resturt - why?!
+    if ((sem_act(ring_buff->sems_fd, SEM_CONTROL_HAS_DAEMON, SEM_ACTION_WAIT0, IPC_NOWAIT) == 0) &&
+            sem_act(ring_buff->sems_fd, SEM_CONTROL_DAEMON_IS_RESTARTING, SEM_ACTION_CATCH, IPC_NOWAIT) == 0) {
         ring_buff_fork_daemon(ring_buff, false);
     }
 }
@@ -168,16 +172,14 @@ static inline void ring_buff_validate_daemon(struct ring_buff_t *ring_buff) {
 static void ring_buff_fork_daemon(struct ring_buff_t *ring_buff, bool first_init) {
     assert(ring_buff);
 
-    sem_act(ring_buff->sems_fd, SEM_CONTROL_HAS_DAEMON, SEM_ACTION_RELAX, SEM_UNDO);
-
     int pid = fork();
     if (pid < 0) {
-        ring_buff_destruct(ring_buff);
+        ring_buff_destruct_all(ring_buff);
         handle_error("Failed fork");
     } else if (pid == 0) {
         DOUT("# %d:\t Start Logger daemon\n", getpid());
 
-        bool crit_sec_inited = !sem_act(ring_buff->sems_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_CATCH, IPC_NOWAIT);
+        sem_act(ring_buff->sems_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_CATCH, IPC_NOWAIT);
 
         if (first_init) {
             ring_buff->shared->msg_buff_flushstart_index = 0;
@@ -185,9 +187,11 @@ static void ring_buff_fork_daemon(struct ring_buff_t *ring_buff, bool first_init
             for (register int i = 0; i < LOG_MSG_MAX_AMOUNT; i++)
                 ring_buff->shared->msg_buff[i].is_ready_to_flush = false;
 
-            sem_act(ring_buff->sems_fd, SEM_CONTROL_MSG_COUNT_INC, SEM_ACTION_RELAX, 0);
             sem_act(ring_buff->sems_fd, SEM_CONTROL_FLUSH, SEM_ACTION_RELAX, 0);
         }
+
+        sem_act(ring_buff->sems_fd, SEM_CONTROL_DAEMON_IS_RESTARTING, SEM_ACTION_RELAX, 0);
+        sem_act(ring_buff->sems_fd, SEM_CONTROL_HAS_DAEMON, SEM_ACTION_RELAX, SEM_UNDO);
 
         sem_act(ring_buff->sems_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_RELAX, 0);
 
@@ -205,7 +209,7 @@ static void ring_buff_fork_daemon(struct ring_buff_t *ring_buff, bool first_init
         DOUT("# %d:\t Daemon is currently not useful\n", getpid());
 
         ring_buff_flush_to_file(ring_buff);
-        ring_buff_destruct(ring_buff);
+        ring_buff_destruct_all(ring_buff);
 
         DOUT("# %d:\t Daemon process is going exit\n", getpid());
 
@@ -214,24 +218,6 @@ static void ring_buff_fork_daemon(struct ring_buff_t *ring_buff, bool first_init
 }
 
 static inline int sem_act(const int sem_id, const unsigned short num, const short int arg,  const short flag) {
-#ifdef DEBUG_MSG_RING_BUFF_INTERNAL
-#define SEM_ARG_NAME(ctrl) #ctrl
-
-    const char *sem_controls_names[] = {
-            SEM_ARG_NAME(SEM_CONTROL_MSG_COUNT_INC),
-            SEM_ARG_NAME(SEM_CONTROL_FLUSH),
-            SEM_ARG_NAME(SEM_CONTROL_INITIAL_SYSTEM),
-            SEM_ARG_NAME(SEM_CONTROL_PS_NUM),
-            SEM_ARG_NAME(SEM_CONTROL_HAS_DAEMON)};
-
-    const char *sem_action_names[] = {
-            SEM_ARG_NAME(SEM_ACTION_CATCH),
-            SEM_ARG_NAME(SEM_ACTION_WAIT0),
-            SEM_ARG_NAME(SEM_ACTION_RELAX)
-    };
-
-    //DOUT("# %d: sem_act semaphore(%s, %s)\n", getpid(), sem_controls_names[num], sem_action_names[arg+1]);
-#endif
     assert(num < SEM_CONTROL_SIZE);
 
     struct sembuf sops;
@@ -239,12 +225,9 @@ static inline int sem_act(const int sem_id, const unsigned short num, const shor
     sops.sem_flg = flag;
     sops.sem_num = num;
 
-    if (semop(sem_id, &sops, 1) < 0) {
-        //DOUT("# %d: FAILED sem_act semaphore(%s, %s)\n", getpid(), sem_controls_names[num], sem_action_names[arg+1]);
+    if (semop(sem_id, &sops, 1) < 0)
         return errno;
-    }
 
-#undef SEM_CONTROLS_NAME
     return 0;
 }
 
@@ -295,9 +278,10 @@ static int ring_buff_flush_to_file(struct ring_buff_t *ring_buff) {
     return 0;
 }
 
-void __ring_buff_destruct(struct ring_buff_t *ring_buff) {
-    DOUT("# %d: Called __ring_buff_destruct( [ %p ] )\n", getpid(), (void*)ring_buff);
-    assert(ring_buff);
+void ring_buff_destruct(struct ring_buff_t *ring_buff) {
+    DOUT("# %d: Called ring_buff_destruct( [ %p ] )\n", getpid(), (void*)ring_buff);
+    if (!ring_buff)
+        return;
     // destruct just a single program, not a daemon
 
     int sem_fd = ring_buff->sems_fd;
@@ -315,8 +299,8 @@ void __ring_buff_destruct(struct ring_buff_t *ring_buff) {
     sem_act(sem_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_RELAX, 0);
 }
 
-static void ring_buff_destruct(struct ring_buff_t *ring_buff) {
-    DOUT("# %d: Called ring_buff_destruct( [ %p ] )\n", getpid(), (void*)ring_buff);
+static void ring_buff_destruct_all(struct ring_buff_t *ring_buff) {
+    DOUT("# %d: Called ring_buff_destruct_all( [ %p ] )\n", getpid(), (void*)ring_buff);
     assert(ring_buff);
 
     shmdt(ring_buff->shared);
@@ -340,12 +324,10 @@ int ring_buff_push_msg(struct ring_buff_t *ring_buff, const char msg[]) {
 
     struct ring_buff_shared_t *shared = ring_buff->shared;
 
-    sem_act(ring_buff->sems_fd, SEM_CONTROL_MSG_COUNT_INC, SEM_ACTION_CATCH, SEM_UNDO);
+    sem_act(ring_buff->sems_fd, SEM_CONTROL_FLUSH, SEM_ACTION_CATCH, SEM_UNDO);
     uint32_t msg_buff_used_local = shared->msg_buff_write_index;
     shared->msg_buff_write_index = (shared->msg_buff_write_index + 1) % LOG_MSG_MAX_AMOUNT;
-    sem_act(ring_buff->sems_fd, SEM_CONTROL_MSG_COUNT_INC, SEM_ACTION_RELAX, 0);
 
-    sem_act(ring_buff->sems_fd, SEM_CONTROL_FLUSH, SEM_ACTION_CATCH, SEM_UNDO);
     shared->msg_buff[msg_buff_used_local].is_ready_to_flush = false;
     sem_act(ring_buff->sems_fd, SEM_CONTROL_FLUSH, SEM_ACTION_RELAX, 0);
 
@@ -356,4 +338,17 @@ int ring_buff_push_msg(struct ring_buff_t *ring_buff, const char msg[]) {
     sem_act(ring_buff->sems_fd, SEM_CONTROL_FLUSH, SEM_ACTION_RELAX, 0);
 
     return 0;
+}
+
+
+void __init_log_system(int argc, char * argv[]) {
+    Logging_system = ring_buff_construct(LOG_FILENAME);
+    DOUT("# %d: __init_log_system finished\n", getpid());
+    assert(Logging_system);
+}
+
+void __deinit_log_system(void) {
+    ring_buff_destruct(Logging_system);
+    Logging_system = NULL;
+    DOUT("# %d: __deinit_log_system finished\n", getpid());
 }

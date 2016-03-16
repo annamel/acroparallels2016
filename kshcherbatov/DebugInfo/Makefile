@@ -111,29 +111,29 @@ DebugInfo/fast:
 	$(MAKE) -f CMakeFiles/DebugInfo.dir/build.make CMakeFiles/DebugInfo.dir/build
 .PHONY : DebugInfo/fast
 
-lmsg_ring_buff.o: lmsg_ring_buff.cpp.o
-.PHONY : lmsg_ring_buff.o
+logger.o: logger.cpp.o
+.PHONY : logger.o
 
 # target to build an object file
-lmsg_ring_buff.cpp.o:
-	$(MAKE) -f CMakeFiles/DebugInfo.dir/build.make CMakeFiles/DebugInfo.dir/lmsg_ring_buff.cpp.o
-.PHONY : lmsg_ring_buff.cpp.o
+logger.cpp.o:
+	$(MAKE) -f CMakeFiles/DebugInfo.dir/build.make CMakeFiles/DebugInfo.dir/logger.cpp.o
+.PHONY : logger.cpp.o
 
-lmsg_ring_buff.i: lmsg_ring_buff.cpp.i
-.PHONY : lmsg_ring_buff.i
+logger.i: logger.cpp.i
+.PHONY : logger.i
 
 # target to preprocess a source file
-lmsg_ring_buff.cpp.i:
-	$(MAKE) -f CMakeFiles/DebugInfo.dir/build.make CMakeFiles/DebugInfo.dir/lmsg_ring_buff.cpp.i
-.PHONY : lmsg_ring_buff.cpp.i
+logger.cpp.i:
+	$(MAKE) -f CMakeFiles/DebugInfo.dir/build.make CMakeFiles/DebugInfo.dir/logger.cpp.i
+.PHONY : logger.cpp.i
 
-lmsg_ring_buff.s: lmsg_ring_buff.cpp.s
-.PHONY : lmsg_ring_buff.s
+logger.s: logger.cpp.s
+.PHONY : logger.s
 
 # target to generate assembly for a file
-lmsg_ring_buff.cpp.s:
-	$(MAKE) -f CMakeFiles/DebugInfo.dir/build.make CMakeFiles/DebugInfo.dir/lmsg_ring_buff.cpp.s
-.PHONY : lmsg_ring_buff.cpp.s
+logger.cpp.s:
+	$(MAKE) -f CMakeFiles/DebugInfo.dir/build.make CMakeFiles/DebugInfo.dir/logger.cpp.s
+.PHONY : logger.cpp.s
 
 main.o: main.cpp.o
 .PHONY : main.o
@@ -168,9 +168,9 @@ help:
 	@echo "... DebugInfo"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... lmsg_ring_buff.o"
-	@echo "... lmsg_ring_buff.i"
-	@echo "... lmsg_ring_buff.s"
+	@echo "... logger.o"
+	@echo "... logger.i"
+	@echo "... logger.s"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"

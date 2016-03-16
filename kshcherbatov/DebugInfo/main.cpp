@@ -1,19 +1,20 @@
-#include "lmsg_ring_buff.h"
+#include "logger.h"
 
 struct ring_buff_t *logger;
 
 int main (int argc, char *argv[]) {
-    //TODO: use __attribute__ ((constructor));
-    logger = __ring_buff_construct("log.txt");
+    fork();
 
-    LOG_INFO("Hello\n");
-    LOG_WARN("it is\n");
-    LOG_DEBUG("about\n");
-    LOG_ERROR("5 minuts\n");
-    LOG_INFO("before deadline");
-    for (int i = 0; i < 250; i++)
-        LOG_DEBUG("Ura %d\n", i);
-    LOG_FATAL("I can't finish tests, but this all working normal in parallel mode!\n");
+    int pid = getpid();
+    printf("%d: JUST TRY KILL THE DAEMON, PLEASE! You have 12 seconds\n", pid);
+    sleep(10);
 
-    __ring_buff_destruct(logger);
+    LOG_INFO("%d: Hello\n", pid);
+    LOG_WARN("%d: it is\n", pid);
+    LOG_DEBUG("%d: about\n", pid);
+    LOG_ERROR("%d: 5 minuts\n", pid);
+    LOG_INFO("%d: before deadline\n", pid);
+    for (int i = 0; i < 100; i++)
+        LOG_DEBUG("%d: Ura %d\n", pid, i);
+    LOG_FATAL("%d: I can't finish tests, but this all working normal in parallel mode!\n", pid);
 }
