@@ -21,7 +21,7 @@ uint32_t _find_log_file(char *dst) {
   uint32_t current_file_number = 0;
   char flag = 1;
   // 10 is the length of the UINT32 max integer: 4294967295
-  // 9 is for "logs/" + ".txt" 7 is for "logger/"
+  // 9 is for "logs/" + ".txt" + 7 for "logger/"
 
   char *current_file_name = (char *)calloc(10 + 9 + 7, sizeof(char));
   while (flag) {
@@ -65,7 +65,7 @@ logger_t *logger_init() {
   // set properties:
   logger->buffer->size    = 0;
   // 10 is the length of the UINT32 max integer: 4294967295
-  // 9 is for "logs/" + ".txt"
+  // 9 is for "logs/" + ".txt" + 7 for "logger/"
   logger->log_file_name = (char *)calloc(10 + 9 + 7, sizeof(char));
   if (logger->log_file_name == NULL) {
     perror("Log file name data memory allocation error.\n");
@@ -73,6 +73,11 @@ logger_t *logger_init() {
   }
   _find_log_file(logger->log_file_name);
 
+  msg = (char *)calloc(MSGSIZE, sizeof(char));
+  if (msg == NULL) {
+    perror("Message memory allocation error.\n");
+    return NULL;
+  }
   return logger;
 }
 
@@ -131,5 +136,12 @@ uint32_t logger_deinit(logger_t *logger) {
   free(logger->buffer);
   free(logger->log_file_name);
   free(logger);
+  if (msg != NULL) free(msg);
   return 0;
+}
+
+void cleanUp (void) __attribute__ ((destructor));
+
+void cleanUp (void) {
+  if (logger != NULL) logger_deinit(logger);
 }
