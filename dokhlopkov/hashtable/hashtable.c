@@ -27,7 +27,6 @@ uint32_t hashtable_check_if_pair_is_good (hashtable_pair_t *pair);
 
 hashtable_t *hashtable_create_table (uint32_t size) {
   #if defined DEBUG || defined INFO || defined ERROR
-    logger = logger_init();
     LOG("Initializing logger");
   #endif
   #if defined DEBUG || defined INFO
@@ -168,7 +167,6 @@ uint32_t hashtable_delete_table (hashtable_t *hashtable) {
 
   #if defined DEBUG || defined INFO || defined ERROR
     LOG("Hashtable was successfully destructed.");
-    logger_deinit(logger);
   #endif
 	return 0;
 }

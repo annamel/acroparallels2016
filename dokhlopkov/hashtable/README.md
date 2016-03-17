@@ -9,5 +9,4 @@ gcc hashtable.c hashfunction.c test.c logger/logger.c -DFLAG
   - ERROR: вывод ошибок
   - ECHO: вывод всех сообщений в stdout
 
-
 Лог файлы сохраняются в logger/log/
