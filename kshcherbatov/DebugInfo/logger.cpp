@@ -23,9 +23,9 @@
 struct ring_buff_t *Logging_system = NULL;
 const char loglevel_lbl[] = {'U', 'I', 'D', 'W', 'E', 'F'};
 
-#define LOG_FILENAME_MAX_LEN 255
+#define LOG_FILENAME_MAX_LEN 256
 #define LOG_MSG_MAX_AMOUNT 512
-#define FLUSH_THREAD_SLEEP_TIME 100
+#define FLUSH_THREAD_SLEEP_TIME 1000
 #define LOG_MSG_MAX_SIZE 1024
 #define BACKTRACE_SIZE  128
 
@@ -72,14 +72,13 @@ struct ring_buff_t {
     int shared_fd;
     int logfile_fd;
     int sems_fd;
-    pthread_mutex_t flush_buffer_thread_shouldwork_mtx;
     struct ring_buff_shared_t *shared;
 };
 
 
 struct ring_buff_t *ring_buff_construct(const char log_filename[]);
 void ring_buff_destruct(struct ring_buff_t *ring_buff);
-static void ring_buff_destruct_shared_rosorces(struct ring_buff_t *ring_buff);
+static void ring_buff_destruct_shared_rosources(struct ring_buff_t *ring_buff);
 static inline void ring_buff_fork_daemon(struct ring_buff_t *ring_buff, bool first_init);
 static inline void ring_buff_validate_daemon(struct ring_buff_t *ring_buff);
 static inline int sem_act(const int sem_id, const unsigned short num, const short int arg,  const short flag);
@@ -102,7 +101,7 @@ struct ring_buff_t *ring_buff_construct(const char log_filename[]) {
         handle_error("Failed space allocating");
     }
 
-    if ((ring_buff->logfile_fd = open(log_filename, O_WRONLY|O_CREAT|O_SYNC, 0666)) < 0) {
+    if ((ring_buff->logfile_fd = open(log_filename, O_WRONLY|O_CREAT|O_SYNC|O_APPEND, 0666)) < 0) {
         free((void *)ring_buff);
         handle_error("Failed open to write log file");
     }
@@ -181,7 +180,7 @@ static void ring_buff_fork_daemon(struct ring_buff_t *ring_buff, bool first_init
 
     int pid = fork();
     if (pid < 0) {
-        ring_buff_destruct_shared_rosorces(ring_buff);
+        ring_buff_destruct_shared_rosources(ring_buff);
         handle_error("Failed fork");
     } else if (pid > 0) {
         DOUT("# %d:\t Start Logger daemon\n", getpid());
@@ -210,16 +209,21 @@ static void ring_buff_fork_daemon(struct ring_buff_t *ring_buff, bool first_init
         // wait while other processes exists
         int end_loop_condition; // succeeded, sem_ect returns 0
         do {
-            ring_buff_flush_to_file(ring_buff);
-
             usleep(FLUSH_THREAD_SLEEP_TIME);
+
+            //TODO: Extra text in FATAL error mode
+            /* skip iteration if needed; this option is used by FATAL error urgent ring_buff_flush_to_file
+            if (sem_act(ring_buff->sems_fd, SEM_CONTROL_DAEMON_COULD_START, SEM_ACTION_WAIT0, IPC_NOWAIT))
+                continue;*/
+
+            ring_buff_flush_to_file(ring_buff);
             end_loop_condition = sem_act(ring_buff->sems_fd, SEM_CONTROL_PS_NUM, SEM_ACTION_WAIT0, IPC_NOWAIT);
         } while (end_loop_condition != 0);
 
         DOUT("# %d:\t Daemon is currently not useful\n", getpid());
 
         ring_buff_flush_to_file(ring_buff);
-        ring_buff_destruct_shared_rosorces(ring_buff);
+        ring_buff_destruct_shared_rosources(ring_buff);
 
         DOUT("# %d:\t Daemon process is going exit\n", getpid());
 
@@ -230,7 +234,7 @@ static void ring_buff_fork_daemon(struct ring_buff_t *ring_buff, bool first_init
 
         // wait for daemon init finish
         sem_act(ring_buff->sems_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_CATCH, SEM_UNDO);
-        sem_act(ring_buff->sems_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_RELAX, 0);
+        sem_act(ring_buff->sems_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_RELAX, 0); 
     }
 }
 
@@ -272,17 +276,17 @@ static void ring_buff_flush_to_file(struct ring_buff_t *ring_buff) {
         const pid_t pid = shared->msg_buff[msg_buff_index].pid;
 
         char msg_to_write[LOG_MSG_MAX_SIZE + 16];
-		int msg_to_write_size = snprintf(msg_to_write, LOG_MSG_MAX_SIZE + 15, "%d[%c] : %s", pid, loglevel_lbl[msg_log_level], msg);
+        int msg_to_write_size = snprintf(msg_to_write, LOG_MSG_MAX_SIZE + 15, "%d[%c] : %s", pid, loglevel_lbl[msg_log_level], msg);
 		
         if (write(logfile_fd, msg_to_write, msg_to_write_size) != msg_to_write_size)
             handle_error("Failed write");
 
-        if (msg_log_level >= LOGLEVEL_FATAL)
-			ring_buff_print_backtrace(ring_buff->logfile_fd);
-
-		shared->msg_buff[msg_buff_index].is_ready_to_flush = false;
+        shared->msg_buff[msg_buff_index].is_ready_to_flush = false;
         shared->msg_buff[msg_buff_index].log_level = LOGLEVEL_UNUSED;
         shared->msg_buff[msg_buff_index].pid = 0;
+
+        if (msg_log_level >= LOGLEVEL_FATAL)
+			ring_buff_print_backtrace(ring_buff->logfile_fd);
 
         msg_buff_index = (msg_buff_index + 1) % LOG_MSG_MAX_AMOUNT;
     }
@@ -304,24 +308,37 @@ void ring_buff_destruct(struct ring_buff_t *ring_buff) {
 
     sem_act(sem_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_CATCH, IPC_NOWAIT);
 
-    shmdt(ring_buff->shared);
-    ring_buff->shared = NULL;
-    ring_buff->sems_fd = -1;
-    ring_buff->shared_fd = -1;
-    ring_buff->logfile_fd = -1;
-    free((void *)ring_buff);
+    if (ring_buff->shared) {
+        shmdt(ring_buff->shared);
+        ring_buff->shared = NULL;
+        ring_buff->sems_fd = -1;
+        ring_buff->shared_fd = -1;
+        ring_buff->logfile_fd = -1;
+    }
     close(logfile_fd);
+
+    free((void *)ring_buff);
 
     sem_act(sem_fd, SEM_CONTROL_INITIAL_SYSTEM, SEM_ACTION_RELAX, 0);
 }
 
-static void ring_buff_destruct_shared_rosorces(struct ring_buff_t *ring_buff) {
+static void ring_buff_destruct_shared_rosources(struct ring_buff_t *ring_buff) {
     DOUT("# %d: Called ring_buff_destruct_shared_resources( [ %p ] )\n", getpid(), (void*)ring_buff);
     assert(ring_buff);
+
+    int sem_fd = ring_buff->sems_fd;
+    int logfile_fd = ring_buff->logfile_fd;
+
+    shmdt(ring_buff->shared);
+    ring_buff->shared = NULL;
 
     shmctl(ring_buff->shared_fd, IPC_RMID, NULL);
     close(ring_buff->logfile_fd);
     semctl(ring_buff->sems_fd, 0, IPC_RMID, 0);
+
+    ring_buff->sems_fd = -1;
+    ring_buff->shared_fd = -1;
+    ring_buff->logfile_fd = -1;
 }
 
 
@@ -329,7 +346,7 @@ void ring_buff_print_backtrace(const int fd) {
 	assert(fd >= 0);
 
 	void *array[BACKTRACE_SIZE];
-	size_t size = backtrace (array, BACKTRACE_SIZE);
+	int size = backtrace (array, BACKTRACE_SIZE);
 	backtrace_symbols_fd (array, size, fd);
 }
 
@@ -346,8 +363,7 @@ void ring_buf_push_msg(struct ring_buff_t *ring_buff, enum LOGLEVEL_TYPES log_le
     shared->msg_buff_write_index = (shared->msg_buff_write_index + 1) % LOG_MSG_MAX_AMOUNT;
 
     shared->msg_buff[msg_buff_used_local].is_ready_to_flush = false;
-    sem_act(ring_buff->sems_fd, SEM_CONTROL_FLUSH, SEM_ACTION_RELAX, 0);
-
+    
 	va_list argptr;
     va_start(argptr, fmt);
     vsnprintf(shared->msg_buff[msg_buff_used_local].msg, LOG_MSG_MAX_SIZE-1, fmt, argptr);
@@ -355,16 +371,17 @@ void ring_buf_push_msg(struct ring_buff_t *ring_buff, enum LOGLEVEL_TYPES log_le
     shared->msg_buff[msg_buff_used_local].log_level = log_level;
     shared->msg_buff[msg_buff_used_local].pid = pid;
 
-    sem_act(ring_buff->sems_fd, SEM_CONTROL_FLUSH, SEM_ACTION_CATCH, SEM_UNDO);
     shared->msg_buff[msg_buff_used_local].is_ready_to_flush = true;
-    sem_act(ring_buff->sems_fd, SEM_CONTROL_FLUSH, SEM_ACTION_RELAX, 0);
 
+    sem_act(ring_buff->sems_fd, SEM_CONTROL_FLUSH, SEM_ACTION_RELAX, 0);
+    
     if (log_level >= LOGLEVEL_ERROR)
-		ring_buff_flush_to_file(ring_buff);
+        ring_buff_flush_to_file(ring_buff);
 }
 
 void __init_log_system(int argc, char * argv[]) {
     Logging_system = ring_buff_construct(LOG_FILENAME);
+    ring_buf_push_msg(Logging_system, LOGLEVEL_INFO, getpid(), "Logging system initialized\n");
     DOUT("# %d: __init_log_system finished\n", getpid());
     assert(Logging_system);
 }

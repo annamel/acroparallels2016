@@ -1,14 +1,12 @@
 #include "logger.h"
-#include <unistd.h>
 #include <stdio.h>
 
-struct ring_buff_t *logger;
-
 int main (int argc, char *argv[]) {
-    fork(); // it is not essential, you can run simultaneously few copies of programs using this library with 1 logfile
+    //fork(); // it is not essential, you can run simultaneously few copies of programs using this library with 1 logfile
 
     printf("JUST TRY KILL THE DAEMON!) You have 10 seconds\n");
     //sleep(10);
+    printf("Your time left\n");
 
     LOG_INFO("Hello\n");
     LOG_WARN("it is\n");
