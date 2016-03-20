@@ -5,25 +5,30 @@
 #include <execinfo.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #define SIZE_OF_BUFFER 1024
 #define SIZE_STR_LOG 64
-#define LOGGER_FILE "logger_file"
 #define SIZE_CALL_TRACE 10
+#define SIZE_PATH_OF_FILE 256
+
+char LOGGER_FILE[SIZE_PATH_OF_FILE] = "logger_file";
 
 typedef enum log_option {
-        INFO,
-        WARNING,
-        ERROR
+        debug,
+        info,
+        warning,
+        error,
+        fatal
 } LogOption;
 
-typedef enum Bool_enum {
+typedef enum bool_enam {
         FALSE,
         TRUE
 } Bool;
 
 typedef struct log {
-        Bool fatal;
         LogOption option;
         char description[SIZE_STR_LOG];
 } Log;
@@ -40,116 +45,131 @@ enum Errors {
 };
 // не влияем на производительность
 #ifndef DEBUG
-int log_init(void) {
-        return 0; 
-}
-int log_error(Bool fatal, LogOption option, const char *string) {
+int log_error( LogOption option, const char *string ) {
         return 0;
 }
-int log_end(void) {
-        return 0;
-}
+void set_log_level( LogOption option ) {}
+void set_log_file( const char * path ) {}
 #endif
 
 #ifdef DEBUG
 
-// глобальная переменная
-CircleArray cir_array;
-
-void init_of_array(void) {
-        cir_array.first_free = 0;
-        cir_array.end_array = 0;
+void init_of_array( CircleArray *cir_array ) {
+        cir_array->first_free = 0;
+        cir_array->end_array = 0;
 }
-Bool array_is_filled(void) {
-        return (cir_array.end_array - cir_array.first_free == 1 ||
-                (cir_array.first_free == SIZE_OF_BUFFER-1 && cir_array.end_array == 0)) ? TRUE : FALSE;
+Bool array_is_filled( CircleArray *cir_array) {
+        return (cir_array->end_array - cir_array->first_free == 1 ||
+                (cir_array->first_free == SIZE_OF_BUFFER-1 && cir_array->end_array == 0)) ? TRUE : FALSE;
 }
-int print_in_array(Log log, Bool ignor) {
-        if (array_is_filled() && ignor == FALSE){
+int print_in_array(CircleArray *cir_array, Log log, Bool ignor) {
+        if (array_is_filled(cir_array) && ignor == FALSE){
                 return NO_FREE_SPACE;
         }
-        cir_array.array[cir_array.first_free] = log;
-        if (++cir_array.first_free == SIZE_OF_BUFFER)
-                cir_array.first_free = 0;
-        if (cir_array.first_free == cir_array.end_array)
-                if (++cir_array.end_array == SIZE_OF_BUFFER)
-                        cir_array.end_array = 0;
+        cir_array->array[cir_array->first_free] = log;
+        if (++cir_array->first_free == SIZE_OF_BUFFER)
+                cir_array->first_free = 0;
+        if (cir_array->first_free == cir_array->end_array)
+                if (++cir_array->end_array == SIZE_OF_BUFFER)
+                        cir_array->end_array = 0;
         return 0;
 }
 
 void print_log_in_file(FILE *file, Log log) {
         #define NAME_AS_STRING(name) #name
-        char *bool_name[] = {
-                NAME_AS_STRING(FALSE),
-                NAME_AS_STRING(TRUE)
-        };
         char *option_name[] = {
-                NAME_AS_STRING(DEBUG),
-                NAME_AS_STRING(INFO),
-                NAME_AS_STRING(WARNING),
-                NAME_AS_STRING(ERROR)
+                NAME_AS_STRING(debug),
+                NAME_AS_STRING(info),
+                NAME_AS_STRING(warning),
+                NAME_AS_STRING(error),
+                NAME_AS_STRING(fatal),
         };
-        fprintf(file, "FATAL = %s\n",bool_name[log.fatal]);
-        fprintf(file, "OPTION = %s\n", option_name[log.option]);
+        fprintf(file, "%s:\t", option_name[log.option]);
         fprintf(file, "%s\n", log.description);
 }
 
-int print_in_file(void) {
-        if (cir_array.first_free == cir_array.end_array)
+int print_in_file( CircleArray *cir_array ) {
+        if (cir_array->first_free == cir_array->end_array)
                 return 0;
         FILE *file = fopen(LOGGER_FILE, "a");
         if (!file) {
                 return CAN_NOT_OPEN_FILE;
         }
-        int i = cir_array.end_array;
-        if (cir_array.first_free - cir_array.end_array > 0) {
-                for (; i < cir_array.first_free; i++)
-                        print_log_in_file(file, cir_array.array[i]);
+        int i = cir_array->end_array;
+        if (cir_array->first_free - cir_array->end_array > 0) {
+                for (; i < cir_array->first_free; i++)
+                        print_log_in_file(file, cir_array->array[i]);
         } else {
                 for (;i < SIZE_OF_BUFFER; i++)
-                        print_log_in_file(file, cir_array.array[i]);
-                for (i = 0; i < cir_array.first_free; i++)
-                        print_log_in_file(file, cir_array.array[i]);
+                        print_log_in_file(file, cir_array->array[i]);
+                for (i = 0; i < cir_array->first_free; i++)
+                        print_log_in_file(file, cir_array->array[i]);
         }
         fclose(file);
-        init_of_array();
+        init_of_array( cir_array );
         return 0;
 }
-int log_init(void) {
-        init_of_array();
+int log_init(CircleArray *cir_array) {
+        init_of_array(cir_array);
         FILE *file = fopen(LOGGER_FILE, "w");
         if (!file)
                 return CAN_NOT_OPEN_FILE;
         fclose(file);
         return 0;
 }
-int print_trace(void) {
-        void *arr[SIZE_CALL_TRACE];
+int print_trace(CircleArray *cir_array) {
+        int fd = open( LOGGER_FILE, O_APPEND | O_WRONLY);
+        void *arr[SIZE_CALL_TRACE];      
         size_t size = backtrace(arr, SIZE_CALL_TRACE);
-        backtrace_symbols_fd(arr, size, 2);
+        backtrace_symbols_fd(arr, size, fd);
+        close(fd);
         return 0;
 }
-int log_error(Bool fatal, LogOption option, const char *string) {
+CircleArray *global_ptr_on_buf; // неизбежная глобальная переменная
+LogOption log_level = debug;
+long long unsigned int quantity_log = 0;
+
+void log_deinit(void) {
+        print_in_file(global_ptr_on_buf);
+}
+
+int log_error( LogOption option, const char *string ) {
+        static CircleArray buffer;
+        if (quantity_log == 0) {
+                log_init(&buffer);
+                global_ptr_on_buf = &buffer;
+                atexit(log_deinit);
+        }
+        quantity_log++;
+
+        if (option < log_level) 
+                return 0;
+
         Log log;
-        log.fatal = fatal;
         log.option = option;
         strncpy(log.description, string, SIZE_STR_LOG);
         
-        int err1 = 0;
-        if (print_in_array(log, FALSE) == NO_FREE_SPACE){
-                err1 = print_in_file();
-                print_in_array(log, TRUE);
+        int err = 0;
+        if (print_in_array(&buffer, log, FALSE) == NO_FREE_SPACE){
+                err = print_in_file(&buffer);
+                print_in_array(&buffer, log, TRUE);
         }
-        if (log.fatal == TRUE) {
-                print_in_file();
-                print_trace();
+        if (log.option == fatal) {
+                print_in_file(&buffer);
+                print_trace(&buffer);
         }
-        if (err1 != 0)
-                return -1;
-        return 0;
+        return err;
 }
-int log_end(void) {
-        return print_in_file();
+
+void set_log_level( LogOption option ) {
+        log_level = option;
+}
+
+void set_log_file( const char * path) {
+        if (quantity_log > 0)
+                print_in_file(global_ptr_on_buf);
+        quantity_log = 0;
+        strncpy(LOGGER_FILE, path, SIZE_PATH_OF_FILE);
 }
 #endif
 #endif
