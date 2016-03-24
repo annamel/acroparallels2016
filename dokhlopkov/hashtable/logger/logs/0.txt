@@ -1,5 +1,88 @@
-Initializing logger
-ERROR: hashtable_add_pair_by_key_value: bad argument:  value
-ERROR: hashtable_add_pair_by_key_value: bad argument:  key
-ERROR: hashtable_delete_pair_by_key: pair not found
-Hashtable was successfully destructed.
+Creating new Hashtable
+  size: 10
+  Table 3418377792 was created.
+Add by key value
+  to hashtable: 3418377792
+  with key: &etbVB7]y4JN)&+
+  value: [5/^<
+Creating table pair: key -> value
+  nkey: &etbVB7]y4JN)&+
+  nvalue: [5/^<
+  pair created:
+  key:&etbVB7]y4JN)&+
+  value:[5/^<
+ -checking if pair is good
+Add pair to: 3418377792
+Get hash from pair
+ -checking if pair is good
+  from hashtable: 3418377792
+Get hash from key
+  hashtable: 3418377792
+  key: &etbVB7]y4JN)&+
+ -size for: 3418377792
+  pair added at  7
+  to table: 3418377792
+Add by key value
+  to hashtable: 3418377792
+  with key: [5/^<
+  value: g4+a:O!:'=%p|1j1_p(
+Creating table pair: key -> value
+  nkey: [5/^<
+  nvalue: g4+a:O!:'=%p|1j1_p(
+  pair created:
+  key:[5/^<
+  value:g4+a:O!:'=%p|1j1_p(
+ -checking if pair is good
+Add pair to: 3418377792
+Get hash from pair
+ -checking if pair is good
+  from hashtable: 3418377792
+Get hash from key
+  hashtable: 3418377792
+  key: [5/^<
+ -size for: 3418377792
+  pair added at  4
+  to table: 3418377792
+Add by key value
+  to hashtable: 3418377792
+  with key: g4+a:O!:'=%p|1j1_p(
+  value: oO[5'%RF$.w/p'6i0S
+Creating table pair: key -> value
+  nkey: g4+a:O!:'=%p|1j1_p(
+  nvalue: oO[5'%RF$.w/p'6i0S
+  pair created:
+  key:g4+a:O!:'=%p|1j1_p(
+  value:oO[5'%RF$.w/p'6i0S
+ -checking if pair is good
+Add pair to: 3418377792
+Get hash from pair
+ -checking if pair is good
+  from hashtable: 3418377792
+Get hash from key
+  hashtable: 3418377792
+  key: g4+a:O!:'=%p|1j1_p(
+ -size for: 3418377792
+  pair added at  4
+  to table: 3418377792
+Add by key value
+  to hashtable: 3418377792
+  with key: oO[5'%RF$.w/p'6i0S
+  value: k2QhexfHR"J
+Creating table pair: key -> value
+  nkey: oO[5'%RF$.w/p'6i0S
+  nvalue: k2QhexfHR"J
+  pair created:
+  key:oO[5'%RF$.w/p'6i0S
+  value:k2QhexfHR"J
+ -checking if pair is good
+Add pair to: 3418377792
+Get hash from pair
+ -checking if pair is good
+  from hashtable: 3418377792
+Get hash from key
+  hashtable: 3418377792
+  key: oO[5'%RF$.w/p'6i0S
+ -size for: 3418377792
+  pair added at  3
+  to table: 3418377792
+Add by key value
