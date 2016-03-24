@@ -503,7 +503,7 @@ uint32_t hashtable_delete_pair_by_key (hashtable_t *hashtable, char *key) {
     free(current_pair->value);
     free(current_pair->key);
     if (current_pair->prev != NULL) {
-        current_pair->prev->next = NULL;
+        current_pair->prev->next = current_pair->next;
         current_pair->prev = NULL;
     }
     current_pair->key = NULL;
