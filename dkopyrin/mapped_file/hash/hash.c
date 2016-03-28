@@ -1,3 +1,5 @@
+#ifndef __HASH_H
+#define __HASH_H
 #include "dehash.h"
 
 unsigned hash(unsigned);
@@ -26,3 +28,4 @@ Hash BasH bash hasH Hash HAsh hasH BASH RASH HaSh wasH HaSh Wash
 HaSh baSh HaSh wasH bAsh baSh HaSh HaSh HAsh BaSH BASH bash Hash
 hash hasH HaSh WASH Hash RASH Bash wasH hasH HaSh HAsH BaSH HaSh
 BAsH hASH Wash HASh HaSh hAsh HaSh RASH bAsH HaSh haSh haSh HaSh
+#endif

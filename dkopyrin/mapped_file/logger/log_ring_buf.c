@@ -1,39 +1,15 @@
-#include "log.h"
+#include "log_ring_buf.h"
 
-#define MAX_MSG_SIZE 256
-#define LOG2_RING_BUF_SIZE 8
-#define RING_BUF_SIZE (1 << LOG2_RING_BUF_SIZE)
-#define MAX_LOG_NAME 256
+#include <assert.h>
+#include <string.h>
+#include <stdio.h>
+#include <execinfo.h>
+#include <stdarg.h>
+
 #define BACKTRACE_SIZE 128
-#define LOGLEVEL_STRING_START 9
 
 //This array corresponds to enum log_level
 char loglevel_chars[6] = {'!', 'I', 'D', 'W', 'E', 'F'};
-
-#include <sys/types.h>
-#include <unistd.h>
-#include <assert.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
-#include <fcntl.h>
-#include <execinfo.h>
-
-struct event {
-        pid_t pid;
-        enum log_level level;
-        char msg[MAX_MSG_SIZE];
-};
-struct ring_buf {
-	struct event events[RING_BUF_SIZE];
-	int fd;
-	/* Let RING_BUG_SIZE size 2^k, k - number of bits
-	 * This helps not to use mod operations and exploit overflow operations
-	 * which allows not to make finicky checks of next_event and
-	 * next_flush */
-	unsigned int next_event: LOG2_RING_BUF_SIZE;
-	unsigned int next_flush: LOG2_RING_BUF_SIZE;
-};
 
 void print_backtrace(struct ring_buf *rb){
 	void *array[BACKTRACE_SIZE];
@@ -134,31 +110,3 @@ int ring_buf_add_event(struct ring_buf *rb, enum log_level level, pid_t pid, con
 	return 0;
 }
 
-void log_start (int argc, char * argv[]) {
-	char log_name_base[MAX_LOG_NAME];
-	sprintf(log_name_base, "%s.log", argv[0]);
-	rb = malloc(sizeof(struct ring_buf));
-
-	int fd = 0;
-	fd = open(log_name_base, O_WRONLY | O_APPEND | O_CREAT, 0777);
-	if (fd < 0) {
-		//This is euristics, but this might work
-		char log_name[MAX_MSG_SIZE];
-		int i;
-		for (i = 0; i < 100; i++){
-			sprintf(log_name, "%s%d", log_name_base, i);
-			fd = open(log_name, O_WRONLY | O_APPEND | O_CREAT, 0777);
-			if (fd >= 0) break;
-		}
-		//File can't be opened, writing to stderr
-		if (i == 100) {
-			fprintf(stderr, "[!]Can't open file!\n");
-			fd = 2;
-		}
-	}
-	ring_buf_init(rb, fd);
-}
-void log_clean (void) {
-	ring_buf_finalize(rb);
-	free(rb);
-}
