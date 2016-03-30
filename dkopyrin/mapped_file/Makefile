@@ -8,16 +8,19 @@ TESTDIRS := $(DIRS:%=test-%)
 CFLAGS := -DDEBUG_LOG -DDEBUG_STDERRLOG -g
 export CFLAGS MAKE_DIR
 
-all: $(BUILDDIRS)
+make_dir_init:
+	mkdir -p $(MAKE_DIR)
+
+all: make_dir_init $(BUILDDIRS)
 $(DIRS): $(BUILDDIRS)
 $(BUILDDIRS):
 	$(MAKE) -C $(@:build-%=%)
 
-clean: $(CLEANDIRS)
+clean: make_dir_init $(CLEANDIRS)
 	rm -rf *.o
 $(CLEANDIRS):
 	$(MAKE) -C $(@:clean-%=%) clean
 
-test: all $(TESTDIRS)
+test: make_dir_init all $(TESTDIRS)
 $(TESTDIRS):
 	$(MAKE) -C $(@:test-%=%) test
