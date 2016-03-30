@@ -5,6 +5,7 @@
 #define COLOR(x) "\x1B[35m"x"\x1B[0m"
 #define LOGCOLOR(x) COLOR("%s: ")x, __func__
 #include "../logger/log.h"
+const hashtable_value_t hashtable_value_nil = {.ptr = NULL, .state = -1};
 
 struct hashtable *hashtable_init(struct hashtable *hashtable, int size) {
 	LOG(INFO, "hashtable_init called\n");
@@ -118,5 +119,5 @@ hashtable_value_t hashtable_get(struct hashtable *hashtable, hashtable_key_t key
 		}
 	}
 	LOG(DEBUG, "No value found\n");
-	return NULL;
+	return hashtable_value_nil;
 }

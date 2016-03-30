@@ -21,7 +21,7 @@ int chunk_init (struct chunk *ch, size_t length, long int offset, int prot, int 
 	ch -> length = length;
 	ch -> offset = offset;
 	ch -> addr = mmap(NULL, length, prot, MAP_PRIVATE, fd, offset);
-	ch -> state = 0;
+	ch -> state++;
 	if (ch -> addr == MAP_FAILED) {
 		LOG(ERROR, "Can't mmap file in chunk, %s\n", strerror(errno));
 		return -1;

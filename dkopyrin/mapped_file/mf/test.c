@@ -24,11 +24,11 @@ int main(int argc, char *argv[]){
 	LOG(DEBUG, "---Read 2\n");
 	mf_read(file1, buf1, 5000);
 	   read(file2, buf2, 5000);
+	printf("Test2: %d\n", memcmp(buf1, buf2, 5000));
   	LOG(DEBUG, "---Read 3\n");
 	mf_read(file1, buf1, 2500);
 	   read(file2, buf2, 2500);
 	printf("Test3: %d\n", memcmp(buf1, buf2, 2500));
-	//TODO: Segfault - :(
   	LOG(DEBUG, "---Read 4\n");
   	mf_seek(file1, 0);
   	  lseek(file2, 0, SEEK_SET);

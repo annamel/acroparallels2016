@@ -1,9 +1,13 @@
 #ifndef __HASH_TABLE_H_
 #define __HASH_TABLE_H_
 #include <stdint.h>
+#include <stdlib.h>
 
 typedef uint32_t hashtable_key_t;
-typedef void * hashtable_value_t;
+typedef struct {
+	void *ptr;
+	int state;
+} hashtable_value_t;
 
 struct entry {
 	hashtable_key_t key;

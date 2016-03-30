@@ -12,7 +12,8 @@ int main( int argc, char *argv[] ) {
 
   	int i;
   	for (i = 0; i <= 11; i++){
-		hashtable_set(&hashtable, i, (void *)(i*i));
+		hashtable_value_t val = {.ptr = (void *)(i*i), .state=-1};
+		hashtable_set(&hashtable, i, val);
 	}
 
 	printf("%p\n", hashtable_get(&hashtable, 100));
