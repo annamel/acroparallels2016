@@ -81,7 +81,8 @@ void hashtable_set(struct hashtable *hashtable, hashtable_key_t key, hashtable_v
 
 	bin = hashtable_hash(hashtable, key);
 
-	LOG(DEBUG, "Adding value %d with key %d to bin %d\n", value, key, bin);
+  	//TODO: Add all value to logs
+  	LOG(DEBUG, "Adding value with key %d to bin %d, value=%d\n", key, bin, value);
 	for (next = hashtable->table[bin]; next; last = next, next = next -> next) {
 		//Key found, replacing
 		if (key == next -> key) {

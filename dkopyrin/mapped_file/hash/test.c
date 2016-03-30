@@ -21,7 +21,5 @@ int main( int argc, char *argv[] ) {
 	printf("%p\n", hashtable_get(&hashtable, 1));
 
   	hashtable_finalize(&hashtable);
-
-  	LOG(FATAL, "push");
 	return 0;
 }
