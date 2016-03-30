@@ -54,6 +54,7 @@ ssize_t mf_read(struct mf *mf, void *buf, size_t nbyte){
 		}
 		nbyte -= av_chunk_size;
 	}
+	LOG(DEBUG, "End offset is %d\n", mf -> offset);
 	return read_bytes;
 }
 ssize_t mf_write(struct mf *mf, void *buf, size_t nbyte);

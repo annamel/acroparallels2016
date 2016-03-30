@@ -12,6 +12,7 @@ struct mf {
 int mf_open(const char *name, struct mf *mf);
 void mf_close(struct mf *mf);
 
+//TODO: Make seek look like lseek
 int mf_seek(struct mf *mf, long int offset);
 long int mf_tell(struct mf *mf);
 ssize_t mf_read(struct mf *mf, void *buf, size_t nbyte);

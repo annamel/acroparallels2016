@@ -1,6 +1,6 @@
 #include "chunk.h"
 
-#define COLOR(x) "\x1B[33m"x"\x1B[0m"
+#define COLOR(x) "\x1B[34m"x"\x1B[0m"
 #define LOGCOLOR(x) COLOR("%s: ")x, __func__
 #include "../logger/log.h"
 
@@ -39,9 +39,12 @@ int chunk_finalize (struct chunk *ch) {
 }
 
 void *chunk_cpy_c2b(void *buf, struct chunk *ch, size_t num, long int offset){
+	LOG(DEBUG, "c2b by offset %d %d bytes\n", offset, num);
 	//TODO: Clever checks for overflow
 	return memcpy(buf, ch -> addr + offset, num);
 }
 void *chunk_cpy_b2c(struct chunk *ch, void *buf, size_t num, long int offset){
+	LOG(DEBUG, "c2b by offset %d %d bytes\n", offset, num);
+  	//TODO: Clever checks for overflow
 	return memcpy(buf, ch -> addr + offset, num);
 }

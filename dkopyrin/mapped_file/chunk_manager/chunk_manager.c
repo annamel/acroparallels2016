@@ -42,19 +42,20 @@ long int chunk_manager_offset2chunk (struct chunk_manager *cm, long int offset, 
 			chunk_finalize (new_chunk);
 		chunk_init (new_chunk, plength, poffset, PROT_READ, cm -> fd);
 
-		long int new_chunk_offset = 0;
+		long int new_chunk_offset = new_chunk -> offset;
 		long int new_chunk_length = new_chunk -> length;
-		for(new_chunk_offset = new_chunk -> offset; new_chunk_offset < new_chunk_length; new_chunk_offset += sysconf(_SC_PAGE_SIZE)){
+	  	long int hashtable_offset = 0;
+		for(hashtable_offset = 0; hashtable_offset < new_chunk_length; hashtable_offset += sysconf(_SC_PAGE_SIZE), new_chunk_offset += sysconf(_SC_PAGE_SIZE)){
 			LOG(DEBUG, "Adding offset %d to hashtable\n", new_chunk_offset);
 			hashtable_set (&cm -> ht, new_chunk_offset, new_chunk);
 		}
 		*ret_ch = cm -> chunk_pool;
-		*chunk_offset = offset - poffset;
-		return plength - offset + poffset;
+		*chunk_offset = offset - new_chunk -> offset;
+		return new_chunk_length - offset + new_chunk -> offset;
 	}else{
 		LOG(DEBUG, "Chunk found - nice!\n");
-		*chunk_offset = offset - poffset;
+		*chunk_offset = offset - cur_ch -> offset;
 		*ret_ch = cur_ch;
-		return cur_ch -> length - offset + poffset;
+		return cur_ch -> length - offset + cur_ch -> offset;
 	}
 }
