@@ -92,6 +92,10 @@ int ring_buf_add_event(struct ring_buf *rb, enum log_level level, pid_t pid, con
 	vsnprintf(rb -> events[rb -> next_event].msg, MAX_MSG_SIZE-1, fmt, argptr);
 	va_end(argptr);
 
+#ifdef DEBUG_STDERRLOG
+	fprintf(stderr, "[%c] %s", loglevel_chars[level], rb -> events[rb -> next_event].msg);
+#endif
+
 	/* In case of overwriting of buffer we can lose the right order.
 	 * Newer messages should move next_flush in order to events be
 	 * in a correct time order. This can be achieved by synchronizing next_event

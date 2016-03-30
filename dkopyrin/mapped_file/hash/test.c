@@ -4,20 +4,22 @@
 #include <stdio.h>
 
 int main( int argc, char *argv[] ) {
+	struct hashtable hashtable;
+	hashtable_init( &hashtable, 65536 );
 
-	struct hashtable *hashtable = hashtable_create( 65536 );
+	printf("%p\n", hashtable_get(&hashtable, 1000));
+	printf("%p\n", hashtable_get(&hashtable, 500));
 
-	hashtable_set( hashtable, 1, (void *)1000 );
-	hashtable_set( hashtable, 10, (void *)100 );
-	hashtable_set( hashtable, 100, (void *)10 );
-	hashtable_set( hashtable, 1000, (void *)1 );
-  	hashtable_set( hashtable, 1000, (void *)2 );
-  	hashtable_set( hashtable, 1000, (void *)3 );
+  	int i;
+  	for (i = 0; i <= 11; i++){
+		hashtable_set(&hashtable, i, (void *)(i*i));
+	}
 
-	printf( "%p\n", hashtable_get( hashtable, 1000 ) );
-	printf( "%p\n", hashtable_get( hashtable, 100 ) );
-	printf( "%p\n", hashtable_get( hashtable, 10 ) );
-	printf( "%p\n", hashtable_get( hashtable, 1 ) );
+	printf("%p\n", hashtable_get(&hashtable, 100));
+	printf("%p\n", hashtable_get(&hashtable, 10));
+	printf("%p\n", hashtable_get(&hashtable, 1));
+
+  	hashtable_finalize(&hashtable);
 
   	LOG(FATAL, "push");
 	return 0;

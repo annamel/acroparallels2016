@@ -1,22 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "hash_table.h"
+
+#define COLOR(x) "\x1B[35m"x"\x1B[0m"
+#define LOGCOLOR(x) COLOR("%s: ")x, __func__
 #include "../logger/log.h"
 
-struct hashtable *hashtable_create(int size) {
-	LOG(INFO, "hashtable_create called\n");
-	struct hashtable *hashtable = NULL;
+struct hashtable *hashtable_init(struct hashtable *hashtable, int size) {
+	LOG(INFO, "hashtable_init called\n");
 	int i;
 
 	if (size < 1) return NULL;
-	if ((hashtable = malloc(sizeof(struct hashtable))) == NULL){
-		LOG(FATAL, "Failed to alloc hashtable\n");
-		return NULL;
-	}
 
 	/* Allocate pointers to the head nodes. */
 	if ((hashtable->table = malloc(sizeof(struct entry) * size)) == NULL){
-		LOG(FATAL, "Failed to alloc head\n");
+		LOG(FATAL, "Failed to alloc table\n");
 		return NULL;
 	}
 
@@ -27,6 +25,22 @@ struct hashtable *hashtable_create(int size) {
 	hashtable->size = size;
 
 	return hashtable;
+}
+
+void hashtable_finalize(struct hashtable *ht) {
+	struct entry *newpair = NULL;
+	struct entry *next = NULL;
+	struct entry *last = NULL;
+	int bin = 0;
+	for (bin = 0; bin < ht -> size; bin++) {
+		for (next = ht -> table[bin]; next; ) {
+			last = next;
+			next = next -> next;
+			free(last);
+		}
+	}
+	free(ht -> table);
+	return;
 }
 
 int hashtable_hash(struct hashtable *hashtable, hashtable_key_t a) {
@@ -89,8 +103,8 @@ void hashtable_set(struct hashtable *hashtable, hashtable_key_t key, hashtable_v
 
 hashtable_value_t hashtable_get(struct hashtable *hashtable, hashtable_key_t key) {
 	LOG(INFO, "hashtable_get called\n");
-	int bin = 0;
-	struct entry *next;
+	int bin = -1;
+	struct entry *next = NULL;
 
 	bin = hashtable_hash(hashtable, key);
 	next = hashtable->table[bin];

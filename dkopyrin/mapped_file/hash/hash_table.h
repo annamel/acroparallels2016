@@ -21,5 +21,7 @@ struct entry *hashtable_newpair (hashtable_key_t key, hashtable_value_t value);
 void hashtable_set (struct hashtable *hashtable, hashtable_key_t key, hashtable_value_t value);
 hashtable_value_t hashtable_get (struct hashtable *hashtable, hashtable_key_t key);
 
-struct hashtable *hashtable_create (int size);
+struct hashtable *hashtable_init (struct hashtable *mf, int size);
+void hashtable_finalize (struct hashtable *mf);
+
 #endif
