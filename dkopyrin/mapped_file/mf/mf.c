@@ -3,16 +3,31 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #define COLOR(x) "\x1B[36m"x"\x1B[0m"
 #define LOGCOLOR(x) COLOR("%s: ")x, __func__
 #include "../logger/log.h"
+
+#define MIN(x,y) ((x>y) ? y: x)
+
+off_t fsize(const char *filename) {
+    struct stat st;
+
+    if (stat(filename, &st) == 0)
+        return st.st_size;
+
+    return -1;
+}
 
 int mf_open(const char *name, struct mf *mf){
 	assert(mf);
 	assert(name);
 	mf -> offset = 0;
 	mf -> fd = open(name, O_RDONLY);
+	mf -> size = fsize(name);
+	if (mf -> size == -1)
+		return -1;
 	assert(mf -> fd != -1);
 	chunk_manager_init(&mf -> cm, mf -> fd);
 	return 0;
@@ -25,6 +40,8 @@ void mf_close(struct mf *mf) {
 
 int mf_seek(struct mf *mf, long int offset){
 	//TODO: Some checks
+	if (offset > mf -> size)
+		return -1;
 	mf -> offset = offset;
 	return 0;
 }
@@ -33,6 +50,7 @@ long int mf_tell(struct mf *mf){
 }
 ssize_t mf_read(struct mf *mf, void *buf, size_t nbyte){
 	LOG(INFO, "mf_read called\n");
+	nbyte = MIN(nbyte, mf -> size - mf -> offset);
 	struct chunk *ch = NULL;
 	int ch_offset = 0;
 	ssize_t read_bytes = 0;

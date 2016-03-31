@@ -7,6 +7,7 @@ struct mf {
 	int fd;
 	struct chunk_manager cm;
 	long int offset;
+	long int size;
 };
 
 int mf_open(const char *name, struct mf *mf);
