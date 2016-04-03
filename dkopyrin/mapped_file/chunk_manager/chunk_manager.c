@@ -5,8 +5,9 @@
 #include "../logger/log.h"
 #include "chunk_manager.h"
 #include <sys/mman.h>
+#include <fcntl.h>
 
-int chunk_manager_init (struct chunk_manager *cm, int fd){
+int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
 	LOG(INFO, "chunk_manager_init called\n");
 	cm -> fd = fd;
 	hashtable_init(&cm -> ht, 65535);
@@ -14,6 +15,14 @@ int chunk_manager_init (struct chunk_manager *cm, int fd){
 	for (i = 0; i < POOL_SIZE; i++){
 		chunk_init_unused(cm -> chunk_pool + i);
 	}
+
+	int prot = 0;
+	LOG(INFO, "mode: %d, %d %d %d\n", mode & 3, O_RDONLY, O_WRONLY, O_RDWR);
+	if ((mode & 3) == O_RDONLY) prot = PROT_READ;
+	if ((mode & 3) == O_WRONLY) prot = PROT_WRITE;
+	if ((mode & 3) == O_RDWR) prot = PROT_READ | PROT_WRITE;
+	LOG(INFO, "prot: %d, %d %d\n", prot, PROT_READ, PROT_WRITE);
+	cm -> prot = prot;
 	return 0;
 }
 
@@ -42,7 +51,8 @@ long int chunk_manager_offset2chunk (struct chunk_manager *cm, long int offset, 
 		struct chunk *new_chunk = cm -> chunk_pool;
 		if (new_chunk -> state != -1)
 			chunk_finalize (new_chunk);
-		chunk_init (new_chunk, plength, poffset, PROT_READ, cm -> fd);
+
+		chunk_init (new_chunk, plength, poffset, cm -> prot, cm -> fd);
 
 		long int new_chunk_offset = new_chunk -> offset;
 		long int new_chunk_length = new_chunk -> length;

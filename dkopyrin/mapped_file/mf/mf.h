@@ -8,9 +8,10 @@ struct mf {
 	struct chunk_manager cm;
 	long int offset;
 	long int size;
+	int flags;
 };
 
-int mf_open(const char *name, struct mf *mf);
+struct mf* mf_open(const char *name, int flags, ...);
 void mf_close(struct mf *mf);
 
 //TODO: Make seek look like lseek

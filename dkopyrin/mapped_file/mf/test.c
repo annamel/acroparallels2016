@@ -10,8 +10,7 @@ int main(int argc, char *argv[]){
 		return 0;
 	}
 	LOG(DEBUG, "---Open\n");
-	struct mf * file1 = malloc(sizeof(struct mf));
-	mf_open(argv[1], file1);
+	struct mf *file1 = mf_open(argv[1], O_RDONLY, file1);
 	int file2 = open(argv[1], O_RDONLY);
 
   	void *buf1 = malloc(12345);
@@ -46,8 +45,27 @@ int main(int argc, char *argv[]){
 	LOG(DEBUG, "---Close\n");
 
 	mf_close(file1);
-	free(file1);
 	close(file2);
 	free(buf1);
 	free(buf2);
+
+
+
+	if (argc < 3) {
+		printf("Write isage: %s filename_in filename_out\n", argv[0]);
+		return 0;
+	}
+	LOG(DEBUG, "---Write\n");
+	struct mf *f1 = mf_open(argv[1], O_RDONLY);
+	struct mf *f2 = mf_open(argv[2], O_RDWR | O_CREAT | O_TRUNC, 0777);
+
+  	void *buf = malloc(12345);
+
+	LOG(DEBUG, "---Write 1\n");
+	memset(buf, 0, 12345);
+	int rb = mf_read (f1, buf, 12345);
+	mf_write(f2, buf, rb);
+	mf_close(f1);
+	mf_close(f2);
+	free(buf);
 }

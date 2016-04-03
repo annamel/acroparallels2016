@@ -20,7 +20,7 @@ int chunk_init (struct chunk *ch, size_t length, long int offset, int prot, int 
 	assert(ch);
 	ch -> length = length;
 	ch -> offset = offset;
-	ch -> addr = mmap(NULL, length, prot, MAP_PRIVATE, fd, offset);
+	ch -> addr = mmap(NULL, length, prot, MAP_SHARED, fd, offset);
 	ch -> state++;
 	if (ch -> addr == MAP_FAILED) {
 		LOG(ERROR, "Can't mmap file in chunk, %s\n", strerror(errno));
@@ -31,9 +31,14 @@ int chunk_init (struct chunk *ch, size_t length, long int offset, int prot, int 
 
 int chunk_finalize (struct chunk *ch) {
 	LOG(INFO, "Chunk finalize called\n");
+	if (msync(ch -> addr, ch -> length, MS_SYNC) == -1) {
+		LOG(ERROR, "Can't sync file, %s\n", strerror(errno));
+		return -1;
+	}
+
 	if (munmap(ch -> addr, ch -> length)) {
 		LOG(ERROR, "Can't munmap file in chunk, %s\n", strerror(errno));
-		return -1;
+		return -2;
 	}
 	return 0;
 }
@@ -44,7 +49,7 @@ void *chunk_cpy_c2b(void *buf, struct chunk *ch, size_t num, long int offset){
 	return memcpy(buf, ch -> addr + offset, num);
 }
 void *chunk_cpy_b2c(struct chunk *ch, void *buf, size_t num, long int offset){
-	LOG(DEBUG, "c2b by offset %d %d bytes\n", offset, num);
+	LOG(DEBUG, "b2c by offset %d %d bytes\n", offset, num);
   	//TODO: Clever checks for overflow
-	return memcpy(buf, ch -> addr + offset, num);
+	return memcpy(ch -> addr + offset, buf, num);
 }
