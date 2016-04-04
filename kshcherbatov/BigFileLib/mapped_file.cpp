@@ -26,13 +26,15 @@ struct mapped_file_t {
     size_t chunk_std_size;
     struct hash_t *chunk_pool_ht;
     size_t chunk_pool_size;
-    struct chunk_t *chunk_pool;
+    size_t chunk_pool_w_idx;
+    struct chunk_t **chunk_pool;
 };
 
 int mf_open(const char *name, size_t pool_size, size_t chunk_size, int read_only, mf_handle_t *mf);
 int mf_close(mf_handle_t *mf);
-struct chunk_t *chunk_get_by_offset(const struct mapped_file_t *mapped_file, size_t offset);
-void *chunk_mem_acquire(struct mapped_file_t *mapped_file, chunk_t *chunk, size_t offset);
+int mf_read(const mf_handle_t *mf, size_t start, size_t length);
+struct chunk_t *chunk_get_by_offset(struct mapped_file_t *mapped_file, size_t offset);
+void *chunk_mem_acquire(const struct mapped_file_t *mapped_file, chunk_t *chunk, size_t offset);
 void chunk_mem_unacquire(chunk_t *chunk);
 int chunk_map(chunk_t *chunk, int fd, size_t offset, size_t length, bool read_only);
 void chunk_unmap(chunk_t *chunk);
@@ -91,7 +93,8 @@ int mf_open(const char *name, size_t pool_size, size_t chunk_size, int read_only
     }
 
     mapped_file->chunk_pool_size = pool_size;
-    mapped_file->chunk_pool = (struct chunk_t *)calloc(pool_size, sizeof(chunk_t));
+    mapped_file->chunk_pool_w_idx = 0;
+    mapped_file->chunk_pool = (struct chunk_t **)calloc(pool_size, sizeof(struct chunk_t *));
     if (!mapped_file->chunk_pool) {
         LOG_ERROR("\"mf_open: failed allocate momory for chunk_pool\n", NULL);
         hash_destruct(mapped_file->chunk_pool_ht);
@@ -127,7 +130,7 @@ int mf_close(mf_handle_t *mf) {
     return EXIT_SUCCESS;
 }
 
-int mf_read(mf_handle_t *mf, size_t start, size_t length) {
+int mf_read(const mf_handle_t *mf, size_t start, size_t length) {
     LOG_DEBUG("Called mf_read (mf = [%p], offset = %u, length = %u).\n\n",
               mf, start, length);
 
@@ -164,12 +167,38 @@ int mf_read(mf_handle_t *mf, size_t start, size_t length) {
     return EXIT_SUCCESS;
 }
 
-struct chunk_t *chunk_get_by_offset(const struct mapped_file_t *mapped_file, size_t offset) {
+struct chunk_t *chunk_get_by_offset(struct mapped_file_t *mapped_file, size_t offset) {
     LOG_DEBUG("Called chunk_get_by_offset(mapped_file = %p, offset = %d).\n", mapped_file, offset);
     assert(mapped_file);
 
     if (offset >= mapped_file->file_size) {
         LOG_WARN("chunk_get_by_offset: offset is out of the file.\n", NULL);
+        return NULL;
+    }
+
+    // decide where to put in the pool
+    size_t chunk_pool_size = mapped_file->chunk_pool_size;
+    size_t chunk_pool_w_idx = mapped_file->chunk_pool_w_idx;
+    chunk_t **chunk_pool = mapped_file->chunk_pool;
+
+    ssize_t chunk_pool_w_idx_new = -1;
+
+    for (size_t w_idx = chunk_pool_w_idx; w_idx < chunk_pool_size + chunk_pool_w_idx; w_idx++) {
+        size_t chunk_pool_elem_idx = w_idx % chunk_pool_size;
+        chunk_t *chunk_from_pool = chunk_pool[chunk_pool_elem_idx];
+
+        if (!chunk_from_pool || chunk_from_pool->reference_counter == 0) {
+            if (chunk_from_pool) {
+                LOG_DEBUG("chunk_get_by_offset: have place at unused chunk. Should free it.\n", NULL);
+                chunk_unmap(chunk_from_pool);
+            }
+            chunk_pool_w_idx_new = chunk_pool_elem_idx;
+            break;
+        }
+    }
+
+    if (chunk_pool_w_idx_new < 0) {
+        LOG_ERROR("chunk_get_by_offset: chunk pull is full; unacquire unclaimed chunks as soon it is possible.\n", NULL);
         return NULL;
     }
 
@@ -182,10 +211,15 @@ struct chunk_t *chunk_get_by_offset(const struct mapped_file_t *mapped_file, siz
         return NULL;
     }
 
-    return (chunk_t *)chunk_hash_list_node->data;
+    chunk_t *chunk = (chunk_t *)chunk_hash_list_node->data;
+    mapped_file->chunk_pool[chunk_pool_w_idx_new++] = chunk;
+
+    mapped_file->chunk_pool_w_idx = chunk_pool_w_idx_new % chunk_pool_size;
+
+    return chunk;
 }
 
-void *chunk_mem_acquire(struct mapped_file_t *mapped_file, chunk_t *chunk, size_t offset) {
+void *chunk_mem_acquire(const struct mapped_file_t *mapped_file, chunk_t *chunk, size_t offset) {
     LOG_DEBUG("Called chunk_mem_acquire (mf = [%p], chunk = [%p], offset = %u).\n",
               mapped_file, chunk, offset);
 
@@ -198,7 +232,6 @@ void *chunk_mem_acquire(struct mapped_file_t *mapped_file, chunk_t *chunk, size_
         LOG_DEBUG("chunk_mem_acquire: opening the gate in chunk.\n", NULL);
 
         chunk->reference_counter = 0;
-
         size_t length = mapped_file->chunk_std_size;
 
         if (chunk_pa_offset + length > mapped_file->file_size) {

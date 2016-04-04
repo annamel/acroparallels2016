@@ -3,15 +3,10 @@
 #include "logger.h"
 #include <unistd.h>
 #include <sys/stat.h>
-//int mf_open(const char *name, unsigned pool_size, uint64_t chunk_std_size, int read_only, mf_handle_t *mf);
-
 
 int main() {
-
-    //#define LOG_FATAL(fmt, args...) ring_buf_push_msg(Logging_system, LOGLEVEL_FATAL, getpid(), fmt, ##args)
-
     mf_handle_t mf;
-    mf_open("logger.cpp", 100, 0, false, &mf);
+    mf_open("logger.cpp", 3, 0, false, &mf);
     if (!mf) {
         LOG_ERROR("mf_open constructor failed.\n", NULL);
         return EXIT_FAILURE;
