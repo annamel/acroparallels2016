@@ -11,7 +11,7 @@ int main() {
     //#define LOG_FATAL(fmt, args...) ring_buf_push_msg(Logging_system, LOGLEVEL_FATAL, getpid(), fmt, ##args)
 
     mf_handle_t mf;
-    mf_open("logger.cpp", (uint64_t)(sysconf(_SC_PHYS_PAGES) >> 2), 4096*4, false, &mf);
+    mf_open("logger.cpp", 100, 0, false, &mf);
     if (!mf) {
         LOG_ERROR("mf_open constructor failed.\n", NULL);
         return EXIT_FAILURE;

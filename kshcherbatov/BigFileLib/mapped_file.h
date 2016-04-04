@@ -17,9 +17,8 @@
 typedef void* mf_handle_t;
 
 int mf_open(const char *name, size_t pool_size, size_t chunk_size, int read_only, mf_handle_t *mf);
-int mf_close(mf_handle_t* mf);
-int mf_chunk_unacquire(mf_handle_t *mf, size_t offset);
-int mf_read(mf_handle_t *mf, size_t offset, size_t length);
+int mf_close(mf_handle_t *mf);
+int mf_read(mf_handle_t *mf, size_t start, size_t length);
 
 //PROT_WRITE
 //MAP_SHARED

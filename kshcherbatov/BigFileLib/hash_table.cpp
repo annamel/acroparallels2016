@@ -7,9 +7,6 @@
 #include "hash_table.h"
 #include "logger.h"
 
-//TODO: fit in interval stretagy
-//TODO: so on
-
 struct hash_t *hash_construct(size_t hash_size,
                               hash_func_t *hash_func,
                               hash_cmp_func_t *hash_cmp_func,
@@ -24,7 +21,7 @@ struct hash_t *hash_construct(size_t hash_size,
     assert(hash_size > 0);
     assert(list_data_size > 0);
 
-    struct hash_t *hash = (struct hash_t *)malloc(sizeof(struct hash_t));
+    struct hash_t *hash = (struct hash_t *)calloc(1, sizeof(struct hash_t));
     if (!hash) {
         LOG_ERROR("hash_construct: failed allocate memory for hash.\n", NULL);
         return NULL;
