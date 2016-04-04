@@ -150,13 +150,13 @@ int mf_read(const mf_handle_t *mf, size_t start, size_t length) {
             break;
         }
 
-        write(STDOUT_FILENO, data_ptr, chunk->mapped_area_size -
-                ((size_t)data_ptr - pa_offset((size_t)data_ptr)));
+        size_t bytes_to_chunk_end =  chunk->mapped_area_size - ((size_t)data_ptr - pa_offset((size_t)data_ptr));
 
-        size_t step = chunk->mapped_area_size;
+        write(STDOUT_FILENO, data_ptr, bytes_to_chunk_end);
+
         chunk_mem_unacquire(chunk);
 
-        start += step;
+        start += bytes_to_chunk_end;
         if (start >= mapped_file->file_size)
             break;
 
