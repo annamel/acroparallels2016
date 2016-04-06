@@ -1,0 +1,7 @@
+1. Change chunk finding algorithm and replace hashtable by rb tree
+2. Add search for chunk by ptr
+3. Complete mapped_file.c
+4. Iterator
+5. Logging everywhere
+6. Unuttests for all components
+7. Tests
