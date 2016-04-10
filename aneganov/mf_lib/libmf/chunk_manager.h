@@ -12,5 +12,8 @@ int chunk_release(chunk_t *chunk);
 int chunk_get_mem(chunk_t *chunk, off_t offset, void **buf);
 int chpool_construct(size_t max_mem, int fd, int prot, chpool_t **cpool);
 int chpool_destruct(chpool_t **cpool);
+int chpool_fd(chpool_t *cpool);
+int chpool_mem_add(void *ptr, chunk_t *chunk);
+int chpool_mem_get(chpool_t *cpool, void *ptr, chunk_t **chunk);
 
 #endif

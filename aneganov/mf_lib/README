@@ -1,1 +1,10 @@
-The library is still not ready, but the significant part of the work is done
+# Mapped file library
+
+## author: Alexey Neganov <neganovalexey@gmail.com>
+
+There is the implementation of the library to work with large file.
+
+File _mapped_file.h_ contains library API; file ___mapped_file.h_ contains deprecated version of the API, useful for internal purposes.
+
+Now the code is not tested yet.
+See TODO for further information.

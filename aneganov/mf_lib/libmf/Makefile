@@ -1,7 +1,7 @@
 include ../Makefile.inc
 
 LIBMF = libmf.a
-LIBOBJS = hashtable.o mf_malloc.o log.o chunk_manager.o mapped_file.o
+LIBOBJS = hashtable.o mf_malloc.o log.o chunk_manager.o __mapped_file.o mapped_file.o
 
 ifeq (.depend,$(wildcard .depend))
 include .depend

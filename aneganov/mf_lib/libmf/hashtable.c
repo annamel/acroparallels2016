@@ -2,6 +2,7 @@
 
 #include "mf_malloc.h"
 #include "hashtable.h"
+#include "log.h"
 
 typedef struct Elem {
     hkey_t key;
@@ -89,8 +90,10 @@ int hashtable_add(hashtable_t * ht, hkey_t key, hval_t val) {
     while( pos < data_len && ht->cmp_fn(key, data[pos].key) == -1 )
         pos++;
 
-    if( pos < data_len && ht->cmp_fn(key, data[pos].key) == 0 )
+    if( pos < data_len && ht->cmp_fn(key, data[pos].key) == 0 ) {
+        data[pos].val = val;
         return 0;
+    }
 
     if( data_len == len ) {
         int res = mf_realloc(2*len, (void **)&ht->payload[idx].data);

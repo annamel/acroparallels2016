@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "mf_malloc.h"
+#include "log.h"
 
 int mf_malloc(size_t size, void **ptr) {
 	if( ptr == NULL )
