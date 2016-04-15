@@ -2,67 +2,64 @@
 #include <stdio.h>
 
 int main () {
-	uint32_t hashtable1_size = 10;
-	// /* Generating array of random strings to test */
-	char **array_of_strings = (char **)malloc(sizeof(char *) * hashtable1_size);
-	for (int i = 0; i < hashtable1_size; i++) {
-		uint32_t size_of_str = arc4random() % 20 + 5;
-		array_of_strings[i] = (char *)malloc(sizeof(char) * size_of_str);
-		for (int j = 0; j < size_of_str - 1; j ++) {
-			array_of_strings[i][j] = 33 + arc4random() % 92; //generating random char
+	uint64_t size = 10;
+	hashtable_t *tbl = hashtable_construct (size);
 
-		}
-		array_of_strings[i][size_of_str - 1] = 0;
-//		printf ("%s\n", array_of_strings[i]);
+	//////////////// ------ ////////////////
+	for (int i = 0; i < size * 2; i++) {
+    	hashtable_add (tbl, i, &i);
 	}
-
-	hashtable_t *tsttbl1 = hashtable_construct (hashtable1_size);
-
-	for (int i = 0; i < hashtable1_size; i++) {
-    	hashtable_add (tsttbl1, array_of_strings[i], array_of_strings[(i + 1) % hashtable1_size]);
-	}
-	hashtable_delete (tsttbl1, array_of_strings[hashtable1_size - 1]);
-	hashtable_count (tsttbl1);
-
-	char *key0 = array_of_strings[1];
-	char *value0 = array_of_strings[2];
-	char *key1 = array_of_strings[3];
-	char *value1 = array_of_strings[4];
-	char *key2 = array_of_strings[5];
-	char *value2 = array_of_strings[6];
-
-	hashtable_add (tsttbl1, key0, value0);
-	hashtable_add (tsttbl1, key1, value1);
-	hashtable_add (tsttbl1, key2, value2);
-
-	char *getted_value0 = hashtable_get (tsttbl1, key0);
-	char *getted_value1 = hashtable_get (tsttbl1, key1);
-	char *getted_value2 = hashtable_get (tsttbl1, key2);
-
-	if (strcmp (value0, getted_value0) != 0 ||
-		strcmp (value1, getted_value1) != 0 ||
-		strcmp (value2, getted_value2) != 0 ){
-		printf ("\n\nERROR: wrong values in table.\n");
-		hashtable_destruct(tsttbl1);
+	int count = hashtable_count (tbl);
+	if (count != size * 2) {
+		printf ("\n\nERROR: Test on value counts was failed.\n");
+		hashtable_destruct (tbl);
 		return 1;
 	}
 
-	// Checking empty property.
-	if (hashtable_is_empty (tsttbl1)) {
-		printf ("\n\nERROR: Test on empty computed property was failed.\n");
-		hashtable_destruct (tsttbl1);
+	hashtable_delete (tbl, size / 2);
+	count -= hashtable_count (tbl);
+	if (count != 1) {
+		printf ("\n\nERROR: Test on deletion and value counts was failed.\n");
+		hashtable_destruct (tbl);
+		return 1;
+	}
+
+	uint32_t err = 0;
+	for (int i = 0; i < size; i++) {
+		if (i != size / 2) err = hashtable_delete (tbl, i);
+		if (err) {
+			printf ("\n\nERROR: Test on deletion was failed.\n");
+			hashtable_destruct (tbl);
+			return 1;
+		}
+	}
+
+	//////////////// ------ ////////////////
+	int v0 = 3, v1 = 4, v2 = 7;
+
+	hashtable_add (tbl, -1, &v0);
+	hashtable_add (tbl, -2, &v1);
+	hashtable_add (tbl, -3, &v2);
+
+	hval_t gv0 = hashtable_get (tbl, -1);
+	hval_t gv1 = hashtable_get (tbl, -2);
+	hval_t gv2 = hashtable_get (tbl, -3);
+
+	if (&v0!=gv0 || &v1!=gv1 || &v2!=gv2) {
+		printf ("\n\nERROR: Wrong values in table.\n");
+		hashtable_destruct(tbl);
 		return 1;
 	}
 
 	/* Checking size method */
-	if (hashtable_size (tsttbl1) != hashtable1_size) {
+	if (hashtable_size (tbl) != size) {
 		printf ("\n\nERROR: Test on size method was failed.\n");
-		hashtable_destruct (tsttbl1);
+		hashtable_destruct (tbl);
 		return 1;
 	}
 
 	// /* Deleting table. */
-	hashtable_destruct (tsttbl1);
+	hashtable_destruct (tbl);
 
 	printf ("\n\nAll tests completed successfully.\n");
 	return 0;

@@ -10,6 +10,9 @@
 
 #include <stdlib.h>
 
+// EXAMPLE: "sources/logger"
+#define PATH_TO_LOGGER_FOLDER "sources/logger"
+
 #define LOG(...) \
             do { if (logger == NULL || msg == NULL) logger = logger_init(); \
               sprintf(msg, __VA_ARGS__);  \

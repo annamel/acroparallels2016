@@ -16,16 +16,15 @@
 #include "../logger/logger.h"
 
 struct hashtable_pair_t{
-        char *key;
-        char *value;
+        hkey_t key;
+        hval_t value;
         hashtable_pair_t *next;
         hashtable_pair_t *prev;
 };
 
 /* Private methods */
 
-uint32_t hashtable_get_hash_from_key (hashtable_t *hashtable, char *key);
-uint32_t hashtable_get_hash_from_pair (hashtable_t *hashtable, hashtable_pair_t *pair);
+uint32_t hash ( hkey_t key);
 uint32_t hashtable_check_if_pair_is_good (hashtable_pair_t *pair);
 
 /* Constructors */
@@ -54,7 +53,7 @@ hashtable_t *hashtable_construct (uint32_t size) {
     hashtable->count = 0;
     hashtable->size = size;
     //allocating memory for data.
-    hashtable->arr = (hashtable_pair_t *)calloc(size, sizeof(hashtable_pair_t));
+    hashtable->arr = (hashtable_pair_t **)calloc(size, sizeof(hashtable_pair_t*));
     if (hashtable->arr == NULL) {
         #if defined ERROR
             LOG("ERROR: hashtable_create_table: bad allocation: hashtable's data");
@@ -62,68 +61,31 @@ hashtable_t *hashtable_construct (uint32_t size) {
         return NULL;
     }
 
-    //initializing all pairs with NULL.
-    hashtable_pair_t *array = hashtable->arr;
-    for (uint32_t i = 0; i < size; ++i) {
-        array[i].key = NULL;
-        array[i].value = NULL;
-        array[i].next = NULL;
-        array[i].prev = NULL;
-    }
     #if defined DEBUG || defined INFO
         LOG("  Table %u was created.", (uint32_t)hashtable);
     #endif
     return hashtable;
 }
 
-hashtable_pair_t hashtable_create_pair (char *nkey, char *nvalue) {
+hashtable_pair_t hashtable_create_pair (hkey_t nkey, hval_t nvalue) {
     #if defined DEBUG || defined INFO
         LOG("Creating table pair: key -> value");
     #endif
-
-    if (nkey == NULL) {
-        #if defined ERROR
-            LOG("ERROR: hashtable_create_pair: bad argument:  nkey");
-        #endif
-        hashtable_pair_t bad_value = {(char *)EINVAL, (char *)EINVAL};
-        return bad_value;
-    }
 
     if (nvalue == NULL) {
         #if defined ERROR
             LOG("ERROR: hashtable_create_pair: bad argument:  nvalue");
         #endif
-        hashtable_pair_t bad_value = {(char *)EINVAL, (char *)EINVAL};
+        hashtable_pair_t bad_value = {(hkey_t)EINVAL, (hval_t)EINVAL};
         return bad_value;
     }
 
     #if defined DEBUG
-        LOG("  nkey: %s\n  nvalue: %s", nkey, nvalue);
+        LOG("  nkey: %d\n  nvalue: %d", (int)nkey, (int)nvalue);
     #endif
 
-    //allocating memory for copies of key and value.
-    char *key_copy = (char *) malloc (sizeof(char) * (strlen(nkey) + 1));
-    if (key_copy == NULL) {
-        #if defined ERROR
-            LOG("ERROR: hashtable_create_pair: bad allocation:  key_copy");
-        #endif
-        hashtable_pair_t bad_value = {(char *)1337, (char *)666};
-        return bad_value;
-    }
-    char *value_copy = (char *) malloc (sizeof(char) * (strlen(nvalue) + 1));
-    if (value_copy == NULL) {
-        #if defined ERROR
-            LOG("ERROR: hashtable_create_pair: bad allocation:  value_copy");
-        #endif
-        hashtable_pair_t bad_value = {(char *)1337, (char *)666};
-        return bad_value;
-    }
-    //copying key and value.
-    key_copy = strcpy(key_copy, nkey);
-    value_copy = strcpy(value_copy, nvalue);
-
     //creating pair.
-    hashtable_pair_t a = {.key = key_copy, .value = value_copy, .next = NULL, .prev = NULL};
+    hashtable_pair_t a = {.key = nkey, .value = nvalue, .next = NULL, .prev = NULL};
     #if defined DEBUG
         LOG("  pair created:\n  key:%s\n  value:%s", key_copy, value_copy);
     #endif
@@ -146,39 +108,29 @@ uint32_t hashtable_destruct (hashtable_t *hashtable) {
     }
     if (hashtable->arr == NULL) {
     #if defined ERROR
-      LOG("ERROR: hashtable_delete_table: bad argument:  hashtable->arr");
+      LOG("ERROR: hashtable_delete_table: corrupted hashtable:  hashtable->arr");
     #endif
     return EINVAL;
     }
 
-    hashtable_pair_t *array = hashtable->arr;
+    hashtable_pair_t **array = hashtable->arr;
 
     //freeing all keys-value pairs.
     uint32_t size = hashtable_size(hashtable);
     for (int i = 0; i < size; i++) {
-        if ((array[i]).key != NULL) {
-            free(array[i].value);
-            free(array[i].key);
-            (array[i]).key = NULL;
-            (array[i]).value = NULL;
-            hashtable_pair_t *next_pair = (array[i]).next;
-            while (next_pair != NULL) {
-                free(next_pair->value);
-                free(next_pair->key);
-                next_pair->key = NULL;
-                next_pair->value = NULL;
-                next_pair->prev = NULL;
-                next_pair = next_pair->next;
-            }
-            (array[i]).next = NULL;
-            (array[i]).prev = NULL;
+        if (array[i] != NULL) {
+          hashtable_pair_t* next = array[i]->next;
+          hashtable_pair_t* current;
+          while (next != NULL) {
+            current = next;
+            next = next->next;
+            free(current);
+          }
         }
     }
 
     free (array);
-    hashtable->arr = NULL;
     free (hashtable);
-
 
     #if defined DEBUG || defined INFO || defined ERROR
     LOG("Hashtable was successfully destructed.");
@@ -188,19 +140,6 @@ uint32_t hashtable_destruct (hashtable_t *hashtable) {
 
 /* Public properties */
 
-uint32_t hashtable_is_empty (hashtable_t *hashtable) {
-    if (hashtable == NULL) {
-        #if defined ERROR
-            LOG("ERROR: hashtable_is_empty: bad argument:  hashtable");
-        #endif
-        return EINVAL;
-    }
-    #if defined DEBUG
-        LOG(" _is_empty for: %u", (uint32_t)hashtable);
-    #endif
-    return hashtable->count ? 0 : 1;
-}
-
 uint32_t hashtable_count(hashtable_t *hashtable) {
     if (hashtable == NULL) {
         #if defined ERROR
@@ -209,7 +148,7 @@ uint32_t hashtable_count(hashtable_t *hashtable) {
         return EINVAL;
     }
     #if defined DEBUG
-        LOG(" -count for: %u", (uint32_t)hashtable);
+        LOG("--count for: %u", (uint32_t)hashtable);
     #endif
     return hashtable->count;
 }
@@ -222,7 +161,7 @@ uint32_t hashtable_size (hashtable_t *hashtable) {
         return EINVAL;
     }
     #if defined DEBUG
-        LOG(" -size for: %u", (uint32_t)hashtable);
+        LOG("--size for: %u", (uint32_t)hashtable);
     #endif
     return hashtable->size;
 }
@@ -238,7 +177,7 @@ uint32_t hashtable_add_pair (hashtable_t *hashtable, hashtable_pair_t pair) {
     }
     if (hashtable->arr == NULL) {
         #if defined ERROR
-          LOG("ERROR: hashtable_add_pair: bad allocation:  array");
+          LOG("ERROR: hashtable_add_pair: corrupted hashtable data:  arr");
         #endif
         return EINVAL;
     }
@@ -248,35 +187,21 @@ uint32_t hashtable_add_pair (hashtable_t *hashtable, hashtable_pair_t pair) {
     #endif
 
     //assigning to new pointer in order to write less code.
-    hashtable_pair_t *array = hashtable->arr;
+    hashtable_pair_t **array = hashtable->arr;
 
     //i is first found hash of the key.
-    uint32_t i = hashtable_get_hash_from_pair (hashtable, &pair);
+    uint32_t i = hash(pair.key) % hashtable_size(hashtable);
 
-    /* // PART FOR DIFFERENT HASHTABLE IMPLEMENTATION
-    //looking for first empty place to put new pair.
-    uint32_t hashtbl_size = hashtable_size (hashtable);
-    while ((array[i].key != NULL) && (strcmp((array[i]).key, pair.key) != 0)) {
-        i += DEFAULT_STEPPING;
-        if (i == hashtbl_size) i = 0;
-    }
-
-    //placing pair into array, incrementing counter.
-    if (array[i].key == NULL) {
-        array[i].key = pair.key;
-        array[i].value = pair.value;
-        hashtable->count ++;
-    }
-    */
-
-    if (array[i].key == NULL) {
-        array[i].key = pair.key;
-        array[i].value = pair.value;
-        array[i].next = NULL;
-        array[i].prev = NULL;
+    if (array[i] == NULL) {
+        hashtable_pair_t *new_pair = (hashtable_pair_t *)malloc(sizeof(hashtable_pair_t));
+        new_pair->key = pair.key;
+        new_pair->value = pair.value;
+        new_pair->next = NULL;
+        new_pair->prev = NULL;
+        array[i] = new_pair;
     } else {
-        hashtable_pair_t *current_pair = array[i].next;
-        hashtable_pair_t *prev_pair = hashtable->arr + i;
+        hashtable_pair_t *current_pair = array[i]->next;
+        hashtable_pair_t *prev_pair = array[i];
         while (current_pair != NULL) {
             prev_pair = current_pair;
             current_pair = current_pair->next;
@@ -289,7 +214,6 @@ uint32_t hashtable_add_pair (hashtable_t *hashtable, hashtable_pair_t pair) {
         prev_pair->next = current_pair;
     }
 
-
     hashtable->count ++;
     #if defined DEBUG
         LOG("  pair added at  %u\n  to table: %u", (uint32_t)i, (uint32_t)hashtable);
@@ -297,7 +221,7 @@ uint32_t hashtable_add_pair (hashtable_t *hashtable, hashtable_pair_t pair) {
     return 0;
 }
 
-uint32_t hashtable_add (hashtable_t *hashtable, char *key, char *value) {
+uint32_t hashtable_add (hashtable_t *hashtable, hkey_t key, hval_t value) {
     #if defined DEBUG || defined INFO
         LOG("Add by key value");
     #endif
@@ -307,27 +231,16 @@ uint32_t hashtable_add (hashtable_t *hashtable, char *key, char *value) {
         #endif
         return EINVAL;
     }
-    if (key == NULL) {
-        #if defined ERROR
-            LOG("ERROR: hashtable_add_pair_by_key_value: bad argument:  key");
-        #endif
-        return EINVAL;
-    }
-    if (value == NULL) {
-        #if defined ERROR
-            LOG("ERROR: hashtable_add_pair_by_key_value: bad argument:  value");
-        #endif
-        return EINVAL;
-    }
+
     #if defined DEBUG
-        LOG("  to hashtable: %u\n  with key: %s\n  value: %s",
-                              (uint32_t)hashtable, key, value);
+        LOG("  to hashtable: %u\n  with key: %d\n  and value: %d",
+                              (uint32_t)hashtable, (int)key, (int)value);
     #endif
-    return hashtable_add_pair (hashtable, hashtable_create_pair (key, value));
+    return hashtable_add_pair(hashtable, hashtable_create_pair (key, value));
 }
 
 // Getters
-char *hashtable_get (hashtable_t *hashtable, char *key) {
+hval_t hashtable_get (hashtable_t *hashtable, hkey_t key) {
     #if defined DEBUG || defined INFO
     LOG("Get value by key");
     #endif
@@ -337,37 +250,32 @@ char *hashtable_get (hashtable_t *hashtable, char *key) {
         #endif
         return NULL;
     }
-    if (key == NULL) {
-        #if defined ERROR
-            LOG("ERROR: hashtable_get_value_by_key: bad argument:  key");
-        #endif
-        return NULL;
-    }
+
     if (hashtable->arr == NULL) {
         #if defined ERROR
-            LOG("ERROR: hashtable_get_value_by_key: bad argument:  hashtable->arr");
+            LOG("ERROR: hashtable_get_value_by_key: corrupted hashtable:  hashtable->arr");
         #endif
         return NULL;
     }
+
     #if defined DEBUG
-        LOG("  hashtable: %u\n  key: %s", (uint32_t)hashtable, key);
+        LOG("  hashtable: %u\n           key: %d", (uint32_t)hashtable, (int)key);
     #endif
 
-    //getting first hash from key and saving it for future use (in order not to count hash again).
-    uint32_t i = hashtable_get_hash_from_key (hashtable, key);
+    uint32_t i = hash(key) % hashtable_size(hashtable);
 
     //looking for value.
     int not_found = 1;
-    hashtable_pair_t *current_pair = hashtable->arr + i;
+    hashtable_pair_t *current_pair = hashtable->arr[i];
 
     while (current_pair != NULL && not_found) {
-        if (strcmp(current_pair->key, key) == 0)
+        if (current_pair->key == key)
             not_found = 0;
         else
             current_pair = current_pair->next;
     }
 
-	//returning NULL in cases of not found.
+	  //returning NULL in cases of not found.
     if (not_found) {
         #if defined ERROR
             LOG("ERROR: hashtable_get_value_by_key: element not found");
@@ -375,37 +283,22 @@ char *hashtable_get (hashtable_t *hashtable, char *key) {
         return NULL;
     }
 
-	/* Creating copy of Value to return. */
-
-	//asserting value in array is not NULL.
     if (current_pair->value == NULL) {
         #if defined ERROR
-            LOG("ERROR: hashtable_add_pair: bad value in hashtable->arr\n  at index: %u",
+            LOG("ERROR: hashtable_get: bad value in hashtable->arr\n  at index: %u",
                                 (uint32_t)i);
         #endif
         return NULL;
     }
 
-	//allocating memory for new value instance. Size is incremented because of '\0' character.
-	char *value_copy = (char *) malloc (sizeof(char) * (strlen(current_pair->value) + 1));
-    if (value_copy == NULL) {
-        #if defined ERROR
-            LOG("ERROR: hashtable_add_pair: bad allocation:  value_copy");
-        #endif
-        return NULL;
-    }
-
-	//copying value.
-	value_copy = strcpy(value_copy, (current_pair->value));
-
     #if defined DEBUG
-        LOG("  from hashtable: %u\n  with key: %s\n  value: %s",
-                          (uint32_t)hashtable, key, value_copy);
+        LOG("  hashtable: %u\n    with key: %d\n  and value: %d",
+                          (uint32_t)hashtable, (int)key, (int)value_copy);
     #endif
-    return value_copy;
+    return current_pair->value;
 }
 
-hashtable_pair_t *hashtable_get_pair (hashtable_t *hashtable, char *key) {
+hashtable_pair_t *hashtable_get_pair (hashtable_t *hashtable, hkey_t key) {
   #if defined DEBUG || defined INFO
     LOG("Get pair by key");
   #endif
@@ -415,14 +308,9 @@ hashtable_pair_t *hashtable_get_pair (hashtable_t *hashtable, char *key) {
     #endif
     return NULL;
   }
-  if (key == NULL) {
-    #if defined ERROR
-      LOG("ERROR: hashtable_get_pair_by_key: bad argument:  key");
-    #endif
-    return NULL;
-  }
+
   //retreiving value.
-  char *nvalue = hashtable_get (hashtable, key);
+  hval_t nvalue = hashtable_get (hashtable, key);
   if (nvalue == NULL) {
     #if defined ERROR
       LOG("ERROR: hashtable_get_pair_by_key: can't get value by key");
@@ -430,33 +318,30 @@ hashtable_pair_t *hashtable_get_pair (hashtable_t *hashtable, char *key) {
     return NULL;
   }
   #if defined DEBUG
-    LOG("  hashtable: %u\n  key: %s", (uint32_t)hashtable, key);
+    LOG("  hashtable: %u\n           key: %d", (uint32_t)hashtable, (int)key);
   #endif
-
-	//copying key.
-  char *key_copy = (char *) malloc (sizeof(char) * (strlen(key) + 1));
-  key_copy = strcpy(key_copy, key);
 
   //creating pair to return.
   hashtable_pair_t *pair = (hashtable_pair_t *)malloc(sizeof(hashtable_pair_t));
   if (pair == NULL) {
     #if defined ERROR
-      LOG("ERROR: hashtable_get: bad allocation:  hashtable");
+      LOG("ERROR: hashtable_get: bad allocation:  pair");
     #endif
     return NULL;
   }
 
-  pair->key = key_copy;
+  pair->key = key;
   pair->value = nvalue;
   #if defined DEBUG
-    LOG("  pair was founded at key: %s\n  value: %s", key_copy, nvalue);
+    LOG("  pair was founded at key: %s\n                    value: %d",
+                                key, (int)nvalue);
   #endif
   return pair;
 
 }
 
 // Deletion
-uint32_t hashtable_delete (hashtable_t *hashtable, char *key) {
+uint32_t hashtable_delete (hashtable_t *hashtable, hkey_t key) {
     #if defined DEBUG || defined INFO
      LOG("Delete pair by key");
     #endif
@@ -466,30 +351,27 @@ uint32_t hashtable_delete (hashtable_t *hashtable, char *key) {
         #endif
         return EINVAL;
     }
-    if (key == NULL) {
-        #if defined ERROR
-           LOG("ERROR: hashtable_delete_pair_by_key: bad argument:  key");
-        #endif
-        return EINVAL;
-    }
+
     if (hashtable->arr == NULL) {
         #if defined ERROR
-            LOG("ERROR: hashtable_delete_pair_by_key: bad argument:  hashtable->arr");
+            LOG("ERROR: hashtable_delete_pair_by_key: corrupted:  hashtable->arr");
         #endif
         return EINVAL;
     }
+
     #if defined DEBUG
-        LOG("  hashtable: %u\n  key: %s\n", (uint32_t)hashtable, key);
+        LOG("  hashtable: %u\n           key: %d\n",
+                            (uint32_t)hashtable, (int)key);
     #endif
 
 
-    uint32_t i = hashtable_get_hash_from_key (hashtable, key);
+    uint32_t i = hash (key) % hashtable_size(hashtable);
 
     int not_found = 1;
-    hashtable_pair_t *current_pair = hashtable->arr + i;
+    hashtable_pair_t *current_pair = hashtable->arr[i];
 
     while (current_pair != NULL && not_found) {
-        if (strcmp(current_pair->key, key) == 0)
+        if (current_pair->key == key)
             not_found = 0;
         else
             current_pair = current_pair->next;
@@ -502,17 +384,14 @@ uint32_t hashtable_delete (hashtable_t *hashtable, char *key) {
         return 1;
     }
 
-	//freeing allocated memory and deleting.
-    free(current_pair->value);
-    free(current_pair->key);
-    if (current_pair->prev != NULL) {
-        current_pair->prev->next = current_pair->next;
-        current_pair->prev = NULL;
+    if (current_pair->prev == NULL) {
+      hashtable->arr[i] = current_pair->next;
+    } else {
+      current_pair->prev->next = current_pair->next;
+      current_pair->next->prev = current_pair->prev;
     }
-    current_pair->key = NULL;
-    current_pair->value = NULL;
-
-	hashtable->count --;
+    free(current_pair);
+	  hashtable->count --;
     #if defined DEBUG
         LOG("  pair was successufully deleted.");
     #endif
@@ -523,7 +402,7 @@ uint32_t hashtable_delete (hashtable_t *hashtable, char *key) {
 
 uint32_t hashtable_check_if_pair_is_good (hashtable_pair_t *pair) {
     #if defined DEBUG
-        LOG(" -checking if pair is good");
+        LOG("--checking if pair is good");
     #endif
     if (pair == NULL) {
         #if defined ERROR
@@ -531,15 +410,10 @@ uint32_t hashtable_check_if_pair_is_good (hashtable_pair_t *pair) {
         #endif
         return 0;
     }
-    if (pair->key == NULL) {
-        #if defined ERROR
-          LOG("ERROR: hashtable_check_if_pair_is_good: bad argument:  pair->key");
-        #endif
-        return 0;
-    }
+
     if (pair->value == NULL) {
         #if defined ERROR
-          LOG("ERROR: hashtable_check_if_pair_is_good: bad argument:  pair->value");
+          LOG("ERROR: hashtable_check_if_pair_is_good: bad value:  pair->value");
         #endif
         return 0;
     }
@@ -547,49 +421,14 @@ uint32_t hashtable_check_if_pair_is_good (hashtable_pair_t *pair) {
 }
 
 /* Hash functions */
-uint32_t hashtable_get_hash_from_pair (hashtable_t *hashtable, hashtable_pair_t *pair) {
-    #if defined DEBUG || defined INFO
-        LOG("Get hash from pair");
-    #endif
-    if (hashtable == NULL) {
-        #if defined ERROR
-            LOG("ERROR: hashtable_get_hash_from_pair: bad argument:  hashtable");
-        #endif
-        return EINVAL;
-    }
-    if (!hashtable_check_if_pair_is_good (pair)) {
-        #if defined ERROR
-            LOG("ERROR: hashtable_get_hash_from_pair: bad argument:  pair");
-        #endif
-        return EINVAL;
-    }
-    #if defined DEBUG
-        LOG("  from hashtable: %u", (uint32_t)hashtable);
-    #endif
-    return hashtable_get_hash_from_key (hashtable, pair->key);
-}
-
-uint32_t hashtable_get_hash_from_key (hashtable_t *hashtable, char *key) {
+uint32_t hash (hkey_t key) {
     #if defined DEBUG
     LOG("Get hash from key");
     #endif
-    if (hashtable == NULL) {
-        #if defined ERROR
-            LOG("ERROR: hashtable_get_hash_from_key: bad argument:  hashtable");
-        #endif
-        return EINVAL;
-    }
-    if (key == NULL) {
-        #if defined ERROR
-            LOG("ERROR: hashtable_get_hash_from_key: bad argument:  key");
-        #endif
-        return EINVAL;
-    }
     #if defined DEBUG
-        LOG("  hashtable: %u\n  key: %s", (uint32_t)hashtable, key);
+        LOG("  key: %d", (int)key);
     #endif
-    uint32_t hashval = hash_knuth(key);
-    hashval %= hashtable_size(hashtable);
 
+    uint32_t hashval = knuth(key);
     return hashval;
 }
