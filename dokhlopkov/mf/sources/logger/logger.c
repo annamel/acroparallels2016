@@ -4,7 +4,7 @@
  #
  # Lang:     C
  # Author:   okhlopkov
- # Version:  0.1
+ # Version:  0.3
 
  */
 
@@ -25,7 +25,7 @@ uint32_t _find_log_file(char *dst) {
 
   char *current_file_name = (char *)calloc(10 + 9 + 7, sizeof(char));
   while (flag) {
-    sprintf(current_file_name, "logger/logs/%u.txt", current_file_number);
+    sprintf(current_file_name, "%s/logs/%u.txt", PATH_TO_LOGGER_FOLDER, current_file_number);
     if (access(current_file_name, F_OK) != -1) {
       // Log file exists, move to another number
       current_file_number += 1;
