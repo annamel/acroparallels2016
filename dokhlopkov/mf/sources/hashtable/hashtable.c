@@ -79,7 +79,7 @@ hashtable_pair_t hashtable_create_pair (char *nkey, char *nvalue) {
         #if defined ERROR
             LOG("ERROR: hashtable_create_pair: bad argument:  nkey");
         #endif
-        hashtable_pair_t bad_value = {(char *)BAD_ARGUMENT, (char *)BAD_ARGUMENT};
+        hashtable_pair_t bad_value = {(char *)EINVAL, (char *)EINVAL};
         return bad_value;
     }
 
@@ -87,7 +87,7 @@ hashtable_pair_t hashtable_create_pair (char *nkey, char *nvalue) {
         #if defined ERROR
             LOG("ERROR: hashtable_create_pair: bad argument:  nvalue");
         #endif
-        hashtable_pair_t bad_value = {(char *)BAD_ARGUMENT, (char *)BAD_ARGUMENT};
+        hashtable_pair_t bad_value = {(char *)EINVAL, (char *)EINVAL};
         return bad_value;
     }
 
@@ -136,13 +136,13 @@ uint32_t hashtable_delete_table (hashtable_t *hashtable) {
     #if defined ERROR
       LOG("ERROR: hashtable_delete_table: bad argument:  hashtable");
     #endif
-    return BAD_ARGUMENT;
+    return EINVAL;
     }
     if (hashtable->arr == NULL) {
     #if defined ERROR
       LOG("ERROR: hashtable_delete_table: bad argument:  hashtable->arr");
     #endif
-    return BAD_ARGUMENT;
+    return EINVAL;
     }
 
     hashtable_pair_t *array = hashtable->arr;
@@ -187,7 +187,7 @@ uint32_t hashtable_is_empty (hashtable_t *hashtable) {
         #if defined ERROR
             LOG("ERROR: hashtable_is_empty: bad argument:  hashtable");
         #endif
-        return BAD_ARGUMENT;
+        return EINVAL;
     }
     #if defined DEBUG
         LOG(" _is_empty for: %u", (uint32_t)hashtable);
@@ -200,7 +200,7 @@ uint32_t hashtable_count(hashtable_t *hashtable) {
         #if defined ERROR
             LOG("ERROR: hashtable_count: bad argument:  hashtable");
         #endif
-        return BAD_ARGUMENT;
+        return EINVAL;
     }
     #if defined DEBUG
         LOG(" -count for: %u", (uint32_t)hashtable);
@@ -213,7 +213,7 @@ uint32_t hashtable_size (hashtable_t *hashtable) {
         #if defined ERROR
             LOG("ERROR: hashtable_size: bad argument:  hashtable");
         #endif
-        return BAD_ARGUMENT;
+        return EINVAL;
     }
     #if defined DEBUG
         LOG(" -size for: %u", (uint32_t)hashtable);
@@ -228,15 +228,15 @@ uint32_t hashtable_add_pair (hashtable_t *hashtable, hashtable_pair_t pair) {
         #if defined ERROR
           LOG("ERROR: hashtable_add_pair: bad argument:  hashtable");
         #endif
-        return BAD_ARGUMENT;
+        return EINVAL;
     }
     if (hashtable->arr == NULL) {
         #if defined ERROR
           LOG("ERROR: hashtable_add_pair: bad allocation:  array");
         #endif
-        return BAD_ARGUMENT;
+        return EINVAL;
     }
-    if (!hashtable_check_if_pair_is_good (&pair)) return BAD_ARGUMENT;
+    if (!hashtable_check_if_pair_is_good (&pair)) return EINVAL;
     #if defined DEBUG || defined INFO
     LOG("Add pair to: %u", (uint32_t)hashtable);
     #endif
@@ -299,19 +299,19 @@ uint32_t hashtable_add_pair_by_key_value (hashtable_t *hashtable, char *key, cha
         #if defined ERROR
             LOG("ERROR: hashtable_add_pair_by_key_value: bad argument:  hashtable");
         #endif
-        return BAD_ARGUMENT;
+        return EINVAL;
     }
     if (key == NULL) {
         #if defined ERROR
             LOG("ERROR: hashtable_add_pair_by_key_value: bad argument:  key");
         #endif
-        return BAD_ARGUMENT;
+        return EINVAL;
     }
     if (value == NULL) {
         #if defined ERROR
             LOG("ERROR: hashtable_add_pair_by_key_value: bad argument:  value");
         #endif
-        return BAD_ARGUMENT;
+        return EINVAL;
     }
     #if defined DEBUG
         LOG("  to hashtable: %u\n  with key: %s\n  value: %s",
@@ -458,19 +458,19 @@ uint32_t hashtable_delete_pair_by_key (hashtable_t *hashtable, char *key) {
         #if defined ERROR
             LOG("ERROR: hashtable_delete_pair_by_key: bad argument:  hashtable");
         #endif
-        return BAD_ARGUMENT;
+        return EINVAL;
     }
     if (key == NULL) {
         #if defined ERROR
            LOG("ERROR: hashtable_delete_pair_by_key: bad argument:  key");
         #endif
-        return BAD_ARGUMENT;
+        return EINVAL;
     }
     if (hashtable->arr == NULL) {
         #if defined ERROR
             LOG("ERROR: hashtable_delete_pair_by_key: bad argument:  hashtable->arr");
         #endif
-        return BAD_ARGUMENT;
+        return EINVAL;
     }
     #if defined DEBUG
         LOG("  hashtable: %u\n  key: %s\n", (uint32_t)hashtable, key);
@@ -549,13 +549,13 @@ uint32_t hashtable_get_hash_from_pair (hashtable_t *hashtable, hashtable_pair_t 
         #if defined ERROR
             LOG("ERROR: hashtable_get_hash_from_pair: bad argument:  hashtable");
         #endif
-        return BAD_ARGUMENT;
+        return EINVAL;
     }
     if (!hashtable_check_if_pair_is_good (pair)) {
         #if defined ERROR
             LOG("ERROR: hashtable_get_hash_from_pair: bad argument:  pair");
         #endif
-        return BAD_ARGUMENT;
+        return EINVAL;
     }
     #if defined DEBUG
         LOG("  from hashtable: %u", (uint32_t)hashtable);
@@ -571,13 +571,13 @@ uint32_t hashtable_get_hash_from_key (hashtable_t *hashtable, char *key) {
         #if defined ERROR
             LOG("ERROR: hashtable_get_hash_from_key: bad argument:  hashtable");
         #endif
-        return BAD_ARGUMENT;
+        return EINVAL;
     }
     if (key == NULL) {
         #if defined ERROR
             LOG("ERROR: hashtable_get_hash_from_key: bad argument:  key");
         #endif
-        return BAD_ARGUMENT;
+        return EINVAL;
     }
     #if defined DEBUG
         LOG("  hashtable: %u\n  key: %s", (uint32_t)hashtable, key);
