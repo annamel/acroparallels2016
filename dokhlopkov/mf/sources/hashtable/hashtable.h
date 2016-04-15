@@ -42,22 +42,22 @@ uint32_t hashtable_size (hashtable_t *hashtable);
    Returns SIZE_EXCEEDED if no more space in table left.
    Can be used with arguments key and value or pair.
  */
-uint32_t hashtable_add_pair_by_key_value (hashtable_t *hashtable, char *key, char *value);
+uint32_t hashtable_add (hashtable_t *hashtable, char *key, char *value);
 uint32_t hashtable_add_pair (hashtable_t *hashtable, hashtable_pair_t pair);
 
 /*
    get_value returns value by key or id if found.
    If no pair found or no table is created then NULL is returned.
  */
-char *hashtable_get_value_by_key (hashtable_t *hashtable, char *key);
+char *hashtable_get (hashtable_t *hashtable, char *key);
 
 /*
    get_pair returns pair by key or id if found.
    If no pair found by key or id then NULL is returned.
  */
-hashtable_pair_t *hashtable_get_pair_by_key (hashtable_t *hashtable, char *key);
+hashtable_pair_t *hashtable_get_pair (hashtable_t *hashtable, char *key);
 
 /*
    returns 1 if no pair found by key.
  */
-uint32_t hashtable_delete_pair_by_key (hashtable_t *hashtable, char *key);
+uint32_t hashtable_delete (hashtable_t *hashtable, char *key);

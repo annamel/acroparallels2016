@@ -291,7 +291,7 @@ uint32_t hashtable_add_pair (hashtable_t *hashtable, hashtable_pair_t pair) {
     return 0;
 }
 
-uint32_t hashtable_add_pair_by_key_value (hashtable_t *hashtable, char *key, char *value) {
+uint32_t hashtable_add (hashtable_t *hashtable, char *key, char *value) {
     #if defined DEBUG || defined INFO
         LOG("Add by key value");
     #endif
@@ -321,7 +321,7 @@ uint32_t hashtable_add_pair_by_key_value (hashtable_t *hashtable, char *key, cha
 }
 
 // Getters
-char *hashtable_get_value_by_key (hashtable_t *hashtable, char *key) {
+char *hashtable_get (hashtable_t *hashtable, char *key) {
     #if defined DEBUG || defined INFO
     LOG("Get value by key");
     #endif
@@ -399,7 +399,7 @@ char *hashtable_get_value_by_key (hashtable_t *hashtable, char *key) {
     return value_copy;
 }
 
-hashtable_pair_t *hashtable_get_pair_by_key (hashtable_t *hashtable, char *key) {
+hashtable_pair_t *hashtable_get_pair (hashtable_t *hashtable, char *key) {
   #if defined DEBUG || defined INFO
     LOG("Get pair by key");
   #endif
@@ -450,7 +450,7 @@ hashtable_pair_t *hashtable_get_pair_by_key (hashtable_t *hashtable, char *key) 
 }
 
 // Deletion
-uint32_t hashtable_delete_pair_by_key (hashtable_t *hashtable, char *key) {
+uint32_t hashtable_delete (hashtable_t *hashtable, char *key) {
     #if defined DEBUG || defined INFO
      LOG("Delete pair by key");
     #endif
