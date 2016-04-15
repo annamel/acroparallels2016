@@ -1,55 +1,77 @@
 // mapped_file.h
-// DATE: 06.04.2016
+// DATE: 10.04.2016
 
 #ifndef __MAPPED_FILE__
 #define __MAPPED_FILE__
 
 #include <errno.h>
 
-#define MF_SUCCESS			0
-#define MF_OUT_OF_RANGE		1
-
-#define MF_INTERNAL_ERROR	-1
-#define MF_OPEN_FAILED		-2
-#define MF_INVALID_VALUE	-3
-#define MF_NO_MEMORY		ENOMEM
-#define MF_FILE_BUSY		EBUSY
-#define MF_POOL_FULL		-6
-#define MF_ALREADY_RELEASED	-7
-#define MF_READ_ONLY		-8
-//	MF_INTERNAL_ERROR, MF_FILE_BUSY and MF_NO_MEMORY may result in undefined behaviour
-//	Any function might return MF_INTERNAL_ERROR or MF_NO_MEMORY
+// ENOTSUP and ENOMEM may result in undefined behaviour
 
 #ifdef __cplusplus
-extern "C" {
-#endif
+extern "C"
+{
+#endif // __cplusplus
 
-/* Identifies an open file. Valid till `mf_close` invoked. */
+/* Identifies an open file */
+
 typedef void* mf_handle_t;
 
-/* Identifies a mapped buffer. Valid till `mf_unmap` invoked. Unique to the file. */
+#define MF_OPEN_FAILED NULL
+
+/* Identifies a mapped memory */
+
 typedef void* mf_mapmem_handle_t;
 
-/* `mf_close` guaranties that all changes are applied to HDD */
-int mf_open(const char* name, size_t max_memory, mf_handle_t* mf);
-int mf_close(mf_handle_t mf);
+typedef struct mf_mapped_memory
+{
+	void* ptr;
+	mf_mapmem_handle_t handle;
 
-/* Copies data. Buffer `buf` may be used in any way without consequences. */
-int mf_read(mf_handle_t mf, off_t offset, size_t size, void* buf);
-int mf_write(mf_handle_t mf, off_t offset, size_t size, void* buf);
+} mf_mapmem_t;
+
+#define MF_MAP_FAILED NULL
+
+/* All functions on error return value that indicates failure and set errno appropriately  */
 
 /*
- * A mapped memory is identified the file `mf` and mapmem handle `mm`.
- * This is similar to file descriptors which are plain `int` numbers.
- * Pointer `ptr` is the start of a buffer where the mapped memory can be accessed
- * */
-int mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mm, void* ptr);
-int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mm);
+ * 'max_memory_usage' is an optional parameter, pass '0' if you want default value.
+ * Returns NULL on failure.
+ */
+mf_handle_t mf_open(const char* pathname, size_t max_memory_usage);
 
-int mf_file_size(mf_handle_t mf, size_t* size);
+/*
+ * Returns 0 on success and -1 on failure
+ */
+int mf_close(mf_handle_t mf);
+
+/*
+ * Returns -1 on failure
+ */
+ssize_t mf_read(mf_handle_t mf, off_t offset, size_t size, void* buf);
+
+/*
+ * Returns -1 on failure
+ */
+ssize_t mf_write(mf_handle_t mf, off_t offset, size_t size, const void* buf);
+
+/*
+ * Returns NULL on failure
+ */
+mf_mapmem_t* mf_map(mf_handle_t mf, off_t offset, size_t size);
+
+/*
+ * Returns 0 on success and -1 on failure
+ */
+int mf_unmap(mf_mapmem_t* mm);
+
+/*
+ * Returns -1 on failure
+ */
+ssize_t mf_file_size(mf_handle_t mf);
 
 #ifdef __cplusplus
 }
-#endif
+#endif // __cplusplus
 
 #endif // __MAPPED_FILE__
