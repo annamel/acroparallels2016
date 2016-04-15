@@ -4,25 +4,22 @@
 #include "mallocs.h"
 
 int mf_malloc(size_t size, void **ptr) {
-	if( ptr == NULL )
-		return EINVAL;
+	if (ptr == NULL) return EINVAL;
 
-	if( size == 0 ) {
+	if (size == 0) {
 		*ptr = NULL;
 		return 0;
 	}
 
 	void *res = malloc(size);
-	if( res == NULL )
-		return ENOMEM;
+	if (res == NULL) return ENOMEM;
 
 	*ptr = res;
 	return 0;
 }
 
 int mf_calloc(size_t size, void **ptr) {
-	if (ptr == NULL)
-		return EINVAL;
+	if (ptr == NULL) return EINVAL;
 
 	if (size == 0) {
 		*ptr = NULL;
