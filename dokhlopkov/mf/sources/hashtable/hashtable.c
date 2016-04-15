@@ -15,6 +15,12 @@
 #include "hashfunction.h"
 #include "../logger/logger.h"
 
+struct hashtable_pair_t{
+        char *key;
+        char *value;
+        hashtable_pair_t *next;
+        hashtable_pair_t *prev;
+};
 
 /* Private methods */
 
@@ -24,7 +30,7 @@ uint32_t hashtable_check_if_pair_is_good (hashtable_pair_t *pair);
 
 /* Constructors */
 
-hashtable_t *hashtable_create_table (uint32_t size) {
+hashtable_t *hashtable_construct (uint32_t size) {
     #if defined DEBUG || defined INFO || defined ERROR
         LOG("Creating new Hashtable");
     #endif
@@ -126,7 +132,7 @@ hashtable_pair_t hashtable_create_pair (char *nkey, char *nvalue) {
 
 /* Destructor */
 
-uint32_t hashtable_delete_table (hashtable_t *hashtable) {
+uint32_t hashtable_destruct (hashtable_t *hashtable) {
     #if defined DEBUG || defined INFO
     LOG("Deleting table: %u", (uint32_t)hashtable);
     #endif
@@ -416,7 +422,7 @@ hashtable_pair_t *hashtable_get_pair (hashtable_t *hashtable, char *key) {
     return NULL;
   }
   //retreiving value.
-  char *nvalue = hashtable_get_value_by_key (hashtable, key);
+  char *nvalue = hashtable_get (hashtable, key);
   if (nvalue == NULL) {
     #if defined ERROR
       LOG("ERROR: hashtable_get_pair_by_key: can't get value by key");
@@ -435,7 +441,7 @@ hashtable_pair_t *hashtable_get_pair (hashtable_t *hashtable, char *key) {
   hashtable_pair_t *pair = (hashtable_pair_t *)malloc(sizeof(hashtable_pair_t));
   if (pair == NULL) {
     #if defined ERROR
-      LOG("ERROR: hashtable_get_pair_by_key: bad allocation:  hashtable");
+      LOG("ERROR: hashtable_get: bad allocation:  hashtable");
     #endif
     return NULL;
   }
