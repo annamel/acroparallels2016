@@ -4,7 +4,7 @@
  #
  # Lang:     C
  # Author:   okhlopkov
- # Version:  0.2
+ # Version:  0.4
 
  */
 
