@@ -24,7 +24,7 @@ struct hashtable_pair_t{
 
 /* Private methods */
 
-uint32_t hash ( hkey_t key);
+uint32_t hash (hkey_t key);
 uint32_t hashtable_check_if_pair_is_good (hashtable_pair_t *pair);
 
 /* Constructors */
@@ -35,7 +35,7 @@ hashtable_t *hashtable_construct (uint32_t size) {
     #endif
     if (size == 0) {
         #if defined ERROR
-           LOG("ERROR: hashtable_create_table: bad argument:  size = 0");
+           LOG("ERROR: hashtable_construct: bad argument:  size = 0");
         #endif
         return NULL;
     }
@@ -45,7 +45,7 @@ hashtable_t *hashtable_construct (uint32_t size) {
     hashtable_t *hashtable = (hashtable_t *)malloc(sizeof(hashtable_t));
     if (hashtable == NULL) {
         #if defined ERROR
-           LOG("ERROR: hashtable_create_table: bad allocation: hashtable");
+           LOG("ERROR: hashtable_construct: bad allocation: hashtable");
         #endif
         return NULL;
     }
@@ -56,7 +56,7 @@ hashtable_t *hashtable_construct (uint32_t size) {
     hashtable->arr = (hashtable_pair_t **)calloc(size, sizeof(hashtable_pair_t*));
     if (hashtable->arr == NULL) {
         #if defined ERROR
-            LOG("ERROR: hashtable_create_table: bad allocation: hashtable's data");
+            LOG("ERROR: hashtable_construct: bad allocation: hashtable's data");
         #endif
         return NULL;
     }
@@ -140,7 +140,7 @@ uint32_t hashtable_destruct (hashtable_t *hashtable) {
 
 /* Public properties */
 
-uint32_t hashtable_count(hashtable_t *hashtable) {
+uint32_t hashtable_count (hashtable_t *hashtable) {
     if (hashtable == NULL) {
         #if defined ERROR
             LOG("ERROR: hashtable_count: bad argument:  hashtable");
@@ -381,7 +381,7 @@ uint32_t hashtable_delete (hashtable_t *hashtable, hkey_t key) {
         #if defined ERROR
             LOG("ERROR: hashtable_delete_pair_by_key: pair not found");
         #endif
-        return 1;
+        return ENODATA;
     }
 
     if (current_pair->prev == NULL) {
