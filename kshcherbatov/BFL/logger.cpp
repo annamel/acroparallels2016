@@ -220,7 +220,7 @@ static void ring_buff_fork_daemon(struct ring_buff_t *ring_buff, bool first_init
             end_loop_condition = sem_act(ring_buff->sems_fd, SEM_CONTROL_PS_NUM, SEM_ACTION_WAIT0, IPC_NOWAIT);
         } while (end_loop_condition != 0);
 
-        ring_buf_push_msg(ring_buff, LOGLEVEL_INFO, getpid(), "Daemon is not currently useful.\n");
+        ring_buf_push_msg(ring_buff, LOGLEVEL_INFO, getpid(), "Logging Daemon is not currently useful.\n");
         ring_buff_flush_to_file(ring_buff);
         ring_buff_destruct_shared_resources(ring_buff);
 
