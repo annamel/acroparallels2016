@@ -22,7 +22,6 @@ struct Chunk {
 
 struct ChunkPool {
 	int fd;
-	int prot;
 	size_t size;
 	size_t nr_pages;
 	chunk_t *ch_list;
@@ -39,7 +38,7 @@ static int ch_get(cpool_t *cpool, off_t idx, off_t len, chunk_t **ch);
 static size_t get_ch_size(off_t multiplier);
 
 /* ------- pool of chs's ------- */
-static int cpool_init(cpool_t *cpool, unsigned size, int fd, int prot);
+static int cpool_init(cpool_t *cpool, unsigned size, int fd);
 static int cpool_fini(cpool_t *cpool);
 static int cpool_add(chunk_t *ch);
 static int cpool_del(chunk_t *ch);
@@ -53,7 +52,7 @@ int ch_free(chunk_t);
 int ch_find(cpool_t *cpool, off_t offset, size_t size, chunk_t **ch);
 
 /* ------- pool of chs's ------- */
-int cpool_construct(size_t max_mem, int fd, int prot, cpool_t **cpool);
+int cpool_construct(size_t max_mem, int fd, cpool_t **cpool);
 int cpool_destruct(cpool_t **cpool);
 int cpool_mem_add(void *ptr, chunk_t *ch);
 int cpool_mem_get(cpool_t *cpool, void *ptr, chunk_t **ch);
@@ -74,7 +73,7 @@ static int ch_init(off_t idx, off_t len, cpool_t *cpool, chunk_t *ch) {
 	ch->cpool = cpool;
 	ch->payload = mmap(NULL,
                         get_ch_size(ch->len),
-                        cpool->prot, MAP_SHARED,
+                        PROT_READ | PROT_WRITE, MAP_SHARED,
                         cpool->fd,
                         get_ch_size(idx));
 
@@ -210,25 +209,24 @@ int ch_release(chunk_t *ch) {
 	return 0;
 }
 
-static int cpool_init(cpool_t *cpool, unsigned size, int fd, int prot) {
+static int cpool_init(cpool_t *cpool, unsigned size, int fd) {
 	cpool->ch_list = NULL;
 	cpool->size = size;
 	cpool->nr_pages = 0;
 	cpool->fd = fd;
-	cpool->prot = prot;
 	cpool->ht = NULL;
   cpool->ht = hashtable_construct(HTBL_SIZE);
   cpool->mem_ht = hashtable_construct(HTBL_SIZE);
 	return 0;
 }
 
-int cpool_construct(size_t max_mem, int fd, int prot, cpool_t **cpool) {
+int cpool_construct(size_t max_mem, int fd, cpool_t **cpool) {
 	size_t size = max_mem ? max_mem / get_ch_size(1) : DEFAULT_CPOOL_SIZE;
 
 	int err = _malloc (sizeof(cpool_t), (void **)cpool);
 	if (err) return err;
 
-	return cpool_init(*cpool, size, fd, prot);
+	return cpool_init(*cpool, size, fd);
 }
 
 static int cpool_fini(cpool_t *cpool) {
