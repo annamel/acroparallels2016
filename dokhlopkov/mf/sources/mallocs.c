@@ -3,7 +3,7 @@
 
 #include "mallocs.h"
 
-int mf_malloc(size_t size, void **ptr) {
+int _malloc(size_t size, void **ptr) {
 	if (ptr == NULL) return EINVAL;
 
 	if (size == 0) {
@@ -18,7 +18,7 @@ int mf_malloc(size_t size, void **ptr) {
 	return 0;
 }
 
-int mf_calloc(size_t size, void **ptr) {
+int _calloc(size_t size, void **ptr) {
 	if (ptr == NULL) return EINVAL;
 
 	if (size == 0) {
@@ -35,7 +35,7 @@ int mf_calloc(size_t size, void **ptr) {
 	return 0;
 }
 
-int mf_realloc(size_t size, void **ptr) {
+int _realloc(size_t size, void **ptr) {
 	if (ptr == NULL) return EINVAL;
 
 	if (size == 0) {
@@ -50,7 +50,7 @@ int mf_realloc(size_t size, void **ptr) {
 	return 0;
 }
 
-int mf_free(size_t size, void **ptr) {
+int _free(size_t size, void **ptr) {
 	if (ptr == NULL) return EINVAL;
 
 	free(*ptr);
