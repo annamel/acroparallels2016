@@ -65,14 +65,12 @@ ssize_t mf_write(mf_handle_t mf, off_t offset, size_t size, void *buf) {
       err = ch_get_mem(ch, offset, &dst);
       if (err) return err;
       memcpy(dst, buf, size);
-      written_bytes = size;
     case ENODATA:
       written_bytes = pwrite(cpool_fd(cpool), buf, size, offset);
       if (written_bytes == -1) return errno;
       break;
     default:
       return err;
-      break;
   }
   return 0;
 }
