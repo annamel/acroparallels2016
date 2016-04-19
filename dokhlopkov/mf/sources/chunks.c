@@ -147,9 +147,10 @@ static int ch_get(cpool_t *cpool, off_t idx, off_t len, chunk_t **ch) {
 	*ch = NULL;
 
 	*ch = hashtable_get(cpool->ht, idx);
+	if (*ch == NULL) return ENODATA;
 
-	if ((*ch)->idx + (*ch)->len < idx + len)
-		return ENODATA;
+//	if ((*ch)->idx + (*ch)->len < idx + len)
+//		return ENODATA;
 
 	return 0;
 }
@@ -214,9 +215,8 @@ static int cpool_init(cpool_t *cpool, unsigned size, int fd) {
 	cpool->size = size;
 	cpool->nr_pages = 0;
 	cpool->fd = fd;
-	cpool->ht = NULL;
-  cpool->ht = hashtable_construct(HTBL_SIZE);
-  cpool->mem_ht = hashtable_construct(HTBL_SIZE);
+  	cpool->ht = hashtable_construct(HTBL_SIZE);
+  	cpool->mem_ht = hashtable_construct(HTBL_SIZE);
 	return 0;
 }
 
