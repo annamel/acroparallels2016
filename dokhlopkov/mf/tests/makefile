@@ -1,15 +1,19 @@
 CC=gcc
 
-HASHTABLE = ../sources/hashtable/hashtable.c
-HASHFUNCTION = ../sources/hashtable/hashfunction.c
+HASHTABLE = ../sources/hashtable/hashtable.c ../sources/hashtable/hashfunction.c
 LOGGER = ../sources/logger/logger.c
 
-SOURCES = ../sources/hashtable/hashtable.c ../sources/hashtable/hashfunction.c ../sources/logger/logger.c
+MAPPEDFILE = ../sources/mallocs.c ../sources/chunks.c ../sources/mapped_file.c
 
-all: test
+SOURCES = $(LOGGER) $(HASHTABLE) $(MAPPEDFILE)
 
-test: test_hashtable.c $(SOURCES)
-	$(CC) test_hashtable.c $(SOURCES) -o test
+all: mf
+
+mf: test_mf.c $(SOURCES)
+	$(CC) test_mf.c $(SOURCES) -o test
+
+hashtable: test_hashtable.c $(HASHTABLE) $(LOGGER)
+	$(CC) test_hashtable.c $(HASHTABLE) $(LOGGER) -o test
 
 clean:
 	-rm -f test
