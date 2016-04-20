@@ -63,15 +63,25 @@ int test_3(const char* filename) {
 }
 
 int test_4(const char* filename) {
-  mf_handle_t handle = mf_open(filename, 0);
+    mf_handle_t handle = mf_open(filename, 0);
+    size_t msgsize = 1337;
 
-  mf_mapmem_t *mm = mf_map(handle, 0, 10);
-  if (mm == NULL || mm->ptr == NULL) return 1;
+    mf_mapmem_t *mm = mf_map(handle, 0, msgsize);
+    if (mm == NULL || mm->ptr == NULL) return 1;
 
-  int err = mf_unmap(mm);
-  if (err) return err;
+    char *buf = (char *)malloc(msgsize);
+    memset(buf, 0, msgsize);
+    mf_read(handle, 0, msgsize, buf);
 
-  return mf_close(handle);
+    char *buff = (char *)malloc(msgsize);
+    memcpy(buff, mm->ptr, msgsize);
+    if (strcmp(buf, buff)) return TESTFAILED;
+
+    free(buf); free(buff);
+    int err = mf_unmap(mm);
+    if (err) return err;
+
+    return mf_close(handle);
 }
 
 int test_5(const char* filename) {
