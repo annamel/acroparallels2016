@@ -9,13 +9,16 @@
 void check(int err) {
   err ? printf("FAILED: %d\n", err) : printf("PASSED\n");
 }
+
+
 int test_1(const char* filename); // open / close
 int test_2(const char* filename); // file size
 int test_3(const char* filename); // read
-int test_4(const char* filename); // iterate over buffer with big file
-int test_5(const char* filename); // map & unmap
-int test_6(const char* filename); // write to a file & read
+int test_4(const char* filename); // map & unmap
+int test_5(const char* filename); // write to a file & read & random access
 
+/* Performance tests */
+int ptest_1(const char* filename); // iterate over buffer with big file
 
 int main(int argc, char **argv) {
   if (argc != 2) { printf("Input file?\n"); return 1; }
@@ -25,9 +28,10 @@ int main(int argc, char **argv) {
   printf("Test 01: "); check(test_1(filename));
   printf("Test 02: "); check(test_2(filename));
   printf("Test 03: "); check(test_3(filename));
-//  printf("Test 04: "); check(test_4(filename));
+  printf("Test 04: "); check(test_4(filename));
   printf("Test 05: "); check(test_5(filename));
-  printf("Test 06: "); check(test_6(filename));
+
+//  printf("Performance test 01: "); check(ptest_1(filename));
 
   return 0;
 }
@@ -59,45 +63,10 @@ int test_3(const char* filename) {
 }
 
 int test_4(const char* filename) {
-  if (!strcmp(filename, "big") && !strcmp(filename, "tests/big")) { printf("THIS TEST REQUIRES SPECIAL FILE - "); return 1; }
-  mf_handle_t handle = mf_open(filename, 0);
-  size_t size = (size_t)mf_file_size(handle);
-  if (size != 40000001345) { printf("THIS TEST REQUIRES SPECIAL FILE - "); return 1; }
-  //  printf("size = %zu\n", size);
-  size_t bufsize = 1024;
-  void *buf = malloc(bufsize);
-
-  int counter = 1337 + 8; // number of ones (1) exists in file
-  int counter1 = 1000;
-  int counter2 = 300;
-  int counter3 = 30;
-  int counter4 = 7;
-  size_t readbytes = 0;
-  char current;
-  for (size_t j = 0; readbytes < size; j += bufsize) {
-    readbytes += (size_t)mf_read(handle, j, bufsize, buf);
-  //  if (!(j % (bufsize * 1000000))) printf ("%zu\n", j);
-    for (int i = 0; i < bufsize; ++i) {
-      current = ((char *) buf)[i];
-      if (current != '9') counter--;
-      if (current == '1') counter1--;
-      if (current == '2') counter2--;
-      if (current == '3') counter3--;
-      if (current == '4') counter4--;
-    }
-  }
-  //  printf("\ntotal: %d\n1: %d\n2: %d\n3: %d\n4: %d\n", counter, counter1, counter2, counter3, counter4);
-  if (counter || counter1 || counter2 || counter3 || counter4)
-    return TESTFAILED;
-  free(buf);
-  return mf_close(handle);
-}
-
-int test_5(const char* filename) {
   mf_handle_t handle = mf_open(filename, 0);
 
   mf_mapmem_t *mm = mf_map(handle, 0, 10);
-  if (mm == NULL) return TESTFAILED;
+  if (mm == NULL || mm->ptr == NULL) return 1;
 
   int err = mf_unmap(mm);
   if (err) return err;
@@ -105,7 +74,7 @@ int test_5(const char* filename) {
   return mf_close(handle);
 }
 
-int test_6(const char* filename) {
+int test_5(const char* filename) {
   mf_handle_t handle = mf_open("tests/temp", 0);
   mf_write(handle, 0, 10, "oTENCHARSo");
   char *buf = (char *)malloc(10);
@@ -123,6 +92,44 @@ int test_6(const char* filename) {
   if (strcmp("TENELE", buf)) return TESTFAILED + 2;
 
   free(buf);
+  int err = mf_close(handle);
   remove("tests/temp");
+  return err;
+}
+
+
+
+int ptest_1(const char* filename) {
+  if (!strcmp(filename, "big") && !strcmp(filename, "tests/big")) { printf("THIS TEST REQUIRES SPECIAL FILE - "); return 1; }
+  mf_handle_t handle = mf_open(filename, 0);
+  size_t size = (size_t)mf_file_size(handle);
+  if (size != 40000001345) { printf("THIS TEST REQUIRES SPECIAL FILE - "); return 1; }
+  //  printf("size = %zu\n", size);
+  size_t bufsize = 1024;
+  void *buf = malloc(bufsize);
+
+  int counter = 1337 + 8; // number of ones (1) exists in file
+  int counter1 = 1000;
+  int counter2 = 300;
+  int counter3 = 30;
+  int counter4 = 7;
+  size_t readbytes = 0;
+  char current;
+  for (size_t j = 0; readbytes < size; j += bufsize) {
+    readbytes += (size_t)mf_read(handle, j, bufsize, buf);
+    //  if (!(j % (bufsize * 1000000))) printf ("%zu\n", j);
+    for (int i = 0; i < bufsize; ++i) {
+      current = ((char *) buf)[i];
+      if (current != '9') counter--;
+      if (current == '1') counter1--;
+      if (current == '2') counter2--;
+      if (current == '3') counter3--;
+      if (current == '4') counter4--;
+    }
+  }
+  //  printf("\ntotal: %d\n1: %d\n2: %d\n3: %d\n4: %d\n", counter, counter1, counter2, counter3, counter4);
+  if (counter || counter1 || counter2 || counter3 || counter4)
+    return TESTFAILED;
+  free(buf);
   return mf_close(handle);
 }
