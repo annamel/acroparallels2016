@@ -38,25 +38,32 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 	lib_dir="$root_lib_dir/$MF_SUFFIX/$LIBOUT_SUFFIX/"
 	if [ -d $make_dir ]; then
 	if [ -d $lib_dir ]; then
+		func_name="it_check_build_$(basename $root_lib_dir)"
+		echo "$func_name() {" >> $test_file
+		echo "    pushd $make_dir" >> $test_file
+		echo "    make clean" >> $test_file
+		echo "    make" >> $test_file
+		echo "    popd" >> $test_file
+		echo "}" >> $test_file
+		echo "" >> $test_file
 		for root_test_dir in $ROOT_TEST_DIR ; do
-		for test in $root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/* ; do
-		if [ -f $test ]; then
-			func_name="it_check_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .c)"
-			out_dir="$root_lib_dir/$MF_SUFFIX/$LIBOUT_SUFFIX"
-			mkdir -p $out_dir
-			echo "$func_name() {" >> $test_file
-			echo "    pushd $make_dir" >> $test_file
-			echo "    make" >> $test_file
-			echo "    gcc $CFLAGS -I$PWD/../include -o $out_dir/test $test $out_dir/*.o" >> $test_file
-			echo "    $out_dir/test" >> $test_file
-			echo "    popd" >> $test_file
-			echo "}" >> $test_file
-			echo "" >> $test_file
-		fi
+			for test in $root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/* ; do
+			if [ -f $test ]; then
+				func_name="it_check_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .c)"
+				out_dir="$root_lib_dir/$MF_SUFFIX/$LIBOUT_SUFFIX"
+				mkdir -p $out_dir
+				echo "$func_name() {" >> $test_file
+				echo "    pushd $make_dir" >> $test_file
+				echo "    gcc $CFLAGS -I$PWD/../include -o $out_dir/test $test $out_dir/*.o" >> $test_file
+				echo "    $out_dir/test" >> $test_file
+				echo "    popd" >> $test_file
+				echo "}" >> $test_file
+				echo "" >> $test_file
+			fi
 		done
 		done
 	fi
 	fi
 done
 
-./roundup $test_file
+$PWD/roundup $test_file

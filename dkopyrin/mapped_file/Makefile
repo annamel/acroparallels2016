@@ -1,5 +1,5 @@
 MAKE_DIR := $(PWD)/out
-DIRS := logger hash chunk_manager mf
+DIRS := logger hash chunk_manager mf mapped_file
 BUILDDIRS := $(DIRS:%=build-%)
 INSTALLDIRS := $(DIRS:%=install-%)
 CLEANDIRS := $(DIRS:%=clean-%)
