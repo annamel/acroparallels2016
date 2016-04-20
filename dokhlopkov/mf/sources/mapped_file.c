@@ -92,9 +92,9 @@ mf_mapmem_t *mf_map(mf_handle_t mf, off_t offset, size_t size) {
 }
 
 int mf_unmap(mf_mapmem_t *mm) {
-	errno = ch_release((chunk_t *)mm->handle);
+	errno = ch_release((chunk_t *)mm->ptr);
 	if (errno) return -1;
-	errno = _free(sizeof(mf_mapmem_t), (void **)&mm);
+	errno = _free((void **)&mm);
 	return errno ? -1: 0;
 }
 
