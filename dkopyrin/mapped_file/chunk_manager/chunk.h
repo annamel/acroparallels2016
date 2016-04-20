@@ -8,6 +8,7 @@ struct chunk {
 	void * addr;
 	size_t length;
 	size_t offset;
+	int ref_cnt;
 };
 
 int chunk_init (struct chunk *ch, size_t length, long int offset, int prot, int fd);

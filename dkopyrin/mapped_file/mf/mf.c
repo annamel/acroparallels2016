@@ -57,8 +57,8 @@ void mf_close(struct mf *mf) {
 
 int mf_seek(struct mf *mf, long int offset){
 	//TODO: Some checks
-	if (offset > mf -> size)
-		return -1;
+	//if (offset > mf -> size)
+	//	return -1;
 	mf -> offset = offset;
 	return 0;
 }

@@ -9,6 +9,7 @@ int main(int argc, char *argv[]){
 		printf("Usage: %s filename\n", argv[0]);
 		return 0;
 	}
+
 	LOG(DEBUG, "---Open\n");
 	struct mf *file1 = mf_open(argv[1], O_RDONLY, file1);
 	int file2 = open(argv[1], O_RDONLY);
@@ -27,6 +28,10 @@ int main(int argc, char *argv[]){
 	memset(buf2, 0, 12345);
 	mf_read(file1, buf1, 5000);
 	   read(file2, buf2, 5000);
+	//printf("%s", buf1);
+  	//printf("\n\n\n\n\n\n\n\n\n");
+  	//printf("%s", buf2);
+
 	printf("Test2: %d\n", memcmp(buf1, buf2, 5000));
   	LOG(DEBUG, "---Read 3\n");
 	memset(buf1, 0, 12345);

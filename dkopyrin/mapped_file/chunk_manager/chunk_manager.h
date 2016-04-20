@@ -3,13 +3,19 @@
 
 #include "chunk.h"
 #include "../hash/hash_table.h"
-#define POOL_SIZE 1
+
+#define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
+
+#define POOL_SIZE 256
+#define MAX_CHUNK_SIZE 1024*1024
 
 struct chunk_manager {
 	int fd;
 	int prot;
  	struct chunk chunk_pool[POOL_SIZE];
 	struct hashtable ht;
+
+	int cur_chunk_index;
 };
 
 int chunk_manager_init (struct chunk_manager *cm, int fd, int mode);
