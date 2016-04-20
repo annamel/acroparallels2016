@@ -61,7 +61,7 @@ struct chunk *chunk_manager_get_av_chunk_index (struct chunk_manager *cm){
 	return NULL;
 }
 
-long int chunk_manager_offset2chunk (struct chunk_manager *cm, long int offset, long int length, struct chunk ** ret_ch, int *chunk_offset) {
+long int chunk_manager_offset2chunk (struct chunk_manager *cm, long int offset, long int length, struct chunk ** ret_ch, int *chunk_offset, int remap) {
 	LOG(INFO, "offset2chunk called\n");
 	long int poffset = offset & ~(sysconf(_SC_PAGE_SIZE) - 1);
 	long int plength = ((offset + length) & ~(sysconf(_SC_PAGE_SIZE) - 1)) +
@@ -94,6 +94,8 @@ long int chunk_manager_offset2chunk (struct chunk_manager *cm, long int offset, 
 		LOG(DEBUG, "Chunk found - nice!\n");
 		*chunk_offset = offset - cur_ch -> offset;
 		*ret_ch = cur_ch;
+		if (remap && cur_ch -> length - offset + cur_ch -> offset < length)
+			chunk_remap(cur_ch, plength);
 		return cur_ch -> length - offset + cur_ch -> offset;
 	}
 }

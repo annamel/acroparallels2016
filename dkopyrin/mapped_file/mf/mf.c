@@ -40,82 +40,107 @@ struct _mf *_mf_open(const char *name, int flags, ...){
 	long int size = fsize(name);
 	if (size == -1)
 		return NULL;
-	struct _mf *_mf = (struct _mf *) malloc(sizeof(struct _mf));
-	_mf -> offset = 0;
-	_mf -> fd = fd;
-	_mf -> size = size;
-	_mf -> flags = flags;
-	chunk_manager_init(&_mf -> cm, _mf -> fd, _mf -> flags);
-	return _mf;
+	struct _mf *mf = (struct _mf *) malloc(sizeof(struct _mf));
+	mf -> offset = 0;
+	mf -> fd = fd;
+	mf -> size = size;
+	mf -> flags = flags;
+	chunk_manager_init(&mf -> cm, mf -> fd, mf -> flags);
+	return mf;
 }
-void _mf_close(struct _mf *_mf) {
-	assert(_mf);
-	chunk_manager_finalize(&_mf -> cm);
-	close(_mf -> fd);
-	free(_mf);
+void _mf_close(struct _mf *mf) {
+	assert(mf);
+	chunk_manager_finalize(&mf -> cm);
+	close(mf -> fd);
+	free(mf);
 }
 
-int _mf_seek(struct _mf *_mf, long int offset){
+int _mf_seek(struct _mf *mf, long int offset){
 	//TODO: Some checks
-	//if (offset > _mf -> size)
+	//if (offset > mf -> size)
 	//	return -1;
-	_mf -> offset = offset;
+	mf -> offset = offset;
 	return 0;
 }
-long int _mf_tell(struct _mf *_mf){
-	return _mf -> offset;
+long int _mf_tell(struct _mf *mf){
+	return mf -> offset;
 }
-ssize_t _mf_read(struct _mf *_mf, void *buf, size_t nbyte){
+ssize_t _mf_read(struct _mf *mf, void *buf, size_t nbyte){
 	LOG(INFO, "mf_read called\n");
-	if (_mf -> size <= _mf -> offset)
-		_mf -> offset = _mf -> size;
-	nbyte = MIN(nbyte, _mf -> size - _mf -> offset);
+	if (mf -> size <= mf -> offset)
+		mf -> offset = mf -> size;
+	nbyte = MIN(nbyte, mf -> size - mf -> offset);
 	struct chunk *ch = NULL;
 	int ch_offset = 0;
 	ssize_t read_bytes = 0;
 	while (nbyte >= 0) {
-		long int av_chunk_size = chunk_manager_offset2chunk(&_mf -> cm, _mf -> offset, nbyte, &ch, &ch_offset);
+		long int av_chunk_size = chunk_manager_offset2chunk(&mf -> cm, mf -> offset, nbyte, &ch, &ch_offset, 0);
 		LOG(DEBUG, "Got chunk of size %d\n", av_chunk_size);
 		long int read_size = MIN(av_chunk_size, nbyte);
 		chunk_cpy_c2b(buf, ch, read_size, ch_offset);
 		buf += read_size;
-		_mf -> offset += read_size;
+		mf -> offset += read_size;
 		read_bytes += read_size;
 
 		if (nbyte <= read_size)
 			break;
 		nbyte -= av_chunk_size;
 	}
-	LOG(DEBUG, "End offset is %d\n", _mf -> offset);
+	LOG(DEBUG, "End offset is %d\n", mf -> offset);
 	return read_bytes;
 }
-ssize_t _mf_write(struct _mf *_mf, const void *buf, size_t nbyte){
+ssize_t _mf_write(struct _mf *mf, const void *buf, size_t nbyte){
 	LOG(INFO, "mf_write called\n");
 	struct chunk *ch = NULL;
 	int ch_offset = 0;
 	ssize_t write_bytes = 0;
 	while (nbyte >= 0) {
-		long int av_chunk_size = chunk_manager_offset2chunk(&_mf -> cm, _mf -> offset, nbyte, &ch, &ch_offset);
+		long int av_chunk_size = chunk_manager_offset2chunk(&mf -> cm, mf -> offset, nbyte, &ch, &ch_offset, 0);
 		LOG(DEBUG, "Got chunk of size %d\n", av_chunk_size);
 	  	long int write_size = MIN(av_chunk_size, nbyte);
-		LOG(DEBUG, "Stretching file to %d\n", _mf -> offset + write_size);
-		if (lseek(_mf -> fd, _mf -> offset + write_size - 1, SEEK_SET) == -1) {
+		LOG(DEBUG, "Stretching file to %d\n", mf -> offset + write_size);
+		if (lseek(mf -> fd, mf -> offset + write_size - 1, SEEK_SET) == -1) {
         		LOG(ERROR, "Failed file stretch - lseek\n");
 			return write_bytes;
 		}
-		if (write(_mf -> fd, "", 1) == -1){
+		if (write(mf -> fd, "", 1) == -1){
 			LOG(ERROR, "Failed file stretch - write\n");
         		return write_bytes;
 		}
 
 		chunk_cpy_b2c(ch, buf, write_size, ch_offset);
-		_mf -> offset += write_size;
+		mf -> offset += write_size;
 		write_bytes += write_size;
 
 		if (nbyte <= av_chunk_size)
 			break;
 		nbyte -= av_chunk_size;
 	}
-	LOG(DEBUG, "End offset is %d\n", _mf -> offset);
+	LOG(DEBUG, "End offset is %d\n", mf -> offset);
 	return write_bytes;
+}
+
+struct _mf_mapped_memory *_mf_map(struct _mf *mf, off_t offset, size_t size){
+  	struct chunk *ch = NULL;
+	int ch_offset = 0;
+	long int av_chunk_size = chunk_manager_offset2chunk(&mf -> cm, offset, size, &ch, &ch_offset, 1);
+	if (av_chunk_size == -1)
+		return (void *) -1;
+
+	ch -> ref_cnt++;
+	struct _mf_mapped_memory *mm = malloc(sizeof(struct _mf_mapped_memory));
+	mm -> ptr = ch -> addr + ch_offset;
+	mm -> handle = malloc(sizeof(struct _mf_mapmem_handle));
+	mm -> handle -> mf = mf;
+	mm -> handle -> ch = ch;
+	return mm;
+}
+int _mf_unmap(struct _mf_mapped_memory *mm){
+	assert(mm);
+	assert(mm -> handle);
+
+	mm -> handle -> ch -> ref_cnt--;
+	free(mm -> handle);
+	free(mm);
+	return 0;
 }

@@ -24,6 +24,7 @@ ssize_t mf_write(mf_handle_t mf, off_t offset, size_t size, const void *buf){
 }
 
 mf_mapmem_t *mf_map(mf_handle_t mf, off_t offset, size_t size){
+
 	errno = ENOTSUP; //TODO: Support mapmem
 	return MF_MAP_FAILED;
 }
