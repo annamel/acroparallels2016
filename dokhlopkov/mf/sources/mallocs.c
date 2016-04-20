@@ -50,7 +50,7 @@ int _realloc(size_t size, void **ptr) {
 	return 0;
 }
 
-int _free(size_t size, void **ptr) {
+int _free(void **ptr) {
 	if (ptr == NULL) return EINVAL;
 
 	free(*ptr);

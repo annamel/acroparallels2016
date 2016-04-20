@@ -8,6 +8,6 @@
 int _malloc(size_t size, void **ptr);
 int _calloc(size_t size, void **ptr);
 int _realloc(size_t size, void **ptr);
-int _free(size_t size, void **ptr);
+int _free(void **ptr);
 
 #endif
