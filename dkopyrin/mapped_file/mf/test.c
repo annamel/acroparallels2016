@@ -11,7 +11,7 @@ int main(int argc, char *argv[]){
 	}
 
 	LOG(DEBUG, "---Open\n");
-	struct _mf *file1 = _mf_open(argv[1], O_RDONLY, file1);
+	struct _mf *file1 = _mf_open(argv[1], O_RDWR, file1);
 	int file2 = open(argv[1], O_RDONLY);
 
   	void *buf1 = malloc(12345);

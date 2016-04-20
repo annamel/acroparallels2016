@@ -5,11 +5,12 @@
 
 //TODO: Use max_memory_usage
 mf_handle_t mf_open(const char *pathname, size_t max_memory_usage){
-	return (mf_handle_t) _mf_open(pathname, O_RDWR, 0755);
+	return (mf_handle_t) _mf_open(pathname, O_RDWR | O_CREAT | O_TRUNC, 0755);
 }
 
 int mf_close(mf_handle_t mf){
 	_mf_close((struct _mf *)mf);
+	return 0;
 }
 
 ssize_t mf_read(mf_handle_t mf, off_t offset, size_t size, void *buf){

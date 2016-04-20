@@ -5,7 +5,7 @@ INSTALLDIRS := $(DIRS:%=install-%)
 CLEANDIRS := $(DIRS:%=clean-%)
 TESTDIRS := $(DIRS:%=test-%)
 
-CFLAGS := -DDEBUG_LOG -DDEBUG_STDERRLOG -g
+CFLAGS += -DDEBUG_STDERRLOG -g
 export CFLAGS MAKE_DIR
 
 all: make_dir_init $(BUILDDIRS)

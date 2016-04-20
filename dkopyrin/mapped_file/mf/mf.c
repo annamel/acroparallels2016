@@ -21,7 +21,7 @@ off_t fsize(const char *filename) {
     return -1;
 }
 
-struct _mf *mf_open(const char *name, int flags, ...){
+struct _mf *_mf_open(const char *name, int flags, ...){
 	LOG(INFO, "mf_open called\n");
 	assert(name);
 
@@ -48,25 +48,27 @@ struct _mf *mf_open(const char *name, int flags, ...){
 	chunk_manager_init(&_mf -> cm, _mf -> fd, _mf -> flags);
 	return _mf;
 }
-void mf_close(struct _mf *_mf) {
+void _mf_close(struct _mf *_mf) {
 	assert(_mf);
 	chunk_manager_finalize(&_mf -> cm);
 	close(_mf -> fd);
 	free(_mf);
 }
 
-int mf_seek(struct _mf *_mf, long int offset){
+int _mf_seek(struct _mf *_mf, long int offset){
 	//TODO: Some checks
 	//if (offset > _mf -> size)
 	//	return -1;
 	_mf -> offset = offset;
 	return 0;
 }
-long int mf_tell(struct _mf *_mf){
+long int _mf_tell(struct _mf *_mf){
 	return _mf -> offset;
 }
-ssize_t mf_read(struct _mf *_mf, void *buf, size_t nbyte){
+ssize_t _mf_read(struct _mf *_mf, void *buf, size_t nbyte){
 	LOG(INFO, "mf_read called\n");
+	if (_mf -> size <= _mf -> offset)
+		_mf -> offset = _mf -> size;
 	nbyte = MIN(nbyte, _mf -> size - _mf -> offset);
 	struct chunk *ch = NULL;
 	int ch_offset = 0;
@@ -75,7 +77,6 @@ ssize_t mf_read(struct _mf *_mf, void *buf, size_t nbyte){
 		long int av_chunk_size = chunk_manager_offset2chunk(&_mf -> cm, _mf -> offset, nbyte, &ch, &ch_offset);
 		LOG(DEBUG, "Got chunk of size %d\n", av_chunk_size);
 		long int read_size = MIN(av_chunk_size, nbyte);
-		LOG(DEBUG, "Stretching file to %d\n", _mf -> offset + read_size);
 		chunk_cpy_c2b(buf, ch, read_size, ch_offset);
 		buf += read_size;
 		_mf -> offset += read_size;
@@ -88,7 +89,7 @@ ssize_t mf_read(struct _mf *_mf, void *buf, size_t nbyte){
 	LOG(DEBUG, "End offset is %d\n", _mf -> offset);
 	return read_bytes;
 }
-ssize_t mf_write(struct _mf *_mf, const void *buf, size_t nbyte){
+ssize_t _mf_write(struct _mf *_mf, const void *buf, size_t nbyte){
 	LOG(INFO, "mf_write called\n");
 	struct chunk *ch = NULL;
 	int ch_offset = 0;
