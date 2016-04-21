@@ -52,7 +52,7 @@ static int chunk_init(off_t idx, off_t len, chpool_t *cpool, chunk_t *chunk) {
 }
 
 static int chunk_destruct(chunk_t *chunk) {
-	if( munmap(chunk->payload, chunk->len*get_chunk_size(1)) == -1 )
+	if( munmap(chunk->payload, get_chunk_size(chunk->len)) == -1 )
 		return errno;
 
 	return mf_free( sizeof(chunk_t), (void **)&chunk );

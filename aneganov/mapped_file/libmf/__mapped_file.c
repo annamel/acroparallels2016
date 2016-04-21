@@ -40,7 +40,7 @@ int __mf_read(mf_handle_t mf, off_t offset, size_t size, ssize_t *read_bytes, vo
 	*read_bytes = 0;
 	log_write(LOG_INFO, "__mf_read: start reading from file...\n");
 
-	struct mf_iter it;
+	struct mf_iter it = {.cpool = NULL, .chunk = NULL, .choff = 0, .offset = 0, .ptr = NULL, .size = 0, .step_size = 0}; //for valgrind
 	int err = mf_iter_init(cpool, offset, size, &it);
 	if(unlikely(err)) return err;
 
@@ -72,13 +72,13 @@ int __mf_write(mf_handle_t mf, off_t offset, size_t size, ssize_t *written_bytes
 	log_write(LOG_INFO, "__mf_write: start writing to file...\n");
 
 
-	struct mf_iter it;
+	struct mf_iter it = {.cpool = NULL, .chunk = NULL, .choff = 0, .offset = 0, .ptr = NULL, .size = 0, .step_size = 0}; //for valgrind
 	int err = mf_iter_init(cpool, offset, size, &it);
 	if(unlikely(err)) return err;
 
 	while( !mf_iter_empty(&it) ) {
 		if(it.ptr) {
-			log_write(LOG_DEBUG, "__mf_write: copying to the chunk\n");
+			log_write(LOG_DEBUG, "__mf_write: copying to the chunk; it->ptr = %p, it->step_size = %zd\n", it.ptr, it.step_size);
 			memcpy(it.ptr, buf, it.step_size);
 			*written_bytes += it.step_size;
 		}
