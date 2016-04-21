@@ -37,15 +37,11 @@ do														\
 	}													\
 } while (0)
 
-#define FILE_SIZE (1024*1024)
+#define FILE_SIZE (512*1024)
+#define NUM_MAPS 1000
 
 long long performance_test1()
-{	
-	int fd = open("file.txt", O_RDWR | O_CREAT, 0777);
-	ASSERT(fd != -1);
-	ASSERT(!ftruncate(fd, FILE_SIZE));
-	ASSERT(!close(fd));
-
+{
 	long long time = time_ms();
 
 	mf_handle_t mf = mf_open("file.txt", 0);
@@ -63,9 +59,33 @@ long long performance_test1()
 	return time_ms() - time;
 }
 
+long long performance_test2()
+{
+	long long time = time_ms();
+
+	mf_handle_t mf = mf_open("file.txt", 0);
+	ASSERT(mf);
+
+	mf_mapmem_t* mapmems[NUM_MAPS];
+	int i;
+	for (i = 0; i < NUM_MAPS; i++)
+	{
+		mf_map(mf, 10, 1000);
+	}
+
+	ASSERT(!mf_close(mf));
+
+	return time_ms() - time;
+}
+
 int main()
 {
-	performance_test tests[] = { performance_test1 };
+	int fd = open("file.txt", O_RDWR | O_CREAT, 0777);
+	ASSERT(fd != -1);
+	ASSERT(!ftruncate(fd, FILE_SIZE));
+	ASSERT(!close(fd));
+
+	performance_test tests[] = { performance_test1, performance_test2 };
 
 	printf("MAPPED FILE TESTS\n");
 	printf("=================\n");
@@ -73,7 +93,7 @@ int main()
 	int i;
 	for (i = 0; i < sizeof (tests) / sizeof (performance_test); i++)
 	{
-		long long result = performance_test1();
+		long long result = tests[i]();
 
 		printf("PERFORMANCE TEST %d: %lldms\n", i + 1, result);
 	}
