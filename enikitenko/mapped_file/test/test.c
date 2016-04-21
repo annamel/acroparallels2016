@@ -78,5 +78,7 @@ int main()
 		printf("PERFORMANCE TEST %d: %lldms\n", i + 1, result);
 	}
 
+	remove("file.txt");
+
 	return 0;
 }
