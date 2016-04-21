@@ -275,7 +275,7 @@ do
                     # where things went wrong but not in _our_ process because a
                     # failed test should not immediately fail roundup.  Each
                     # tests trace output is saved in temporary storage.
-                    set -xe
+                    set -e
                     $roundup_test_name
                 ) >"$roundup_tmp/$roundup_test_name" 2>&1
 
