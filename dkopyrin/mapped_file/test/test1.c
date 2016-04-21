@@ -2,6 +2,7 @@
 #include "../logger/log.h"
 #include <stdlib.h>
 #include <fcntl.h>
+#include <string.h>
 
 #define MIN(x,y) (x < y? x: y)
 
