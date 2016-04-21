@@ -56,17 +56,30 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 		echo "}" >> $test_file
 		echo "" >> $test_file
 		for root_test_dir in $ROOT_TEST_DIR ; do
-			for test in $root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/*.c* ; do
+			for test in $root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/*.c ; do
 			if [ -f $test ]; then
 				func_name="it_check_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .c)"
 				test_out_name="$out_dir/$(basename $test .c)"
 				echo "$func_name() {" >> $test_file
-				#echo "    pushd $make_dir" >> $test_file
 				echo "    gcc -lm $CFLAGS -I$PWD/../include -o $test_out_name $test $out_dir/libmappedfile.a" >> $test_file
 				echo "    $PREC $test_out_name $PWD/small.txt $PWD/out.txt" >> $test_file
 				echo "    $PREC $test_out_name $PWD/medium.txt $PWD/out.txt" >> $test_file
 				echo "    $PREC $test_out_name $PWD/gpl.txt $PWD/out.txt" >> $test_file
-				#echo "    popd" >> $test_file  valgrind --error-exitcode=255
+				echo "    rm -f $test_out_name" >> $test_file
+				echo "}" >> $test_file
+				echo "" >> $test_file
+			fi
+			done
+
+			for test in $root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/*.cpp ; do
+			if [ -f $test ]; then
+				func_name="it_check_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .cpp)"
+				test_out_name="$out_dir/$(basename $test .cpp)"
+				echo "$func_name() {" >> $test_file
+				echo "    g++ -lm $CFLAGS -I$PWD/../include -o $test_out_name $test $out_dir/libmappedfile.a" >> $test_file
+				echo "    $PREC $test_out_name $PWD/small.txt $PWD/out.txt" >> $test_file
+				echo "    $PREC $test_out_name $PWD/medium.txt $PWD/out.txt" >> $test_file
+				echo "    $PREC $test_out_name $PWD/gpl.txt $PWD/out.txt" >> $test_file
 				echo "    rm -f $test_out_name" >> $test_file
 				echo "}" >> $test_file
 				echo "" >> $test_file

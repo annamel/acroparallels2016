@@ -7,3 +7,4 @@ or $USERNAME/mapped_file/CMakeLists.txt if you use cmake
  Changing ROOT_LIB_DIR or ROOT_TEST_DIR can change lib dirs or test dirs respectively
 like ROOT_LIB_DIR="../dkopyrin ../ivanov; ROOT_TEST_DIR="../sabramov ../osamara"
  CFLAGS are supported
+ You can set variable 
