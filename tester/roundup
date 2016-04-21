@@ -161,6 +161,7 @@ roundup_summarize() {
             passed=$(expr $passed + 1)
             printf "  %-48s " "$name:"
             printf "$grn[PASS]$clr\n"
+            roundup_trace < "$roundup_tmp/$name"
             ;;
         f)
             ntests=$(expr $ntests + 1)

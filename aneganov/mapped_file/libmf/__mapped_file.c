@@ -108,7 +108,7 @@ int __mf_acquire(mf_handle_t mf, off_t offset, size_t size, void** ptr) {
 	err = chunk_get_mem(chunk, offset, ptr);
 	if(unlikely(err)) return err;
 
-	err = chpool_mem_add(ptr, chunk);
+	err = chpool_mem_add(*ptr, chunk);
 	return err;
 }
 
