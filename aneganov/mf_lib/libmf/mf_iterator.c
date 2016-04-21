@@ -14,7 +14,7 @@ static int mf_iter_step(struct mf_iter *it) {
 		int err = chunk_release(it->chunk);
 		if(unlikely(err)) return err;
 	}
-	int err = chunk_find(it->cpool, it->choff, page_size,  &it->chunk);
+	int err = chunk_find(it->cpool, it->choff, page_size - 1,  &it->chunk);
 	switch(err) {
 		case 0:
 			return chunk_get_mem(it->chunk, it->offset, &it->ptr);
