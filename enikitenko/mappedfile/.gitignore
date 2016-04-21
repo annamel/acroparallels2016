@@ -1,0 +1,7 @@
+log*.txt
+Makefile
+CMakeFiles
+CMakeCache.txt
+cmake_install.cmake
+file.txt
+libmappedfile.a
