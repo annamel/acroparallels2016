@@ -19,4 +19,4 @@ depend dep:
 
 clean:
 	rm -f *.o *.a *.8 .depend
-	rm -f *.gcda *.gcno
+	rm -f *.gcda *.gcno *.gcov
