@@ -9,8 +9,6 @@ CFLAGS += -DDEBUG_STDERRLOG -g
 export CFLAGS MAKE_DIR
 
 all: make_dir_init $(BUILDDIRS)
-	ar rcs $(MAKE_DIR)/libmappedfile.a $(MAKE_DIR)/*.o
-	rm -rf *.o
 
 make_dir_init:
 	mkdir -p $(MAKE_DIR)
@@ -20,7 +18,7 @@ $(BUILDDIRS):
 	$(MAKE) -C $(@:build-%=%)
 
 clean: make_dir_init $(CLEANDIRS)
-	rm -rf *.a
+	rm -rf *.o
 $(CLEANDIRS):
 	$(MAKE) -C $(@:clean-%=%) clean
 
