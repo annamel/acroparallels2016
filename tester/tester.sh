@@ -57,10 +57,10 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				test_out_name="$out_dir/$(basename $test .c)"
 				echo "$func_name() {" >> $test_file
 				#echo "    pushd $make_dir" >> $test_file
-				echo "    gcc $CFLAGS -I$PWD/../include -o $test_out_name $test $out_dir/libmappedfile.a" >> $test_file
-				echo "    valgrind $test_out_name $PWD/small.txt $PWD/out.txt" >> $test_file
-				echo "    valgrind $test_out_name $PWD/medium.txt $PWD/out.txt" >> $test_file
-				echo "    valgrind $test_out_name $PWD/gpl.txt $PWD/out.txt" >> $test_file
+				echo "    gcc -lm $CFLAGS -I$PWD/../include -o $test_out_name $test $out_dir/libmappedfile.a" >> $test_file
+				echo "    valgrind --error-exitcode=255 $test_out_name $PWD/small.txt $PWD/out.txt" >> $test_file
+				echo "    valgrind --error-exitcode=255 $test_out_name $PWD/medium.txt $PWD/out.txt" >> $test_file
+				echo "    valgrind --error-exitcode=255 $test_out_name $PWD/gpl.txt $PWD/out.txt" >> $test_file
 				#echo "    popd" >> $test_file
 				echo "    rm -f $test_out_name" >> $test_file
 				echo "}" >> $test_file
