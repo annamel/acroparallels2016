@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 #include <errno.h>
+#include <fcntl.h>
 
 typedef void* mf_handle_t;
 

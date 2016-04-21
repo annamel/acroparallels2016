@@ -1,0 +1,222 @@
+        -:    0:Source:hashtable.c
+        -:    0:Graph:hashtable.gcno
+        -:    0:Data:hashtable.gcda
+        -:    0:Runs:1
+        -:    0:Programs:1
+        -:    0:Source is newer than graph
+        -:    1:#include <string.h>
+        -:    2:
+        -:    3:#include "mf_malloc.h"
+        -:    4:#include "hashtable.h"
+        -:    5:#include "log.h"
+        -:    6:
+        -:    7:typedef struct Elem {
+        -:    8:    hkey_t key;
+        -:    9:    hval_t val;
+        -:   10:} elem_t;
+        -:   11:
+        -:   12:typedef struct HashTableRow {
+        -:   13:    size_t len;
+        -:   14:    size_t data_len;
+        -:   15:    elem_t *data;
+        -:   16:} htablerow_t;
+        -:   17:
+        -:   18:struct HashTable {
+        -:   19:    size_t (*hash_fn)(hkey_t);
+        -:   20:    int (*cmp_fn)(hkey_t, hkey_t);
+        -:   21:    htablerow_t payload[HASHTABLE_SIZE];
+        -:   22:}; /* hashtable_t */
+        -:   23:
+        -:   24:#define MIN_ROW_LEN   (64)
+        -:   25:
+        1:   26:static int hashtable_init(hashtable_t *ht, int (*cmp)(hkey_t, hkey_t), size_t (*hash)(hkey_t)) {
+        1:   27:    if( ht == NULL || cmp == NULL || hash == NULL )
+    #####:   28:        return EINVAL;
+        -:   29:
+        1:   30:    ht->cmp_fn  = cmp;
+        1:   31:    ht->hash_fn = hash;
+        -:   32:
+        1:   33:    int i = 0;
+     1025:   34:    for( i = 0; i < HASHTABLE_SIZE; i++ ) {
+     1024:   35:        ht->payload[i].data_len = 0;
+     1024:   36:        ht->payload[i].len = MIN_ROW_LEN;
+     1024:   37:        ht->payload[i].data = NULL;
+        -:   38:    }
+        -:   39:
+        1:   40:    int res = 0;
+     1025:   41:    for(i = 0; i < HASHTABLE_SIZE; i++)
+     1024:   42:        if( (res = mf_malloc(MIN_ROW_LEN*sizeof(elem_t), (void **)&ht->payload[i].data)) )
+    #####:   43:            return res;
+        -:   44:
+        1:   45:    log_write(LOG_INFO, "hashtable initiated: cmp_fn = %p, hash_fn = %p\n", cmp, hash);
+        -:   46:
+        1:   47:    return 0;
+        -:   48:}
+        -:   49:
+        1:   50:static int hashtable_fini(hashtable_t *ht) {
+        1:   51:    if(ht == NULL)
+    #####:   52:        return EINVAL;
+        -:   53:
+        1:   54:    ht->cmp_fn = NULL;
+        1:   55:    ht->hash_fn = NULL;
+        -:   56:
+        1:   57:    int i = 0;
+     1025:   58:    for( i = 0; i < HASHTABLE_SIZE; i++ ) {
+     1024:   59:        mf_free(ht->payload[i].len, (void **)&ht->payload[i].data);
+     1024:   60:        ht->payload[i].data_len = 0;
+     1024:   61:        ht->payload[i].len = 0;
+        -:   62:    }
+        -:   63:
+        1:   64:    log_write(LOG_INFO, "hashtable finalized\n");
+        -:   65:
+        1:   66:    return 0;
+        -:   67:}
+        -:   68:
+        1:   69:int hashtable_construct(int (*cmp)(hkey_t, hkey_t), size_t (*hash)(hkey_t), hashtable_t **ht) {
+        1:   70:    int err = mf_malloc( sizeof(hashtable_t), (void**)ht );
+        1:   71:    if(err) return err;
+        1:   72:    return hashtable_init(*ht, cmp, hash);
+        -:   73:}
+        -:   74:
+        1:   75:int hashtable_destruct(hashtable_t **ht) {
+        1:   76:    if(ht == NULL) return EINVAL;
+        1:   77:    int err = hashtable_fini(*ht);
+        1:   78:    if(err) return err;
+        -:   79:    return mf_free( sizeof(hashtable_t), (void**)ht );
+        -:   80:}
+      193:   81:
+      193:   82:int hashtable_add(hashtable_t * ht, hkey_t key, hval_t val) {
+    #####:   83:    if(ht == NULL)
+        -:   84:        return EINVAL;
+      193:   85:
+      193:   86:    unsigned idx = ht->hash_fn(key) % HASHTABLE_SIZE;
+      193:   87:    size_t data_len = ht->payload[idx].data_len;
+      193:   88:    size_t len = ht->payload[idx].len;
+        -:   89:    elem_t *data = ht->payload[idx].data;
+      193:   90:
+    #####:   91:    if( data_len > len )
+        -:   92:        return EINVAL;
+      193:   93:
+        -:   94:    size_t pos = 0;
+      193:   95:
+       33:   96:    if(data_len == 0 || ht->cmp_fn(key, data[0].key) == -1)
+      160:   97:        pos = 0;
+      106:   98:    else if(ht->cmp_fn(key, data[data_len-1].key) == 1)
+        -:   99:        pos = data_len;
+       54:  100:    else {
+       54:  101:        size_t left = 0;
+        -:  102:        size_t right = data_len - 1;
+      429:  103:
+      321:  104:        while( left < right - 1) {
+      321:  105:            size_t mid = left + (right - left)/2;
+      282:  106:            if( ht->cmp_fn(key, data[mid].key) >= 0 )
+      321:  107:                left = mid;
+       39:  108:            if( ht->cmp_fn(key, data[mid].key) == -1 )
+        -:  109:                right = mid;
+       54:  110:        }
+      161:  111:        pos = left;
+       53:  112:        while(pos < data_len && ht->cmp_fn(key, data[pos].key) == 1)
+        -:  113:            pos++;
+        -:  114:    }
+      193:  115:
+        1:  116:    if( pos < data_len && ht->cmp_fn(key, data[pos].key) == 0 )
+        -:  117:        goto end;
+      192:  118:
+        1:  119:    if( data_len == len ) {
+        1:  120:        len = ht->payload[idx].len *= 2;
+        1:  121:        int err = mf_realloc(len*sizeof(elem_t), (void **)&ht->payload[idx].data);
+        1:  122:        if(err) return err;
+        -:  123:        data = ht->payload[idx].data;
+      192:  124:    }
+        -:  125:    data_len = ++ht->payload[idx].data_len;
+      192:  126:
+       53:  127:    if(pos < data_len - 1)
+        -:  128:        memmove( (void*)data + (pos+1)*sizeof(elem_t), (void*)data + pos*sizeof(elem_t), (data_len-pos-1)*sizeof(elem_t) );
+      192:  129:
+        -:  130:    data[pos].key = key;
+        -:  131:
+      193:  132:end:
+        -:  133:    data[pos].val = val;
+      193:  134:
+      193:  135:    log_write(LOG_INFO, "hashtable_add: idx=%u, pos=%zd, key=%jd, val=%p\n", idx, pos, key, val);
+     8673:  136:    log_write(LOG_DEBUG, "hashtable_add: data_len = %zu\n", data_len);
+     8480:  137:    for(int i=0; i<data_len; i++)
+        -:  138:        log_write(LOG_DEBUG, "hashtable_add: data[%d].key = %jd\n", i, data[i].key);
+      193:  139:
+        -:  140:    return 0;
+        -:  141:}
+      321:  142:
+      321:  143:static ssize_t find_key_pos(const elem_t *data, size_t data_len, hkey_t key, int (*cmp_fn)(hkey_t, hkey_t)) {
+       65:  144:    if(data_len == 0 || cmp_fn(key, data[0].key) == -1 || cmp_fn(key, data[data_len-1].key) == 1)
+        -:  145:        return -1;
+      256:  146:
+      256:  147:    size_t left = 0;
+        -:  148:    size_t right = data_len - 1;
+     1345:  149:
+      833:  150:    while( cmp_fn(key, data[right].key) != 0 && left < right ) {
+      833:  151:        size_t mid = left + (right - left)/2;
+      321:  152:        if( cmp_fn(key, data[mid].key) == 1 )
+      833:  153:            left = mid;
+      512:  154:        if( cmp_fn(key, data[mid].key) <= 0 )
+        -:  155:            right = mid;
+      256:  156:    }
+    #####:  157:    if( cmp_fn(key, data[right].key) != 0 ) 
+        -:  158:        return -1;
+      256:  159:
+        -:  160:    return right;
+        -:  161:}
+      288:  162:
+      288:  163:int hashtable_get(const hashtable_t * ht, hkey_t key, hval_t *val) {
+    #####:  164:    if(ht == NULL)
+        -:  165:        return EINVAL;
+      288:  166:
+        -:  167:    unsigned idx = ht->hash_fn(key) % HASHTABLE_SIZE;
+      288:  168:
+      288:  169:    size_t data_len = ht->payload[idx].data_len;
+      288:  170:    size_t len = ht->payload[idx].len;
+        -:  171:    elem_t *data = ht->payload[idx].data;
+      288:  172:
+    #####:  173:    if( data_len > len )
+        -:  174:        return EINVAL;
+      288:  175:
+      288:  176:    ssize_t pos = find_key_pos(data, data_len, key, ht->cmp_fn);
+       64:  177:    if(pos == -1) {
+      126:  178:        log_write(LOG_INFO, "hashtable_get: key=%jd: no such key\n", key);
+       62:  179:        for(int i=0; i<data_len; i++)
+       64:  180:            log_write(LOG_DEBUG, "hashtable_get: data[%d].key = %jd\n", i, data[i].key);
+        -:  181:        return ENOKEY;
+        -:  182:    }
+      224:  183:
+        -:  184:    *val = data[pos].val;
+      224:  185:
+      224:  186:    log_write(LOG_INFO, "hashtable_get: idx=%u, pos=%zd, key=%jd, val=%p\n", idx, pos, key, *val);
+        -:  187:    return 0;
+        -:  188:}
+       33:  189:
+       33:  190:int hashtable_del(hashtable_t *ht, hkey_t key) {
+    #####:  191:    if(ht == NULL)
+        -:  192:        return EINVAL;
+       33:  193:
+       33:  194:    unsigned idx = ht->hash_fn(key) % HASHTABLE_SIZE;
+       33:  195:    size_t data_len = ht->payload[idx].data_len;
+       33:  196:    size_t len = ht->payload[idx].len;
+        -:  197:    elem_t *data = ht->payload[idx].data;
+       33:  198:
+    #####:  199:    if( data_len > len )
+        -:  200:        return EINVAL;
+       33:  201:
+       33:  202:    ssize_t pos = find_key_pos(data, data_len, key, ht->cmp_fn);
+        1:  203:    if(pos == -1) {
+        1:  204:        log_write(LOG_INFO, "hashtable_del: key=%jd: no such key\n", key);
+    #####:  205:        for(int i=0; i<data_len; i++)
+        1:  206:            log_write(LOG_DEBUG, "hashtable_del: data[%d].key = %jd\n", i, data[i].key);
+        -:  207:        return ENOKEY;
+        -:  208:    }
+       32:  209:
+        -:  210:    memmove( (void*)data + pos*sizeof(elem_t), (void*)data + (pos+1)*sizeof(elem_t), (data_len-pos-1)*sizeof(elem_t) );
+       32:  211:
+        -:  212:    ht->payload[idx].data_len--;
+       32:  213:
+       32:  214:    log_write(LOG_INFO, "hashtable_del: idx=%u, pos=%zd, key=%jd\n", idx, pos, key);
+        -:  215:    return 0;
+        -:  216:}

@@ -1,0 +1,349 @@
+        -:    0:Source:chunk_manager.c
+        -:    0:Graph:chunk_manager.gcno
+        -:    0:Data:chunk_manager.gcda
+        -:    0:Runs:1
+        -:    0:Programs:1
+        -:    1:#define _GNU_SOURCE 1
+        -:    2:#include <unistd.h>
+        -:    3:#include <sys/mman.h>
+        -:    4:#include <stdbool.h>
+        -:    5:#include <string.h>
+        -:    6:
+        -:    7:#include "mf_malloc.h"
+        -:    8:#include "hashtable.h"
+        -:    9:#include "log.h"
+        -:   10:#include "bug.h"
+        -:   11:#include "chunk_manager.h"
+        -:   12:
+        -:   13:#define DEFAULT_CHPOOL_SIZE (0x40000)
+        -:   14:
+        -:   15:struct Chunk {
+        -:   16:	chpool_t *cpool;
+        -:   17:	off_t idx;
+        -:   18:	off_t len;
+        -:   19:	unsigned ref_cnt;
+        -:   20:	chunk_t *next;
+        -:   21:	chunk_t *prev;
+        -:   22:	void *payload;
+        -:   23:}; /* chunk_t */
+        -:   24:
+        -:   25:struct ChunkPool {
+        -:   26:	int fd;
+        -:   27:	int prot;
+        -:   28:	size_t size;
+        -:   29:	size_t nr_pages;
+        -:   30:	chunk_t *head;
+        -:   31:	hashtable_t *ht;
+        -:   32:	hashtable_t *mem_ht;
+        -:   33:}; /* chpool_t */
+        -:   34:
+       67:   35:static size_t get_chunk_size(off_t multiplier) {
+       67:   36:	return multiplier * sysconf(_SC_PAGESIZE);
+        -:   37:}
+        -:   38:
+        9:   39:static int chunk_init(off_t idx, off_t len, chpool_t *cpool, chunk_t *chunk) {
+        9:   40:	chunk->idx = idx;
+        9:   41:	chunk->len = len;
+        9:   42:	chunk->ref_cnt = 1;
+        9:   43:	chunk->prev = chunk;
+        9:   44:	chunk->next = chunk;
+        9:   45:	chunk->cpool = cpool;
+        9:   46:	chunk->payload = mmap(NULL, get_chunk_size(chunk->len), cpool->prot, MAP_SHARED, cpool->fd, get_chunk_size(idx));
+        9:   47:	log_write(LOG_DEBUG, "chunk_init: offset = %jd, chunk->payload == %p\n", get_chunk_size(idx), chunk->payload);
+        -:   48:
+        9:   49:	if(chunk->payload == MAP_FAILED)
+    #####:   50:		return errno;
+        9:   51:	return 0;
+        -:   52:}
+        -:   53:
+        8:   54:static int chunk_destruct(chunk_t *chunk) {
+        8:   55:	if( munmap(chunk->payload, chunk->len*get_chunk_size(1)) == -1 )
+    #####:   56:		return errno;
+        -:   57:
+        8:   58:	return mf_free( sizeof(chunk_t), (void **)&chunk );
+        -:   59:}
+        -:   60:
+        5:   61:static int chpool_del(chunk_t *chunk) {
+        5:   62:	log_write(LOG_INFO, "trying to delete chunk with null reference counter from chpool...\n");
+        5:   63:	log_write(LOG_DEBUG, "chpool_del: chunk = %p, chunk->ref_cnt = %u\n", chunk, chunk ? chunk->ref_cnt : -1);
+        -:   64:
+        5:   65:	if(chunk == NULL || chunk->ref_cnt != 0)
+        3:   66:		return EBUSY;
+        -:   67:
+        2:   68:	log_write(LOG_DEBUG, "chpool_del: chunk->prev = %p, chunk->next = %p\n", chunk->prev, chunk->next);
+        2:   69:	if(chunk != chunk->next) {
+        2:   70:		chunk->prev->next = chunk->next;
+        2:   71:		chunk->next->prev = chunk->prev;
+        2:   72:		if(chunk == chunk->cpool->head)
+        2:   73:			chunk->cpool->head = chunk->next;	
+        -:   74:	}
+    #####:   75:	else chunk->cpool->head = NULL;
+        -:   76:
+        6:   77:	for(unsigned i = 0; i < chunk->len; i++) {
+        4:   78:		int err = hashtable_del(chunk->cpool->ht, chunk->idx+i);
+        4:   79:		if(err && err != ENOKEY) return err;
+        -:   80:	}
+        -:   81:
+        2:   82:	chunk->cpool->nr_pages -= chunk->len;
+        -:   83:
+        2:   84:	int err = chunk_destruct(chunk);
+        2:   85:	if(err) return err;
+        -:   86:
+        2:   87:	return 0;
+        -:   88:}
+        -:   89:
+        9:   90:static int chpool_add(chunk_t *chunk) {
+        9:   91:	log_write(LOG_INFO, "adding new chunk to chpool...\n");
+        9:   92:	chpool_t *cpool = chunk->cpool;
+        -:   93:
+        9:   94:	int err = 0;
+        9:   95:	while( cpool->nr_pages + chunk->len > cpool->size && !(err = chpool_del(cpool->head)) );
+        -:   96:
+        9:   97:	if(err == EBUSY) return ENOBUFS;
+        8:   98:	if(err) return err;
+        -:   99:
+        8:  100:	log_write(LOG_INFO, "chpool is ready to be enlarged...\n");
+        -:  101:
+        -:  102:/* New chunks must be stored at the end of the list */
+        8:  103:	if(cpool->head != NULL) {
+        6:  104:		chunk->next = cpool->head;
+        6:  105:		chunk->prev = cpool->head->prev;
+        6:  106:		chunk->next->prev = chunk;
+        6:  107:		chunk->prev->next = chunk;
+        -:  108:	}
+        2:  109:	else cpool->head = chunk;
+        -:  110:
+        8:  111:	log_write(LOG_DEBUG, "idx = %jd, len = %jd\n", chunk->idx, chunk->len);
+        -:  112:
+       25:  113:	for(unsigned i = 0; i < chunk->len; i++) {
+       17:  114:		int err = hashtable_add(cpool->ht, chunk->idx+i, (hval_t)chunk);
+       17:  115:		if(err) return err;
+        -:  116:	}
+        -:  117:
+        8:  118:	cpool->nr_pages += chunk->len;
+        -:  119:
+        8:  120:	log_write(LOG_INFO, "chpool_add finished\n");
+        -:  121:
+        8:  122:	return 0;
+        -:  123:}
+        -:  124:
+        9:  125:static int chunk_construct(chpool_t *cpool, off_t idx, off_t len, chunk_t **chunk) {
+        9:  126:	int err = mf_malloc(sizeof(chunk_t), (void **)chunk);
+        9:  127:	if(err) return err;
+        -:  128:
+        9:  129:	err = chunk_init(idx, len, cpool, *chunk);
+        9:  130:	if(err) return err;
+        -:  131:
+        9:  132:	err = chpool_add(*chunk);
+        9:  133:	if(err) return err;
+        -:  134:
+        8:  135:	log_write(LOG_INFO, "chunk_construct(idx=%jd, len=%jd): success\n", idx, len);
+        8:  136:	return 0;
+        -:  137:}
+        -:  138:
+       11:  139:static int chunk_get(chpool_t *cpool, off_t idx, off_t len, chunk_t **chunk) {
+       11:  140:	*chunk = NULL;
+        -:  141:
+       11:  142:	int err = hashtable_get(cpool->ht, idx, (hval_t *)chunk);
+       11:  143:	if(err) return err;
+        -:  144:
+        5:  145:	if( (*chunk)->idx + (*chunk)->len < idx + len )
+        3:  146:		return ENOKEY;
+        -:  147:
+        2:  148:	return 0;
+        -:  149:}
+        -:  150:
+       10:  151:int chunk_acquire(chpool_t *cpool,  off_t offset, size_t size, chunk_t **chunk_ptr) {
+       10:  152:	if(!cpool || !chunk_ptr) return EINVAL;
+        -:  153:
+       10:  154:	BUG_ON(!cpool->ht || cpool->fd < 0 || cpool->nr_pages > cpool->size || !cpool->size);
+        -:  155:
+       10:  156:	if(size == 0) {
+    #####:  157:		*chunk_ptr = NULL;
+    #####:  158:		return 0;
+        -:  159:	}
+        -:  160:
+       10:  161:	off_t idx = offset / get_chunk_size(1);
+       10:  162:	off_t len = size/get_chunk_size(1) + 1;
+        -:  163:
+       10:  164:	int err = chunk_get(cpool, idx, len, chunk_ptr);
+       10:  165:	log_write(LOG_INFO, "chunk_acquire: chunk_get(idx=%jd, len=%jd): %s\n", idx, len, strerror(err));
+        -:  166:
+       10:  167:	chunk_t *chunk = *chunk_ptr;
+        -:  168:
+       10:  169:	switch(err) {
+        -:  170:		case 0:
+        1:  171:			chunk->ref_cnt++;
+        1:  172:			return 0;
+        -:  173:			break;
+        -:  174:		case ENOKEY:
+        9:  175:			if( *chunk_ptr == NULL || !(err = chpool_del(chunk)) )
+        7:  176:				return chunk_construct(cpool, idx, len, chunk_ptr);
+        2:  177:			if(err != EBUSY) return err;
+        2:  178:			void *newpayload = mremap(chunk->payload, get_chunk_size(chunk->len), get_chunk_size(idx + len - chunk->idx), 0);
+        2:  179:			if(newpayload != MAP_FAILED) {
+    #####:  180:				chunk->payload = newpayload;
+    #####:  181:				chunk->ref_cnt++;
+    #####:  182:				return 0;
+        -:  183:			}
+        -:  184:			else {
+        2:  185:				if(errno != ENOMEM) return errno;
+        2:  186:				log_write(LOG_INFO, "mremap failed\n");
+        2:  187:				return chunk_construct(cpool, idx, len, chunk_ptr);
+        -:  188:			}
+        -:  189:			break;
+        -:  190:		default:
+    #####:  191:			return err;
+        -:  192:			break;
+        -:  193:	}
+        -:  194:}
+        -:  195:
+        1:  196:int chunk_find(chpool_t *cpool, off_t offset, size_t size, chunk_t **chunk) {
+        1:  197:	if(!cpool || !chunk) return EINVAL;
+        -:  198:
+        1:  199:	BUG_ON(!cpool->ht || cpool->fd < 0 || cpool->nr_pages > cpool->size || !cpool->size);
+        -:  200:
+        1:  201:	if(size == 0) {
+    #####:  202:		*chunk = NULL;
+    #####:  203:		return 0;
+        -:  204:	}
+        -:  205:
+        1:  206:	off_t idx = offset / get_chunk_size(1);
+        1:  207:	off_t len = size / get_chunk_size(1) + 1;
+        -:  208:
+        1:  209:	int err = chunk_get(cpool, idx, len, chunk);
+        1:  210:	if(err) return err;
+        1:  211:	(*chunk)->ref_cnt++;
+        1:  212:	return 0;
+        -:  213:}
+        -:  214:
+        6:  215:int chunk_release(chunk_t *chunk) {
+        6:  216:	if(!chunk) return EINVAL;
+        -:  217:
+        6:  218:	if(chunk->ref_cnt == 0) return EAGAIN;
+        -:  219:
+        -:  220:/* Chunks with ref_cnt == 0 must be stored at the beginning of the list */
+        6:  221:	if(--chunk->ref_cnt == 0 && chunk != chunk->cpool->head) {
+        4:  222:		chunk->prev->next = chunk->next;
+        4:  223:		chunk->next->prev = chunk->prev;
+        -:  224:
+        4:  225:		chunk_t *oldhead = chunk->cpool->head;
+        -:  226:
+        4:  227:		chunk->next = oldhead;
+        4:  228:		chunk->prev = oldhead->prev;
+        -:  229:
+        4:  230:		chunk->next->prev = chunk;
+        4:  231:		chunk->prev->next = chunk;
+        -:  232:
+        4:  233:		chunk->cpool->head = chunk;
+        -:  234:	}
+        -:  235:
+        6:  236:	log_write(LOG_INFO, "chunk_release: for chunk %p ref_cnt == %u\n", chunk, chunk->ref_cnt);
+        -:  237:
+        6:  238:	return 0;
+        -:  239:}
+        -:  240:
+       48:  241:static int off_cmp(hkey_t key1, hkey_t key2) {
+       48:  242:	return (key1 > key2) ? 1 : (key1 < key2) ? -1 : 0;
+        -:  243:}
+        -:  244:
+        2:  245:static int chpool_init(chpool_t *cpool, unsigned size, int fd, int prot) {
+        2:  246:	cpool->head = NULL;
+        2:  247:	cpool->size = size;
+        2:  248:	cpool->nr_pages = 0;
+        2:  249:	cpool->fd = fd;
+        2:  250:	cpool->prot = prot;
+        2:  251:	cpool->ht = NULL;
+        2:  252:	int err =  hashtable_construct(off_cmp, simple_hash, &cpool->ht);
+        2:  253:	if(err) return err;
+        2:  254:	return hashtable_construct(off_cmp, simple_hash, &cpool->mem_ht);
+        -:  255:}
+        -:  256:
+        2:  257:int chpool_construct(size_t max_mem, int fd, int prot, chpool_t **cpool) {
+        2:  258:	if(fd < 0 || cpool == NULL || ( !(prot & PROT_READ) && !(prot & PROT_WRITE) ) )
+    #####:  259:		return EINVAL;
+        -:  260:
+        -:  261:	BUILD_BUG_ON(DEFAULT_CHPOOL_SIZE == 0);
+        2:  262:	size_t size = max_mem ? max_mem / get_chunk_size(1) : DEFAULT_CHPOOL_SIZE;
+        2:  263:	if(size == 0) return EINVAL;
+        -:  264:
+        2:  265:	int err = mf_malloc( sizeof(chpool_t), (void **)cpool );
+        2:  266:	if(err) return err;
+        -:  267:
+        2:  268:	return chpool_init(*cpool, size, fd, prot);
+        -:  269:}
+        -:  270:
+        2:  271:static int chpool_fini(chpool_t *cpool) {
+        2:  272:	log_write(LOG_INFO, "chpool finalizing...\n");
+        -:  273:
+        2:  274:	if(cpool->head){
+        2:  275:		cpool->head->prev->next = NULL;
+        2:  276:		cpool->head->prev = NULL;
+        -:  277:	}
+        -:  278:
+       10:  279:	while(cpool->head) {
+        6:  280:		log_write(LOG_DEBUG, "head = %p\n", cpool->head);
+        6:  281:		chunk_t *iter = cpool->head;
+        6:  282:		cpool->head = iter->next;
+        -:  283:
+        6:  284:		int err = chunk_destruct(iter);
+        6:  285:		if(err) return err;
+        -:  286:	}
+        -:  287:
+        2:  288:	cpool->nr_pages = 0;
+        -:  289:
+        2:  290:	int err = hashtable_destruct(&cpool->ht);
+        2:  291:	if(err) return err;
+        -:  292:
+        2:  293:	err = hashtable_destruct(&cpool->mem_ht);
+        2:  294:	if(err) return err;
+        -:  295:
+        2:  296:	err = close(cpool->fd);
+        2:  297:	if(err == -1) return errno;
+        -:  298:
+        2:  299:	return 0;
+        -:  300:}
+        -:  301:
+        2:  302:int chpool_destruct(chpool_t **cpool) {
+        2:  303:	if(cpool == NULL) return EINVAL;
+        -:  304:
+        2:  305:	int err = chpool_fini(*cpool);
+        2:  306:	if(err) return err;
+        -:  307:
+        2:  308:	err = mf_free( sizeof(chpool_t), (void **)cpool );
+        2:  309:	if(err) return err;
+        -:  310:
+        2:  311:	return 0;
+        -:  312:}
+        -:  313:
+        2:  314:int chunk_get_mem(chunk_t *chunk, off_t offset, void **buf) {
+        2:  315:	if(chunk == NULL || buf == NULL)
+    #####:  316:		return EINVAL;
+        -:  317:
+        2:  318:	off_t left = get_chunk_size(chunk->idx);
+        2:  319:	off_t right = left + get_chunk_size(chunk->len);
+        -:  320:	
+        2:  321:	if(offset < left || offset > right)
+    #####:  322:		return EINVAL;
+        -:  323:
+        2:  324:	off_t choff = offset - left;
+        2:  325:	*buf = chunk->payload + choff;
+        -:  326:
+        2:  327:	log_write(LOG_DEBUG, "chunk_get_mem: chunk->payload == %p, *buf = %p\n", chunk->payload, *buf);
+        -:  328:
+        2:  329:	return 0;
+        -:  330:}
+        -:  331:
+        1:  332:int chpool_fd(chpool_t *cpool) {
+        1:  333:	if(!cpool || cpool->fd < 0)
+    #####:  334:		return -1;
+        1:  335:	return cpool->fd;
+        -:  336:}
+        -:  337:
+        1:  338:int chpool_mem_add(void *ptr, chunk_t *chunk) {
+        1:  339:	return hashtable_add(chunk->cpool->mem_ht, (hkey_t)ptr, (hval_t)chunk);
+        -:  340:}
+        -:  341:
+        1:  342:int chpool_mem_get(chpool_t *cpool, void *ptr, chunk_t **chunk) {
+        1:  343:	return hashtable_get(cpool->mem_ht, (hkey_t)ptr, (hval_t *)chunk);
+        -:  344:}

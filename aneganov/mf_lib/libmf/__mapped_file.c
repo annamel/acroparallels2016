@@ -7,6 +7,8 @@
 #include <unistd.h>
 
 #include "chunk_manager.h"
+#include "mfdef.h"
+#include "mf_iterator.h"
 #include "log.h"
 #include "mapped_file.h"
 
@@ -14,7 +16,7 @@ int __mf_open(const char* name, size_t max_memory, int flags, int perms, mf_hand
 	if(name == NULL || mf == NULL)
 		return EINVAL;
 
-	flags |= O_CREAT;
+	//flags &= !O_CREAT;
 	int fd = open(name, flags, perms);
 	if(fd == -1) return errno;
 
@@ -35,54 +37,65 @@ int __mf_close(mf_handle_t mf) {
 
 int __mf_read(mf_handle_t mf, off_t offset, size_t size, ssize_t *read_bytes, void* buf) {
 	chpool_t *cpool = (chpool_t *)mf;
-	chunk_t *chunk = NULL;
 	*read_bytes = 0;
+	log_write(LOG_INFO, "__mf_read: start reading from file...\n");
 
-	int err = chunk_find(cpool, offset, size, &chunk);
+	struct mf_iter it;
+	int err = mf_iter_init(cpool, offset, size, &it);
+	if(unlikely(err)) return err;
 
-	void *src = NULL;
-	switch(err) {
-		case 0:
-			err = chunk_get_mem(chunk, offset, &src);
-			if(err) return err;
-			memcpy(buf, src, size);
-			*read_bytes = size;
-			break;
-		case ENOKEY:
-			*read_bytes = pread(chpool_fd(cpool), buf, size, offset);
-			if(*read_bytes == -1) return errno;
-			break;
-		default:
-			return err;
-			break;
+	while( !mf_iter_empty(&it) ) {
+		if(it.ptr) {
+			log_write(LOG_DEBUG, "__mf_read: copying from the chunk\n");
+			memcpy(buf, it.ptr, it.step_size);
+			*read_bytes += it.step_size;
+		}
+		else {
+			log_write(LOG_DEBUG, "__mf_read: reading data explicitly\n");
+			ssize_t pread_size = pread(chpool_fd(cpool), buf, it.step_size, it.offset);
+			if(pread_size == -1) return errno;
+			*read_bytes += pread_size;
+			if(pread_size < it.step_size)
+				break;
+		}
+		buf += it.step_size;
+		err = mf_iter_next(&it);
+		if(unlikely(err)) return err;
 	}
+
 	return 0;
 }
 
 int __mf_write(mf_handle_t mf, off_t offset, size_t size, ssize_t *written_bytes, const void* buf) {
 	chpool_t *cpool = (chpool_t *)mf;
-	chunk_t *chunk = NULL;
 	*written_bytes = 0;
+	log_write(LOG_INFO, "__mf_write: start writing to file...\n");
 
-	int err = chunk_find(cpool, offset, size, &chunk);
 
-	void *dst = NULL;
-	switch(err) {
-		case 0:
-			err = chunk_get_mem(chunk, offset, &dst);
-			if(err) return err;
-			memcpy(dst, buf, size);
-			*written_bytes = size;
-			break;
-		case ENOKEY:
-			*written_bytes = pwrite(chpool_fd(cpool), buf, size, offset);
-			if(*written_bytes == -1) return errno;
-			break;
-		default:
-			return err;
-			break;
+	struct mf_iter it;
+	int err = mf_iter_init(cpool, offset, size, &it);
+	if(unlikely(err)) return err;
+
+	while( !mf_iter_empty(&it) ) {
+		if(it.ptr) {
+			log_write(LOG_DEBUG, "__mf_write: copying to the chunk\n");
+			memcpy(it.ptr, buf, it.step_size);
+			*written_bytes += it.step_size;
+		}
+		else {
+			log_write(LOG_DEBUG, "__mf_write: writing data explicitly\n");
+			ssize_t pwrite_size = pwrite(chpool_fd(cpool), buf, it.step_size, it.offset);
+			if(pwrite_size == -1) return errno;
+			*written_bytes += pwrite_size;
+			if(pwrite_size < it.step_size)
+				break;
+		}
+		buf += it.step_size;
+		err = mf_iter_next(&it);
+		if(unlikely(err)) return err;
 	}
-	return 0;	
+
+	return 0;
 }
 
 int __mf_acquire(mf_handle_t mf, off_t offset, size_t size, void** ptr) {
@@ -93,7 +106,7 @@ int __mf_acquire(mf_handle_t mf, off_t offset, size_t size, void** ptr) {
 	if(err) return err;
 
 	err = chunk_get_mem(chunk, offset, ptr);
-	if(err) return err;
+	if(unlikely(err)) return err;
 
 	err = chpool_mem_add(ptr, chunk);
 	return err;
@@ -104,7 +117,7 @@ int __mf_release(mf_handle_t mf, size_t dummy, void* ptr) {
 	chunk_t *chunk = NULL;
 
 	int err = chpool_mem_get(cpool, ptr, &chunk);
-	if(err) return err;
+	if(unlikely(err)) return err;
 
 	err = chunk_release(chunk);
 	return err;

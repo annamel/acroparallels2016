@@ -2,9 +2,8 @@ include ../Makefile.inc
 
 CFLAGS += -I../libmf
 
-PROGS = test_hashtable test_chunkmanager test_log
+PROGS = __test_func
 OBJS=$(PROGS:=.o)
-OBJS += memtest.o
 
 LDFLAGS += -L../libmf
 LDLIBS  += -lmf

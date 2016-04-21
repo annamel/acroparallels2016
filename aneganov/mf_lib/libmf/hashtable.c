@@ -3,6 +3,7 @@
 #include "mf_malloc.h"
 #include "hashtable.h"
 #include "log.h"
+#include "bug.h"
 
 typedef struct Elem {
     hkey_t key;
@@ -23,11 +24,51 @@ struct HashTable {
 
 #define MIN_ROW_LEN   (64)
 
+#define FOUND    1
+#define NOTFOUND 0
+#define ERROR   -1
+
+static int bin_search(elem_t *data, size_t data_len, hkey_t key, int (*cmp_fn)(hkey_t, hkey_t), size_t *pos)
+{
+    if(data == NULL || cmp_fn == NULL || pos == NULL)
+        return ERROR;
+
+    size_t left = 0;
+    size_t right = data_len; 
+
+    if (data_len == 0) {
+        *pos = 0;
+        return NOTFOUND;
+    } else if ( cmp_fn(data[0].key, key) == 1 ) {
+        *pos = 0;
+        return NOTFOUND;
+    } else if ( cmp_fn(data[data_len - 1].key, key) == -1) {
+        *pos = data_len;
+        return NOTFOUND;
+    }
+
+    while (left < right) {
+        size_t mid = left + (right - left) / 2;
+        if ( cmp_fn(data[mid].key, key) > -1 )
+            right = mid;
+        else
+            left = mid + 1;
+    }
+
+    if ( cmp_fn(data[right].key, key) == 0 ) {
+        *pos = right;
+        return FOUND;
+    } else {
+        *pos = right;
+        return NOTFOUND;
+    }
+}
+
 static int hashtable_init(hashtable_t *ht, int (*cmp)(hkey_t, hkey_t), size_t (*hash)(hkey_t)) {
     if( ht == NULL || cmp == NULL || hash == NULL )
         return EINVAL;
 
-	ht->cmp_fn  = cmp;
+    ht->cmp_fn  = cmp;
     ht->hash_fn = hash;
 
     int i = 0;
@@ -41,6 +82,8 @@ static int hashtable_init(hashtable_t *ht, int (*cmp)(hkey_t, hkey_t), size_t (*
     for(i = 0; i < HASHTABLE_SIZE; i++)
         if( (res = mf_malloc(MIN_ROW_LEN*sizeof(elem_t), (void **)&ht->payload[i].data)) )
             return res;
+
+    log_write(LOG_INFO, "hashtable initiated: cmp_fn = %p, hash_fn = %p\n", cmp, hash);
 
     return 0;
 }
@@ -59,6 +102,8 @@ static int hashtable_fini(hashtable_t *ht) {
         ht->payload[i].len = 0;
     }
 
+    log_write(LOG_INFO, "hashtable finalized\n");
+
     return 0;
 }
 
@@ -69,46 +114,47 @@ int hashtable_construct(int (*cmp)(hkey_t, hkey_t), size_t (*hash)(hkey_t), hash
 }
 
 int hashtable_destruct(hashtable_t **ht) {
+    if(ht == NULL) return EINVAL;
     int err = hashtable_fini(*ht);
     if(err) return err;
     return mf_free( sizeof(hashtable_t), (void**)ht );
 }
 
 int hashtable_add(hashtable_t * ht, hkey_t key, hval_t val) {
-    if(ht == NULL)
-        return EINVAL;
+    if(ht == NULL) return EINVAL;
 
     unsigned idx = ht->hash_fn(key) % HASHTABLE_SIZE;
     size_t data_len = ht->payload[idx].data_len;
     size_t len = ht->payload[idx].len;
     elem_t *data = ht->payload[idx].data;
 
-    if( data_len > len )
-        return EINVAL;
+    BUG_ON( data_len > len );
 
-    int pos = 0;
-    while( pos < data_len && ht->cmp_fn(key, data[pos].key) == -1 )
-        pos++;
-
-    if( pos < data_len && ht->cmp_fn(key, data[pos].key) == 0 ) {
-        data[pos].val = val;
-        return 0;
-    }
+    size_t pos = 0;
+    int found = bin_search(data, data_len, key, ht->cmp_fn, &pos);
+    BUG_ON(found == ERROR);
+    
+    if(found == FOUND)
+        goto end;
 
     if( data_len == len ) {
-        int res = mf_realloc(2*len, (void **)&ht->payload[idx].data);
-        if( res )
-            return res;
         len = ht->payload[idx].len *= 2;
+        int err = mf_realloc(len*sizeof(elem_t), (void **)&ht->payload[idx].data);
+        if(err) return err;
         data = ht->payload[idx].data;
     }
     data_len = ++ht->payload[idx].data_len;
 
     if(pos < data_len - 1)
-        memmove(data + pos + 1, data + pos, data_len - pos - 1);
+        memmove( (void*)data + (pos+1)*sizeof(elem_t), (void*)data + pos*sizeof(elem_t), (data_len-pos-1)*sizeof(elem_t) );
 
     data[pos].key = key;
+
+end:
     data[pos].val = val;
+
+    log_write(LOG_INFO, "hashtable_add: idx=%u, pos=%zd, key=%jd, val=%p\n", idx, pos, key, val);
+    log_write(LOG_DEBUG, "hashtable_add: data_len = %zu\n", data_len);
 
     return 0;
 }
@@ -126,26 +172,20 @@ int hashtable_get(const hashtable_t * ht, hkey_t key, hval_t *val) {
     if( data_len > len )
         return EINVAL;
 
-    if(data_len == 0)
+    size_t pos = 0;
+    int found = bin_search(data, data_len, key, ht->cmp_fn, &pos);
+    BUG_ON(found == ERROR);
+
+    if(found == NOTFOUND) {
+        log_write(LOG_INFO, "hashtable_get: key=%jd: no such key\n", key);
+        for(int i=0; i<data_len; i++)
+            log_write(LOG_DEBUG, "hashtable_get: data[%d].key = %jd\n", i, data[i].key);
         return ENOKEY;
-
-    int mid = data_len/2;
-    int left = 0;
-    int right = data_len - 1;
-
-    while( ht->cmp_fn(key, data[mid].key) != 0 ) {
-        if(right - left <= 1)
-            break;
-        if( ht->cmp_fn(key, data[mid].key) == -1 )
-            left = mid;
-        if( ht->cmp_fn(key, data[mid].key) == 1 )
-            right = mid;
-        mid = left + (right - left + 1)/2;
     }
-    if( ht->cmp_fn(key, data[mid].key) != 0 )
-        return ENOKEY;
 
-    *val = data[mid].val;
+    *val = data[pos].val;
+
+    log_write(LOG_INFO, "hashtable_get: idx=%u, pos=%zd, key=%jd, val=%p\n", idx, pos, key, *val);
     return 0;
 }
 
@@ -161,17 +201,19 @@ int hashtable_del(hashtable_t *ht, hkey_t key) {
     if( data_len > len )
         return EINVAL;
 
-    int pos = 0;
-    while( pos < data_len && ht->cmp_fn(key, data[pos].key) == -1 )
-        pos++;
+    size_t pos = 0;
+    int found = bin_search(data, data_len, key, ht->cmp_fn, &pos);
+    BUG_ON(found == ERROR);
 
-    if(pos == data_len || ht->cmp_fn(key, data[pos].key) == 1)
+    if(found == NOTFOUND) {
+        log_write(LOG_INFO, "hashtable_del: key=%jd: no such key\n", key);
         return ENOKEY;
+    }
 
-    if(pos < data_len)
-        memmove(data + pos, data + pos + 1, data_len - pos - 1);
+    memmove( (void*)data + pos*sizeof(elem_t), (void*)data + (pos+1)*sizeof(elem_t), (data_len-pos-1)*sizeof(elem_t) );
 
     ht->payload[idx].data_len--;
 
+    log_write(LOG_INFO, "hashtable_del: idx=%u, pos=%zd, key=%jd\n", idx, pos, key);
     return 0;
 }

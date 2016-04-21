@@ -1,11 +1,15 @@
 #ifndef __MF_LOG_H__
 #define __MF_LOG_H__
 
-#define LOG_FATAL   0
-#define LOG_ERR     1
-#define LOG_WARN    2
-#define LOG_INFO    3
-#define LOG_DEBUG   4
+#define LOG_SUMMARY 0
+#define LOG_FATAL   1
+#define LOG_ERR     2
+#define LOG_WARN    3
+#define LOG_INFO    4
+#define LOG_DEBUG   5
+#define LOG_DEBUG2  6
+#define LOG_DEFAULT LOG_DEBUG
+#define LOG_DUMMY  -1
 
 #ifdef LOG_ON
 
