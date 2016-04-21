@@ -51,7 +51,7 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 		echo "}" >> $test_file
 		echo "" >> $test_file
 		for root_test_dir in $ROOT_TEST_DIR ; do
-			for test in $root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/*.c ; do
+			for test in $root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/*.c* ; do
 			if [ -f $test ]; then
 				func_name="it_check_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .c)"
 				test_out_name="$out_dir/$(basename $test .c)"
