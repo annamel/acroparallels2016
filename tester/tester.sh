@@ -62,9 +62,11 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				test_out_name="$out_dir/$(basename $test .c)"
 				echo "$func_name() {" >> $test_file
 				echo "    gcc -lm $CFLAGS -I$PWD/../include -o $test_out_name $test $out_dir/libmappedfile.a" >> $test_file
+				echo "    set -x" >> $test_file
 				echo "    $PREC $test_out_name $PWD/small.txt $PWD/out.txt" >> $test_file
 				echo "    $PREC $test_out_name $PWD/medium.txt $PWD/out.txt" >> $test_file
 				echo "    $PREC $test_out_name $PWD/gpl.txt $PWD/out.txt" >> $test_file
+				echo "    set +x" >> $test_file
 				echo "    rm -f $test_out_name" >> $test_file
 				echo "}" >> $test_file
 				echo "" >> $test_file
@@ -77,9 +79,11 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				test_out_name="$out_dir/$(basename $test .cpp)"
 				echo "$func_name() {" >> $test_file
 				echo "    g++ -lm $CFLAGS -I$PWD/../include -o $test_out_name $test $out_dir/libmappedfile.a" >> $test_file
+				echo "    set -x" >> $test_file
 				echo "    $PREC $test_out_name $PWD/small.txt $PWD/out.txt" >> $test_file
 				echo "    $PREC $test_out_name $PWD/medium.txt $PWD/out.txt" >> $test_file
 				echo "    $PREC $test_out_name $PWD/gpl.txt $PWD/out.txt" >> $test_file
+				echo "    set +x" >> $test_file
 				echo "    rm -f $test_out_name" >> $test_file
 				echo "}" >> $test_file
 				echo "" >> $test_file
