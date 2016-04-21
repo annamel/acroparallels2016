@@ -11,7 +11,7 @@ How to use logger:
 		log (level, message);
 	To log an integer, call
 		log (level, number);
-	Keep in mind, that if current log level is less strict (detail), more detailed info won't be logged; i.e., if current log level is LOG_WARNING, call log(LOG_ERROR, 100); won't do anything.
+	Keep in mind, that if current log level is less strict (detail), more detailed info won't be logged; i.e., if current log level is LOG_WARNING, call log(LOG_ERROR, 100) won't do anything.
 	To change logging level, call
 		setLogLevel(level);
 	, by level specifying wanted log level among listed above.

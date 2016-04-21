@@ -1,0 +1,14 @@
+log*.txt
+Makefile
+CMakeFiles
+CMakeCache.txt
+cmake_install.cmake
+out/
+
+test/testapp
+test/CMakeFiles
+test/Makefile
+test/CMakeFiles
+test/CMakeCache.txt
+test/cmake_install.cmake
+test/file.txt
