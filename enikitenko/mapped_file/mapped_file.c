@@ -243,6 +243,7 @@ static int mf_map_internal(mf_handle_t mf, off_t offset, size_t size)
 	if (file->data && offset >= file->offset && offset + size <= file->offset + file->size)
 		RETURN(0);
 
+	size = max(READ_WRITE_MIN_SIZE, size);
 	size_t new_memory_usage = file->memory_usage - file->size + size;
 	if (file->max_memory_usage != 0 && new_memory_usage > file->max_memory_usage)
 		RETURN_ERRNO(ENOMEM, -1);
@@ -267,8 +268,7 @@ ssize_t mf_read(mf_handle_t mf, off_t offset, size_t size, void* buf)
 {
 	GET_MAPPED_FILE(-1)
 
-	size_t s = max(READ_WRITE_MIN_SIZE, size);
-	if (mf_map_internal(mf, offset, s) == -1)
+	if (mf_map_internal(mf, offset, size) == -1)
 		RETURN_FAIL(-1);
 
 	memcpy(buf, &(((char*) file->data)[offset - file->offset]), size);
@@ -283,14 +283,16 @@ ssize_t mf_write(mf_handle_t mf, off_t offset, size_t size, const void* buf)
 {
 	GET_MAPPED_FILE(-1)
 
-	size_t s = max(READ_WRITE_MIN_SIZE, size);
-	if (mf_map_internal(mf, offset, s) == -1)
+	if (mf_map_internal(mf, offset, size) == -1)
 		RETURN_FAIL(-1);
 
 	memcpy(&(((char*) file->data)[offset - file->offset]), buf, size);
 
 	if (size >= UNMAP_READ_WRITE_SIZE)
+	{
 		munmap(file->data, file->size);
+		file->data = NULL;
+	}
 
 	RETURN(size);
 }

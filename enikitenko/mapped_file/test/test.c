@@ -7,6 +7,7 @@
 #include <math.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 long long time_ms()
 {
@@ -37,8 +38,8 @@ do														\
 	}													\
 } while (0)
 
-#define FILE_SIZE (512*1024)
-#define NUM_MAPS 1000
+#define FILE_SIZE (4096*1024)
+#define NUM_MAPS 40000
 
 long long performance_test1()
 {
