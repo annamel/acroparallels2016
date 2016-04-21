@@ -43,7 +43,6 @@ mf_mapmem_t *mf_map(mf_handle_t mf, off_t offset, size_t size)
 	return init_mem_handler(mapped_ptr, chunk);			
 }
 
-
 ssize_t mf_read(mf_handle_t mf, off_t offset, size_t size, void* buf)
 {
 	chunk_pool_t* pool = mf;
@@ -68,6 +67,37 @@ ssize_t mf_read(mf_handle_t mf, off_t offset, size_t size, void* buf)
 	return size;
 }
 
+ssize_t mf_write(mf_handle_t mf, off_t offset, size_t size, const void* buf)
+{
+	chunk_pool_t* pool = mf;
+	mf_mapmem_t* alloc_mem = mf_map(mf, offset, size); 
+
+	if (!alloc_mem)
+	{
+		errno = ENOMEM;
+		return -1;
+	}
+	
+	chunk_t* chunk = alloc_mem->handle;	
+	chunk->ref_count -=1;
+
+	if(chunk->ref_count == 0 && chunk->is_in_pool == 0)
+		chunk_add_to_pool(mf, chunk);
+	
+	int buf_len = strlen(buf);
+
+	if (buf_len < size)
+	{
+		memcpy(alloc_mem->ptr, buf, buf_len);
+		free(alloc_mem);		
+		return buf_len;
+	}
+	
+	memcpy(alloc_mem->ptr, buf, size);
+	free(alloc_mem);
+
+	return size;			
+}
 
 int mf_unmap(mf_mapmem_t *mm)
 {
@@ -100,29 +130,6 @@ int mf_close(mf_handle_t mf)
 	return 0;	
 }
 
-ssize_t mf_write(mf_handle_t mf, off_t offset, size_t size, const void* buf)
-{
-	chunk_pool_t* pool = mf;
-	mf_mapmem_t* alloc_mem = mf_map(mf, offset, size);
-	
-	if (!alloc_mem)
-	{
-		errno = ENOMEM;
-		return -1;
-	}
-	
-	chunk_t* chunk = alloc_mem->handle;	
-	chunk->ref_count -=1;
-
-	if(chunk->ref_count == 0 && chunk->is_in_pool == 0)
-		chunk_add_to_pool(mf, chunk);
-			
-	memcpy(alloc_mem->ptr, buf, size);
-	
-	free(alloc_mem);
-
-	return size;			
-}
 
 
 ssize_t mf_file_size(mf_handle_t mf)

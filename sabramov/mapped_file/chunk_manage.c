@@ -84,7 +84,7 @@ int chunk_add(mf_handle_t mf, chunk_t* chunk, int pg_multiple_offset)
 	return 0;
 }
 
-int chunk_add_to_pool(mf_handle_t mf, chunk_t* chunk) //, int pg_multiple_offset)
+int chunk_add_to_pool(mf_handle_t mf, chunk_t* chunk)
 {
 	chunk_pool_t* pool = chunk->pool;
 	
