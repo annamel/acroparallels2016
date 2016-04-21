@@ -26,7 +26,12 @@ TEST_SOURCE_DIR="$PWD/../"
 if [ -z "$ROOT_TEST_DIR" ]; then
 	ROOT_TEST_DIR=$(ls -d -1 $TEST_SOURCE_DIR/**)
 fi
+if [ -z "PREC" ]; then
+	PREC=""
+fi
 INCLUDE_DIR="$PWD/../include"
+
+
 
 MF_SUFFIX="mapped_file"
 TEST_SUFFIX="test"
@@ -58,10 +63,10 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo "$func_name() {" >> $test_file
 				#echo "    pushd $make_dir" >> $test_file
 				echo "    gcc -lm $CFLAGS -I$PWD/../include -o $test_out_name $test $out_dir/libmappedfile.a" >> $test_file
-				echo "    valgrind --error-exitcode=255 $test_out_name $PWD/small.txt $PWD/out.txt" >> $test_file
-				echo "    valgrind --error-exitcode=255 $test_out_name $PWD/medium.txt $PWD/out.txt" >> $test_file
-				echo "    valgrind --error-exitcode=255 $test_out_name $PWD/gpl.txt $PWD/out.txt" >> $test_file
-				#echo "    popd" >> $test_file
+				echo "    $PREC $test_out_name $PWD/small.txt $PWD/out.txt" >> $test_file
+				echo "    $PREC $test_out_name $PWD/medium.txt $PWD/out.txt" >> $test_file
+				echo "    $PREC $test_out_name $PWD/gpl.txt $PWD/out.txt" >> $test_file
+				#echo "    popd" >> $test_file  valgrind --error-exitcode=255
 				echo "    rm -f $test_out_name" >> $test_file
 				echo "}" >> $test_file
 				echo "" >> $test_file
@@ -79,4 +84,4 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 done
 
 $PWD/roundup $test_file
-rm -f
+rm -f $PWD/file.txt
