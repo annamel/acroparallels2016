@@ -276,6 +276,7 @@ do
                     # failed test should not immediately fail roundup.  Each
                     # tests trace output is saved in temporary storage.
                     set -e
+                    echo "" #I know this is hack, but it works
                     $roundup_test_name
                 ) >"$roundup_tmp/$roundup_test_name" 2>&1
 
