@@ -1,0 +1,10 @@
+Tester Made by Denis Kopyrin
+ This script goes through all dirs in ../ and makes cross-people tests
+ Projects are expected to be built by make or cmake at $USERNAME/mapped_file/Makefile if you use make
+or $USERNAME/mapped_file/CMakeLists.txt if you use cmake
+ Tester calls make and cmake itself and expects to find libmappedfile.a at $USERNAME/mapped_file/out/
+ Test files are build automatically and sources are expected to be at $USERNAME/mapped_file/test/
+ Changing ROOT_LIB_DIR or ROOT_TEST_DIR can change lib dirs or test dirs respectively
+like ROOT_LIB_DIR="../dkopyrin ../ivanov; ROOT_TEST_DIR="../sabramov ../osamara"
+ CFLAGS are supported
+ You can set variable 

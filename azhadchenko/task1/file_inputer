@@ -1,0 +1,7 @@
+#!/bin/sh
+
+exec 6<&0
+exec < $1
+
+read LINE
+./bizzbuzz $LINE

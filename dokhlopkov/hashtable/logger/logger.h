@@ -11,10 +11,9 @@
 #include <stdlib.h>
 
 #define LOG(...) \
-            do { msg = (char *)calloc(MSGSIZE, sizeof(char)); \
-            sprintf(msg, __VA_ARGS__);  \
-            logger_log(logger, msg); \
-            free(msg); } while (0)
+            do { if (logger == NULL || msg == NULL) logger = logger_init(); \
+              sprintf(msg, __VA_ARGS__);  \
+            logger_log(logger, msg);} while (0)
 
 #define BUFFERSIZE 2048
 #define MSGSIZE 256

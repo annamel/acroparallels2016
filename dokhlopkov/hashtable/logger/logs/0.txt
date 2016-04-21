@@ -1,80 +1,88 @@
-Initializing logger
-Creating new table
-  size: 300
-  Table 2747298512 was created.
+Creating new Hashtable
+  size: 10
+  Table 3418377792 was created.
 Add by key value
-  to hashtable: 2747298512
-  with key: .X;/DDX
-  value: E>awZ5CkiYUUQ
+  to hashtable: 3418377792
+  with key: &etbVB7]y4JN)&+
+  value: [5/^<
 Creating table pair: key -> value
-  nkey: .X;/DDX
-  nvalue: E>awZ5CkiYUUQ
+  nkey: &etbVB7]y4JN)&+
+  nvalue: [5/^<
   pair created:
-  key:.X;/DDX
-  value:E>awZ5CkiYUUQ
+  key:&etbVB7]y4JN)&+
+  value:[5/^<
  -checking if pair is good
-Add pair to: 2747298512
- -count for: 2747298512
- -size for: 2747298512
+Add pair to: 3418377792
 Get hash from pair
  -checking if pair is good
-  from hashtable: 2747298512
+  from hashtable: 3418377792
 Get hash from key
-  hashtable: 2747298512
-  key: .X;/DDX
- -size for: 2747298512
-  pair added at  1
-  to table: 2747298512
+  hashtable: 3418377792
+  key: &etbVB7]y4JN)&+
+ -size for: 3418377792
+  pair added at  7
+  to table: 3418377792
 Add by key value
-  to hashtable: 2747298512
-  with key: E>awZ5CkiYUUQ
-  value: Rto6wB#y#`Jnx0K%!VQ<14^vB+FaZ=Au#r?GrU
+  to hashtable: 3418377792
+  with key: [5/^<
+  value: g4+a:O!:'=%p|1j1_p(
 Creating table pair: key -> value
-  nkey: E>awZ5CkiYUUQ
-  nvalue: Rto6wB#y#`Jnx0K%!VQ<14^vB+FaZ=Au#r?GrU
+  nkey: [5/^<
+  nvalue: g4+a:O!:'=%p|1j1_p(
   pair created:
-  key:E>awZ5CkiYUUQ
-  value:Rto6wB#y#`Jnx0K%!VQ<14^vB+FaZ=Au#r?GrU
+  key:[5/^<
+  value:g4+a:O!:'=%p|1j1_p(
  -checking if pair is good
-Add pair to: 2747298512
- -count for: 2747298512
- -size for: 2747298512
+Add pair to: 3418377792
 Get hash from pair
  -checking if pair is good
-  from hashtable: 2747298512
+  from hashtable: 3418377792
 Get hash from key
-  hashtable: 2747298512
-  key: E>awZ5CkiYUUQ
- -size for: 2747298512
-  pair added at  100
-  to table: 2747298512
+  hashtable: 3418377792
+  key: [5/^<
+ -size for: 3418377792
+  pair added at  4
+  to table: 3418377792
 Add by key value
-  to hashtable: 2747298512
-  with key: Rto6wB#y#`Jnx0K%!VQ<14^vB+FaZ=Au#r?GrU
-  value: <
+  to hashtable: 3418377792
+  with key: g4+a:O!:'=%p|1j1_p(
+  value: oO[5'%RF$.w/p'6i0S
 Creating table pair: key -> value
-  nkey: Rto6wB#y#`Jnx0K%!VQ<14^vB+FaZ=Au#r?GrU
-  nvalue: <
+  nkey: g4+a:O!:'=%p|1j1_p(
+  nvalue: oO[5'%RF$.w/p'6i0S
   pair created:
-  key:Rto6wB#y#`Jnx0K%!VQ<14^vB+FaZ=Au#r?GrU
-  value:<
+  key:g4+a:O!:'=%p|1j1_p(
+  value:oO[5'%RF$.w/p'6i0S
  -checking if pair is good
-Add pair to: 2747298512
- -count for: 2747298512
- -size for: 2747298512
+Add pair to: 3418377792
 Get hash from pair
  -checking if pair is good
-  from hashtable: 2747298512
+  from hashtable: 3418377792
 Get hash from key
-  hashtable: 2747298512
-  key: Rto6wB#y#`Jnx0K%!VQ<14^vB+FaZ=Au#r?GrU
- -size for: 2747298512
-  pair added at  209
-  to table: 2747298512
+  hashtable: 3418377792
+  key: g4+a:O!:'=%p|1j1_p(
+ -size for: 3418377792
+  pair added at  4
+  to table: 3418377792
 Add by key value
-  to hashtable: 2747298512
-  with key: <
-  value: z+9QX%)/D)%iN.u8%B8:AbBkp4WxnN/E@u9(K'eV5H;t
+  to hashtable: 3418377792
+  with key: oO[5'%RF$.w/p'6i0S
+  value: k2QhexfHR"J
 Creating table pair: key -> value
-  nkey: <
-  nvalue: z+9QX%)/D)%iN.u8%B8:AbBkp4WxnN/E@u9(K'eV5H;t
+  nkey: oO[5'%RF$.w/p'6i0S
+  nvalue: k2QhexfHR"J
+  pair created:
+  key:oO[5'%RF$.w/p'6i0S
+  value:k2QhexfHR"J
+ -checking if pair is good
+Add pair to: 3418377792
+Get hash from pair
+ -checking if pair is good
+  from hashtable: 3418377792
+Get hash from key
+  hashtable: 3418377792
+  key: oO[5'%RF$.w/p'6i0S
+ -size for: 3418377792
+  pair added at  3
+  to table: 3418377792
+Add by key value
