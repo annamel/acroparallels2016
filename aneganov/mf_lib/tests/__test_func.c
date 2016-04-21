@@ -71,7 +71,10 @@ int main(int argc, char *argv[]) {
 	int err = __mf_open(FILE_NAME, MAX_MEMORY, O_RDWR, 0666, &mf);
 	log_write(err ? LOG_ERR : LOG_INFO, "__mf_open: %s\n", strerror(err));
 	nr_tests++;
-	if(err) nr_faults++;
+	if(err) {
+		nr_faults++;
+		goto done;
+	}
 
 	char buf[4096+11] = {0};
 	ssize_t read_bytes;
@@ -93,17 +96,73 @@ int main(int argc, char *argv[]) {
 	}
 	nr_tests++;
 
-	void *mem = NULL;
-	err = __mf_acquire(mf, 0, 10, &mem);
+	char *mem = NULL;
+	err = __mf_acquire(mf, 0, 10, (void **)&mem);
 	log_write(err ? LOG_ERR : LOG_INFO, "__mf_acquire: %s\n", strerror(err));
 	nr_tests++;
 	if(err) nr_faults++;
+
+	mem[0] = 'b';
+
+	err  =__mf_release(mf, 10, mem);
+	log_write(err ? LOG_ERR : LOG_INFO, "__mf_release: %s\n", strerror(err));
+	nr_tests++;
+	if(err) nr_faults++;
+
+	char buf1[4096*2] = {'c'};
+	for(int i = 0; i < 4096*2; i++) {
+		buf1[i] = 'c';
+	}
+
+	ssize_t written_bytes;
+
+	err = __mf_write(mf, 11, 4096*2, &written_bytes, buf1);
+	log_write(err ? LOG_ERR : LOG_INFO, "__mf_write: %s\n", strerror(err));
+	log_write(written_bytes != 4096*2 ? LOG_WARN : LOG_INFO, "written_bytes = %zd\n", written_bytes);
+	if(err) nr_faults++;
+	nr_tests++;
+
+	err = __mf_acquire(mf, 0, 20, (void **)&mem);
+	log_write(err ? LOG_ERR : LOG_INFO, "__mf_acquire: %s\n", strerror(err));
+	int corruption = 0;
+	if(mem[0]  != 'b') corruption = 1;
+	if(mem[1]  != 'a') corruption = 1;
+	if(mem[11] != 'c') corruption = 1;
+	if(mem[12] != 'c') corruption = 1;
+	log_write(corruption ? LOG_ERR : LOG_INFO, "corruption: %s\n", corruption ? "True" : "False");
+	if(err || corruption) nr_faults++;
+	nr_tests++;
+
+	err = __mf_read(mf, 0, 8192, &read_bytes, buf1);
+	log_write(err ? LOG_ERR : LOG_INFO, "__mf_read: %s\n", strerror(err));
+	log_write(read_bytes != 8192 ? LOG_WARN : LOG_INFO, "read_bytes = %zd\n", read_bytes);
+	if(read_bytes == 8192) {
+		int corruption = 0;
+		for(int i = 12; i < 22; i++) {
+			if( buf1[i] != 'c' ) corruption = 1;
+		}
+		log_write(corruption ? LOG_ERR : LOG_INFO, "corruption: %s\n", corruption ? "True" : "False");
+		if(err || corruption) nr_faults++;
+	}
+	else {
+		log_write(LOG_WARN, "cannot read from file\n");
+		nr_faults++;
+	}
+	nr_tests++;
+
+	off_t size;
+	err = __mf_file_size(mf, &size);
+	log_write(err ? LOG_ERR : LOG_INFO, "__mf_write: %s\n", strerror(err));
+	log_write(size != 1024*1024 ? LOG_ERR : LOG_INFO, "flie size = %jd\n", size);
+	if(err || size != 1024*1024) nr_faults++;
+	nr_tests++;
 
 	err = __mf_close(mf);
 	log_write(err ? LOG_ERR : LOG_INFO, "__mf_close: %s\n", strerror(err));
 	nr_tests++;
 	if(err) nr_faults++;
 
+done:
 	log_write(LOG_SUMMARY, "%d tests OK, %d tests FAILED\n", nr_tests - nr_faults, nr_faults);
 
 	return 0;

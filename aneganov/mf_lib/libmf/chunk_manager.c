@@ -140,12 +140,17 @@ static int chunk_get(chpool_t *cpool, off_t idx, off_t len, chunk_t **chunk) {
 	*chunk = NULL;
 
 	int err = hashtable_get(cpool->ht, idx, (hval_t *)chunk);
-	if(err) return err;
+	if(err) goto error;
 
-	if( (*chunk)->idx + (*chunk)->len < idx + len )
-		return ENOKEY;
+	if( (*chunk)->idx + (*chunk)->len < idx + len ) {
+		err = ENOKEY;
+		goto error;
+	}
 
-	return 0;
+	err = 0;
+error:
+	log_write(err ? LOG_WARN : LOG_INFO, "chunk_get: %s\n", strerror(err));
+	return err;
 }
 
 int chunk_acquire(chpool_t *cpool,  off_t offset, size_t size, chunk_t **chunk_ptr) {
@@ -208,6 +213,8 @@ int chunk_find(chpool_t *cpool, off_t offset, size_t size, chunk_t **chunk) {
 
 	int err = chunk_get(cpool, idx, len, chunk);
 	if(err) return err;
+
+	log_write(LOG_INFO, "chunk_find: success, chunk = %p\n", *chunk);
 	(*chunk)->ref_cnt++;
 	return 0;
 }
