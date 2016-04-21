@@ -89,7 +89,6 @@ int main()
 	performance_test tests[] = { performance_test1, performance_test2 };
 
 	printf("MAPPED FILE TESTS\n");
-	printf("=================\n");
 
 	int i;
 	for (i = 0; i < sizeof (tests) / sizeof (performance_test); i++)
@@ -98,6 +97,7 @@ int main()
 
 		printf("PERFORMANCE TEST %d: %lldms\n", i + 1, result);
 	}
+	printf("\n");
 
 	remove("file.txt");
 
