@@ -18,8 +18,6 @@ long long time_ms()
 
 typedef long long (*performance_test)();
 
-#define NUM_REPEATS 100
-
 #ifndef max
     #define max(a,b) (((a) > (b)) ? (a) : (b))
 #endif
@@ -40,8 +38,9 @@ do														\
 } while (0)
 
 #define FILE_SIZE (1024*1024)
+
 long long performance_test1()
-{
+{	
 	int fd = open("file.txt", O_RDWR | O_CREAT, 0777);
 	ASSERT(fd != -1);
 	ASSERT(!ftruncate(fd, FILE_SIZE));
@@ -70,30 +69,13 @@ int main()
 
 	printf("MAPPED FILE TESTS\n");
 	printf("=================\n");
-	printf("Number of repeats: %d\n", NUM_REPEATS);
-	printf("\n");
 
 	int i;
 	for (i = 0; i < sizeof (tests) / sizeof (performance_test); i++)
 	{
-		long long minresult = LLONG_MAX, maxresult = LLONG_MIN, E = 0, D = 0;
-		int j;
-		for (j = 0; j < NUM_REPEATS; j++)
-		{
-			long long result = performance_test1();
-			if (result < minresult)
-				minresult = result;
-			if (result > maxresult)
-				maxresult = result;
-			E += result;
-			D += result * result;
-		}
-		E /= NUM_REPEATS;
-		D /= NUM_REPEATS;
-		D -= E * E;
+		long long result = performance_test1();
 
-		printf("PERFORMANCE TEST %d: E=%lldms; D=%lldms^2; sqrt(D)=%lldms; min=%lldms; max=%lldms\n", 
-			i + 1, E, D, (long long) sqrt((double) D), minresult, maxresult);
+		printf("PERFORMANCE TEST %d: %lldms\n", i + 1, result);
 	}
 
 	return 0;
