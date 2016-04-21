@@ -9,4 +9,4 @@ set (CMAKE_SHARED_LINKER_FLAGS "-Ofast")
 
 add_executable (testapp ${SOURCES})
 include_directories (${CMAKE_CURRENT_SOURCE_DIR}/../../../include)
-target_link_libraries(testapp ${CMAKE_CURRENT_SOURCE_DIR}/../libmappedfile.a)
+target_link_libraries(testapp ${CMAKE_CURRENT_SOURCE_DIR}/../out/libmappedfile.a)
