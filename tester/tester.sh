@@ -79,3 +79,4 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 done
 
 $PWD/roundup $test_file
+rm -f
