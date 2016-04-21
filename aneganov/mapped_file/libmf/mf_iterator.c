@@ -36,7 +36,7 @@ int mf_iter_init(chpool_t *cpool, off_t offset, size_t size, struct mf_iter *it)
 	it->offset = offset;
 	size_t page_size = mf_iter_step_size();
 	it->choff = offset - (offset % page_size);
-	it->step_size = min(size, mf_iter_step_size() - (offset - it->offset));
+	it->step_size = min(size, mf_iter_step_size() - (offset - it->choff));
 	return mf_iter_step(it);
 }
 

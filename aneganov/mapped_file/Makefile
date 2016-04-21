@@ -6,4 +6,5 @@ all:
 	cp ./libmf/libmf.a ./out/libmappedfile.a
 
 clean:
-	@for d in $(SUBDIRS); do $(MAKE) -C $$d clean ; done
+	@for d in $(SUBDIRS); do $(MAKE) -C $$d clean ; done;
+	rm ./out/*
