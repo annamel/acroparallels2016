@@ -37,11 +37,9 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 	make_dir="$root_lib_dir/$MF_SUFFIX/$LIBMAKE_SUFFIX/"
 	lib_dir="$root_lib_dir/$MF_SUFFIX/$LIBOUT_SUFFIX/"
 	if [ -d $make_dir ]; then
-	if [ -d $lib_dir ]; then
 		func_name="it_check_build_$(basename $root_lib_dir)"
 		echo "$func_name() {" >> $test_file
 		echo "    pushd $make_dir" >> $test_file
-		echo "    make clean" >> $test_file
 		echo "    make" >> $test_file
 		echo "    popd" >> $test_file
 		echo "}" >> $test_file
@@ -51,21 +49,28 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 			if [ -f $test ]; then
 				func_name="it_check_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .c)"
 				out_dir="$root_lib_dir/$MF_SUFFIX/$LIBOUT_SUFFIX"
+				test_out_name="$out_dir/$(basename $test .c)"
 				mkdir -p $out_dir
 				echo "$func_name() {" >> $test_file
 				echo "    pushd $make_dir" >> $test_file
-				echo "    gcc $CFLAGS -I$PWD/../include -o $out_dir/test $test $out_dir/*.o" >> $test_file
-				echo "    $out_dir/test $PWD/small.txt $PWD/out.txt" >> $test_file
-				echo "    $out_dir/test $PWD/medium.txt $PWD/out.txt" >> $test_file
-				echo "    $out_dir/test $PWD/gpl.txt $PWD/out.txt" >> $test_file
+				echo "    gcc $CFLAGS -I$PWD/../include -o $test_out_name $test $out_dir/*.o" >> $test_file
+				echo "    valgrind $test_out_name $PWD/small.txt $PWD/out.txt" >> $test_file
+				echo "    valgrind $test_out_name $PWD/medium.txt $PWD/out.txt" >> $test_file
+				echo "    valgrind $test_out_name $PWD/gpl.txt $PWD/out.txt" >> $test_file
 				echo "    popd" >> $test_file
-				echo "    echo \"hey\"" >> $test_file
+				echo "    rm -f $test_out_name" >> $test_file
 				echo "}" >> $test_file
 				echo "" >> $test_file
 			fi
+			done
 		done
-		done
-	fi
+		func_name="it_make_clean_$(basename $root_lib_dir)"
+		echo "$func_name() {" >> $test_file
+		echo "    pushd $make_dir" >> $test_file
+		echo "    make clean" >> $test_file
+		echo "    popd" >> $test_file
+		echo "}" >> $test_file
+		echo "" >> $test_file
 	fi
 done
 

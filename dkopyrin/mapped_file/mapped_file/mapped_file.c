@@ -5,7 +5,7 @@
 
 //TODO: Use max_memory_usage
 mf_handle_t mf_open(const char *pathname, size_t max_memory_usage){
-	return (mf_handle_t) _mf_open(pathname, O_RDWR | O_CREAT | O_TRUNC, 0755);
+	return (mf_handle_t) _mf_open(pathname, O_RDWR | O_CREAT, 0755);
 }
 
 int mf_close(mf_handle_t mf){
@@ -24,14 +24,11 @@ ssize_t mf_write(mf_handle_t mf, off_t offset, size_t size, const void *buf){
 }
 
 mf_mapmem_t *mf_map(mf_handle_t mf, off_t offset, size_t size){
-
-	errno = ENOTSUP; //TODO: Support mapmem
-	return MF_MAP_FAILED;
+  	return _mf_map((struct _mf *)mf, offset, size);
 }
 
 int mf_unmap(mf_mapmem_t *mm){
-	errno = ENOTSUP; //TODO: Support mapmem
-	return -1;
+	return _mf_unmap(mm);
 }
 
 ssize_t mf_file_size(mf_handle_t mf){
