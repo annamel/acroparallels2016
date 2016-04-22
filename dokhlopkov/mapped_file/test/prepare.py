@@ -1,4 +1,4 @@
-huge = 10 ** 10
+huge = 10 ** 8
 
 big = open('big', 'w')
 big.write("9" * huge)

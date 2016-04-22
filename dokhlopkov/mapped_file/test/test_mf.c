@@ -5,11 +5,12 @@
 
 #define TESTFAILED 666
 
-/* open / close */
+int testfailed;
+
 void check(int err) {
     err ? printf("FAILED: %d\n", err) : printf("PASSED\n");
+    if (err) testfailed = 1;
 }
-
 
 int test_1(const char* filename); // open / close
 int test_2(const char* filename); // file size
@@ -21,8 +22,8 @@ int test_5(const char* filename); // write to a file & read & random access
 int ptest_1(const char* filename); // iterate over buffer with big file
 
 int main(int argc, char **argv) {
-    if (argc != 2) { printf("Input file?\n"); return 1; }
-    char *filename = argv[1];
+    testfailed = 0;
+    char filename[] = "big";
     printf("Input file: %s\n", filename);
 
     printf("Test 01: "); check(test_1(filename));
@@ -33,7 +34,7 @@ int main(int argc, char **argv) {
 
     printf("Performance test 01: "); check(ptest_1(filename));
 
-    return 0;
+    return testfailed;
 }
 
 int test_1(const char* filename) {
@@ -85,7 +86,7 @@ int test_4(const char* filename) {
 }
 
 int test_5(const char* filename) {
-    mf_handle_t handle = mf_open("tests/temp", 0);
+    mf_handle_t handle = mf_open("temp", 0);
     mf_write(handle, 0, 10, "oTENCHARSo");
     char *buf = (char *)malloc(10);
     memset(buf, 0, 10);
@@ -110,7 +111,6 @@ int test_5(const char* filename) {
 
 
 int ptest_1(const char* filename) {
-    if (!strcmp(filename, "big") && !strcmp(filename, "tests/big")) { printf("THIS TEST REQUIRES SPECIAL FILE - "); return 1; }
     mf_handle_t handle = mf_open(filename, 0);
     size_t size = (size_t)mf_file_size(handle);
     if (size != 40000001345) { printf("THIS TEST REQUIRES SPECIAL FILE - "); return 1; }
