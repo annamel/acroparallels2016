@@ -23,16 +23,15 @@ int ptest_1(const char* filename); // iterate over buffer with big file
 
 int main(int argc, char **argv) {
     testfailed = 0;
-    char filename[] = "big";
-    printf("Input file: %s\n", filename);
+    char big[] = "big", small[] = "small";
 
-    printf("Test 01: "); check(test_1(filename));
-    printf("Test 02: "); check(test_2(filename));
-    printf("Test 03: "); check(test_3(filename));
-    printf("Test 04: "); check(test_4(filename));
-    printf("Test 05: "); check(test_5(filename));
+    printf("Test 01: "); check(test_1(small));
+    printf("Test 02: "); check(test_2(small));
+    printf("Test 03: "); check(test_3(small));
+    printf("Test 04: "); check(test_4(small));
+    printf("Test 05: "); check(test_5(small));
 
-    printf("Performance test 01: "); check(ptest_1(filename));
+    printf("Performance test 01: "); check(ptest_1(big));
 
     return testfailed;
 }
@@ -104,7 +103,6 @@ int test_5(const char* filename) {
 
     free(buf);
     int err = mf_close(handle);
-    remove("tests/temp");
     return err;
 }
 
@@ -113,7 +111,6 @@ int test_5(const char* filename) {
 int ptest_1(const char* filename) {
     mf_handle_t handle = mf_open(filename, 0);
     size_t size = (size_t)mf_file_size(handle);
-    if (size != 40000001345) { printf("THIS TEST REQUIRES SPECIAL FILE - "); return 1; }
     size_t bufsize = 1024;
     void *buf = malloc(bufsize);
 
@@ -126,6 +123,7 @@ int ptest_1(const char* filename) {
     char current;
     for (size_t j = 0; readbytes < size; j += bufsize) {
         readbytes += (size_t)mf_read(handle, j, bufsize, buf);
+//        printf("buf = %s\n", buf);
         for (int i = 0; i < bufsize; ++i) {
             current = ((char *) buf)[i];
             if (current != '9') counter--;
@@ -135,7 +133,7 @@ int ptest_1(const char* filename) {
             if (current == '4') counter4--;
         }
     }
-    //  printf("\ntotal: %d\n1: %d\n2: %d\n3: %d\n4: %d\n", counter, counter1, counter2, counter3, counter4);
+//    printf("\ntotal: %d\n1: %d\n2: %d\n3: %d\n4: %d\n", counter, counter1, counter2, counter3, counter4);
     if (counter || counter1 || counter2 || counter3 || counter4)
         return TESTFAILED;
     free(buf);
