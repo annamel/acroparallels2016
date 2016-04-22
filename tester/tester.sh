@@ -12,7 +12,7 @@
 # CFLAGS are supported
 
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-test_file=$(mktemp)
+test_file=$(mktemp /tmp/tmp.XXXXXXXXXX)
 echo $test_file
 echo "#!$PWD/roundup" > $test_file
 echo "" >> $test_file
@@ -46,7 +46,7 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 		mkdir -p $out_dir
 		func_name="it_check_build_$(basename $root_lib_dir)"
 		echo "$func_name() {" >> $test_file
-		echo "    pushd $make_dir" >> $test_file
+		echo "    pushd '$make_dir'" >> $test_file
 		if [ -f $make_dir/CMakeLists.txt ]; then
 			echo "    cmake ." >> $test_file
 			echo ""
@@ -60,14 +60,17 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 			if [ -f $test ]; then
 				func_name="it_check_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .c)"
 				test_out_name="$out_dir/$(basename $test .c)"
+				test_object_name="$test_out_name.o"
 				echo "$func_name() {" >> $test_file
-				echo "    gcc -lm $CFLAGS -I$PWD/../include -o $test_out_name $test $out_dir/libmappedfile.a" >> $test_file
+				echo "    gcc $CFLAGS -I'$PWD/../include' -c -o $test_object_name $test" >> $test_file
+				echo "    g++ -g -o $test_out_name $test_object_name -L$out_dir -lmappedfile -lm -lrt -lpthread" >> $test_file
 				echo "    set -x" >> $test_file
 				echo "    $PREC $test_out_name $PWD/small.txt $PWD/out.txt" >> $test_file
 				echo "    $PREC $test_out_name $PWD/medium.txt $PWD/out.txt" >> $test_file
 				echo "    $PREC $test_out_name $PWD/gpl.txt $PWD/out.txt" >> $test_file
 				echo "    set +x" >> $test_file
 				echo "    rm -f $test_out_name" >> $test_file
+				echo "    rm -f $test_object_name" >> $test_file
 				echo "}" >> $test_file
 				echo "" >> $test_file
 			fi
@@ -77,8 +80,10 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 			if [ -f $test ]; then
 				func_name="it_check_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .cpp)"
 				test_out_name="$out_dir/$(basename $test .cpp)"
+				test_object_name="$test_out_name.o"
 				echo "$func_name() {" >> $test_file
-				echo "    g++ -lm $CFLAGS -I$PWD/../include -o $test_out_name $test $out_dir/libmappedfile.a" >> $test_file
+				echo "    g++ -std=c++14 $CFLAGS -I$PWD/../include -c -o $test_object_name $test" >> $test_file
+				echo "    g++ -g -o $test_out_name $test_object_name -L$out_dir -lmappedfile -lm -lrt -lpthread" >> $test_file
 				echo "    set -x" >> $test_file
 				echo "    $PREC $test_out_name $PWD/small.txt $PWD/out.txt" >> $test_file
 				echo "    $PREC $test_out_name $PWD/medium.txt $PWD/out.txt" >> $test_file
