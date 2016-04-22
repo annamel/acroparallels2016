@@ -64,9 +64,11 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo "$func_name() {" >> $test_file
 				echo "    gcc $CFLAGS -I$PWD/../include -c -o $test_object_name $test" >> $test_file
 				echo "    g++ -g -o $test_out_name $test_object_name -L$out_dir -lmappedfile -lm -lrt -lpthread" >> $test_file
+				echo "    set -x" >> $test_file
 				echo "    $PREC $test_out_name $PWD/small.txt $PWD/out.txt" >> $test_file
 				echo "    $PREC $test_out_name $PWD/medium.txt $PWD/out.txt" >> $test_file
 				echo "    $PREC $test_out_name $PWD/gpl.txt $PWD/out.txt" >> $test_file
+				echo "    set +x" >> $test_file
 				echo "    rm -f $test_out_name" >> $test_file
 				echo "    rm -f $test_object_name" >> $test_file
 				echo "}" >> $test_file
@@ -82,9 +84,11 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo "$func_name() {" >> $test_file
 				echo "    g++ -std=c++14 $CFLAGS -I$PWD/../include -c -o $test_object_name $test" >> $test_file
 				echo "    g++ -g -o $test_out_name $test_object_name -L$out_dir -lmappedfile -lm -lrt -lpthread" >> $test_file
+				echo "    set -x" >> $test_file
 				echo "    $PREC $test_out_name $PWD/small.txt $PWD/out.txt" >> $test_file
 				echo "    $PREC $test_out_name $PWD/medium.txt $PWD/out.txt" >> $test_file
 				echo "    $PREC $test_out_name $PWD/gpl.txt $PWD/out.txt" >> $test_file
+				echo "    set +x" >> $test_file
 				echo "    rm -f $test_out_name" >> $test_file
 				echo "}" >> $test_file
 				echo "" >> $test_file

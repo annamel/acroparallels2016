@@ -157,6 +157,9 @@ int mf_close(mf_handle_t mf)
 	hashtable_destroy(&file->chunks, mapmem_destroy);
 	free(file);
 
+	if (file->data)
+		munmap(file->data, file->size);
+
 	RETURN(0);
 }
 

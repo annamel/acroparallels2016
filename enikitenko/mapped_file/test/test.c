@@ -71,8 +71,11 @@ long long performance_test2()
 	int i;
 	for (i = 0; i < NUM_MAPS; i++)
 	{
-		mf_map(mf, 10, 1000);
+		mapmems[i] = mf_map(mf, 10, 1000);
+		ASSERT(mapmems[i]);
 	}
+	for (i = 0; i < NUM_MAPS; i++)
+		ASSERT(mf_unmap(mapmems[i]) != -1);
 
 	ASSERT(!mf_close(mf));
 
