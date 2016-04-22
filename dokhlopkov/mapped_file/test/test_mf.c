@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
     printf("Test 04: "); check(test_4(filename));
     printf("Test 05: "); check(test_5(filename));
 
-    printf("Performance test 01: "); check(ptest_1(filename));
+//    printf("Performance test 01: "); check(ptest_1(filename));
 
     return 0;
 }
@@ -85,7 +85,7 @@ int test_4(const char* filename) {
 }
 
 int test_5(const char* filename) {
-    mf_handle_t handle = mf_open("tests/temp", 0);
+    mf_handle_t handle = mf_open("test/temp", 0);
     mf_write(handle, 0, 10, "oTENCHARSo");
     char *buf = (char *)malloc(10);
     memset(buf, 0, 10);
