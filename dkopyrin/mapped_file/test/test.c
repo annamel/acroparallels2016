@@ -1,6 +1,6 @@
 #include "mapped_file.h"
 #include "../logger/log.h"
-#include <malloc.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
