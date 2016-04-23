@@ -7,4 +7,4 @@ all:
 test:
 
 clean:
-	rm -f $(MAKE_DIR)/*.o
+	rm -f "$(MAKE_DIR)/"*.o

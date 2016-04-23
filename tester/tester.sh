@@ -103,7 +103,7 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 		func_name="it_make_clean_$(basename $root_lib_dir)"
 		echo "$func_name() {" >> $test_file
 		echo "    pushd $make_dir" >> $test_file
-		#echo "    make clean" >> $test_file
+		echo "    make clean" >> $test_file
 		echo "    popd" >> $test_file
 		echo "}" >> $test_file
 		echo "" >> $test_file

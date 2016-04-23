@@ -19,7 +19,9 @@ $(BUILDDIRS):
 	$(MAKE) -C $(@:build-%=%)
 
 clean: make_dir_init $(CLEANDIRS)
-	rm -rf *.o "$(PWD)/out/libmappedfile.a"
+	rm -rf "$(PWD)/out/"*.o
+	rm "$(PWD)/out/libmappedfile.a"
+
 $(CLEANDIRS):
 	$(MAKE) -C $(@:clean-%=%) clean
 
