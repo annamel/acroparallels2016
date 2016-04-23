@@ -73,6 +73,11 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo "    $PREC '$test_out_name' '$PWD/medium.txt' '$PWD/out.txt'" >> $test_file
 				echo "    $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt'" >> $test_file
 				echo "    set +x" >> $test_file
+				echo "}" >> $test_file
+				echo "" >> $test_file
+
+				func_name="it_clean_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .c)"
+				echo "$func_name() {" >> $test_file
 				echo "    rm -f '$test_out_name'" >> $test_file
 				echo "    rm -f '$test_object_name'" >> $test_file
 				echo "}" >> $test_file
@@ -93,8 +98,14 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo "    $PREC '$test_out_name' '$PWD/medium.txt' '$PWD/out.txt'" >> $test_file
 				echo "    $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt'" >> $test_file
 				echo "    set +x" >> $test_file
-				echo "    rm -f '$test_out_name'" >> $test_file
-				echo "    rm -f '$test_object_name'" >> $test_file
+				echo "}" >> $test_file
+				echo "" >> $test_file
+
+				func_name="it_clean_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .cpp)"
+				echo "$func_name() {" >> $test_file
+				echo "    rm -rf '$test_out_name'" >> $test_file
+				echo "    rm -rf '$test_object_name'" >> $test_file
+				echo "    test 1=1"
 				echo "}" >> $test_file
 				echo "" >> $test_file
 			fi
