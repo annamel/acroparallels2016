@@ -1,8 +1,8 @@
 include ../Makefile.inc
 
-CFLAGS += -I../libmf
+CFLAGS += -I../../../include -I../libmf
 
-PROGS = __test_func
+PROGS = test_func
 OBJS=$(PROGS:=.o)
 
 LDFLAGS += -L../libmf
