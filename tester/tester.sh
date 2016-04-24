@@ -11,6 +11,15 @@
 # The same way you can change variable ROOT_TEST_DIR
 # CFLAGS are supported
 
+LDFLAGS=$LDFLAGS\ "-lmappedfile -lm -lrt -lpthread"
+UNAME=$(uname)
+if [ $UNAME == "Darwin" ]; then
+	CFLAGS=$CFLAGS\ -DNORT
+else
+	LDFLAGS=$LDFLAGS\ -lrt
+fi
+
+
 SAVEIFS=$IFS
 IFS=$(echo -en "\n\b")
 
@@ -48,16 +57,13 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 	lib_dir="$root_lib_dir/$MF_SUFFIX/$LIBOUT_SUFFIX/"
 	if [ -d $make_dir ]; then
 		out_dir="$root_lib_dir/$MF_SUFFIX/$LIBOUT_SUFFIX"
-		func_name="it_check_build_$(basename $root_lib_dir)"
-		echo "$func_name() {" >> $test_file
-		echo "    pushd '$make_dir'" >> $test_file
+		echo "pushd '$make_dir'" >> $test_file
 		if [ -f $make_dir/CMakeLists.txt ]; then
-			echo "    cmake ." >> $test_file
+			echo "cmake ." >> $test_file
 			echo ""
 		fi
-		echo "    make" >> $test_file
-		echo "    popd" >> $test_file
-		echo "}" >> $test_file
+		echo "make" >> $test_file
+		echo "popd" >> $test_file
 		echo "" >> $test_file
 		for root_test_dir in $ROOT_TEST_DIR ; do
 			for test in $root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/*.c ; do
@@ -66,8 +72,8 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				test_out_name="$out_dir/$(basename $test .c)"
 				test_object_name="$test_out_name.o"
 				echo "$func_name() {" >> $test_file
-				echo "    gcc $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' '$test'" >> $test_file
-				echo "    g++ -g -o '$test_out_name' '$test_object_name' -L'$out_dir' -lmappedfile -lm -lrt -lpthread" >> $test_file
+				echo "    gcc $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' $LDFLAGS '$test'" >> $test_file
+				echo "    g++ $CFLAGS -g -o '$test_out_name' '$test_object_name' $LDFLAGS -L'$out_dir'" >> $test_file
 				echo "    set -x" >> $test_file
 				echo "    $PREC '$test_out_name' '$PWD/small.txt' '$PWD/out.txt'" >> $test_file
 				echo "    $PREC '$test_out_name' '$PWD/medium.txt' '$PWD/out.txt'" >> $test_file
@@ -76,11 +82,8 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo "}" >> $test_file
 				echo "" >> $test_file
 
-				func_name="it_clean_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .c)"
-				echo "$func_name() {" >> $test_file
-				echo "    rm -f '$test_out_name'" >> $test_file
-				echo "    rm -f '$test_object_name'" >> $test_file
-				echo "}" >> $test_file
+				echo "rm -f '$test_out_name'" >> $test_file
+				echo "rm -f '$test_object_name'" >> $test_file
 				echo "" >> $test_file
 			fi
 			done
@@ -91,8 +94,8 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				test_out_name="$out_dir/$(basename $test .cpp)"
 				test_object_name="$test_out_name.o"
 				echo "$func_name() {" >> $test_file
-				echo "    g++ -std=c++14 $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' '$test'" >> $test_file
-				echo "    g++ -g -o '$test_out_name' '$test_object_name' -L'$out_dir' -lmappedfile -lm -lrt -lpthread" >> $test_file
+				echo "    g++ $CFLAGS -std=c++14 $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' $LDFLAGS '$test'" >> $test_file
+				echo "    g++ $CFLAGS -g -o '$test_out_name' '$test_object_name' $LDFLAGS  -L'$out_dir'" >> $test_file
 				echo "    set -x" >> $test_file
 				echo "    $PREC '$test_out_name' '$PWD/small.txt' '$PWD/out.txt'" >> $test_file
 				echo "    $PREC '$test_out_name' '$PWD/medium.txt' '$PWD/out.txt'" >> $test_file
@@ -101,12 +104,8 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo "}" >> $test_file
 				echo "" >> $test_file
 
-				func_name="it_clean_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .cpp)"
-				echo "$func_name() {" >> $test_file
-				echo "    rm -rf '$test_out_name'" >> $test_file
-				echo "    rm -rf '$test_object_name'" >> $test_file
-				echo "    test 1=1"
-				echo "}" >> $test_file
+				echo "rm -rf '$test_out_name'" >> $test_file
+				echo "rm -rf '$test_object_name'" >> $test_file
 				echo "" >> $test_file
 			fi
 			done
