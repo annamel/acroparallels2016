@@ -11,8 +11,8 @@
 #include <sys/time.h>
 #include <errno.h>
 
-#define TEST_SIZE 10000
-#define MAJOR_ITERATIONS 10
+#define TEST_SIZE 100000
+#define MAJOR_ITERATIONS 1
 #define MINOR_ITERATIONS 1000
 
 long long time_ms()
@@ -64,9 +64,7 @@ int main()
 	CHECK(mf2);
 	
 	for (int i = 0; i < MAJOR_ITERATIONS; i++)
-	{
-		printf("Step %d / %d...\n", i, MAJOR_ITERATIONS);
-		
+	{		
 		std::vector<mf_mapmem_handle_t> regions;
 		
 		for (int j = 0; j < MINOR_ITERATIONS; j++)
@@ -104,13 +102,34 @@ int main()
 	
 	printf("Total time: %lld ms.\n", time_ms() - time_start);
 	
-	system("md5sum test0");
-	system("md5sum test1");
-	system("md5sum test2");
+	FILE* o0 = popen("md5sum -b test0", "r");
+	FILE* o1 = popen("md5sum -b test1", "r");
+	FILE* o2 = popen("md5sum -b test2", "r");
+	CHECK(o0);
+	CHECK(o1);
+	CHECK(o2);
+	
+	char checksum0[80];
+	char checksum1[80];
+	char checksum2[80];
+	CHECK(fscanf(o0, "%s", checksum0) == 1);
+	CHECK(fscanf(o1, "%s", checksum1) == 1);
+	CHECK(fscanf(o2, "%s", checksum2) == 1);
+	
+	int err = 0;
+	if (strcmp(checksum0, checksum1))
+		err |= 1;
+		
+	if (strcmp(checksum0, checksum2))
+		err |= 2;
+		
+	fclose(o0);
+	fclose(o1);
+	fclose(o2);
 	
 	unlink("test0");
 	unlink("test1");
 	unlink("test2");
 	
-	return 0;
+	return err;
 }
