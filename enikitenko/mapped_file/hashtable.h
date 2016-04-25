@@ -13,7 +13,7 @@ typedef struct _list
 
 typedef size_t (*hashfunction)(void* key);
 typedef int (*keycomparator)(void* key1, void* key2);
-typedef void (*destroyfunction)(void* key, void* value);
+typedef int (*destroyfunction)(void* key, void* value);
 
 typedef struct hashtable
 {

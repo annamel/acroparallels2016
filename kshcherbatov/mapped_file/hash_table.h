@@ -17,13 +17,13 @@ struct hash_list_t {
     struct hash_list_t *next;
     struct hash_list_t *prev;
 
-    size_t cmp_identity;
+    ssize_t cmp_identity;
     void *data;
 };
 
 struct hash_t {
     struct hash_list_t** table;
-    size_t table_size;
+    ssize_t table_size;
 
     hash_func_t *hash_func;
 };

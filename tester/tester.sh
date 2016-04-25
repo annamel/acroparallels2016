@@ -14,16 +14,15 @@
 LDFLAGS=$LDFLAGS\ "-lmappedfile -lm -lrt -lpthread"
 UNAME=$(uname)
 if [ $UNAME == "Darwin" ]; then
+	SAVEIFS=$IFS
+	IFS=$(echo -en "\n\b")
 	CFLAGS=$CFLAGS\ -DNORT
 else
 	LDFLAGS=$LDFLAGS\ -lrt
 fi
 
-
-SAVEIFS=$IFS
-IFS=$(echo -en "\n\b")
-
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+CALL_PWD="$(pwd)"
 test_file=$(mktemp /tmp/tmp.XXXXXXXXXX)
 echo $test_file
 echo "#!$PWD/roundup" > $test_file
@@ -51,19 +50,27 @@ MF_SUFFIX="mapped_file"
 TEST_SUFFIX="test"
 LIBMAKE_SUFFIX="."
 LIBOUT_SUFFIX="out"
+TEST_BUILD=""
 
 for root_lib_dir  in $ROOT_LIB_DIR  ; do
 	make_dir="$root_lib_dir/$MF_SUFFIX/$LIBMAKE_SUFFIX/"
 	lib_dir="$root_lib_dir/$MF_SUFFIX/$LIBOUT_SUFFIX/"
 	if [ -d $make_dir ]; then
 		out_dir="$root_lib_dir/$MF_SUFFIX/$LIBOUT_SUFFIX"
-		echo "pushd '$make_dir'" >> $test_file
 		if [ -f $make_dir/CMakeLists.txt ]; then
-			echo "cmake ." >> $test_file
-			echo ""
+			echo "mkdir -p $PWD/build_dir" >> $test_file
+			echo "pushd $PWD/build_dir" >> $test_file
+			echo "cmake '$CALL_PWD/$make_dir'" >> $test_file
+			echo "make" >> $test_file
+			echo "mkdir -p '$CALL_PWD/$out_dir'" >> $test_file
+			echo "cp -f './$LIBOUT_SUFFIX'/* '$CALL_PWD/$out_dir/'" >> $test_file
+			echo "rm -rf '$PWD/build_dir'" >> $test_file
+			echo "popd" >> $test_file
+		else
+			echo "pushd '$make_dir'" >> $test_file
+			echo "make" >> $test_file
+			echo "popd" >> $test_file
 		fi
-		echo "make" >> $test_file
-		echo "popd" >> $test_file
 		echo "" >> $test_file
 		for root_test_dir in $ROOT_TEST_DIR ; do
 			for test in $root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/*.c ; do
@@ -71,6 +78,8 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				func_name="it_check_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .c)"
 				test_out_name="$out_dir/$(basename $test .c)"
 				test_object_name="$test_out_name.o"
+
+				TEST_BUILD=$TEST_BUILD\ $test_out_name\ $test_object_name
 				echo "$func_name() {" >> $test_file
 				echo "    gcc $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' $LDFLAGS '$test'" >> $test_file
 				echo "    g++ $CFLAGS -g -o '$test_out_name' '$test_object_name' $LDFLAGS -L'$out_dir'" >> $test_file
@@ -80,10 +89,6 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo "    $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt'" >> $test_file
 				echo "    set +x" >> $test_file
 				echo "}" >> $test_file
-				echo "" >> $test_file
-
-				echo "rm -f '$test_out_name'" >> $test_file
-				echo "rm -f '$test_object_name'" >> $test_file
 				echo "" >> $test_file
 			fi
 			done
@@ -104,22 +109,32 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo "}" >> $test_file
 				echo "" >> $test_file
 
+				echo "rm -rf '$PWD/out.txt'" >> $test_file
 				echo "rm -rf '$test_out_name'" >> $test_file
 				echo "rm -rf '$test_object_name'" >> $test_file
 				echo "" >> $test_file
 			fi
 			done
 		done
-		func_name="it_make_clean_$(basename $root_lib_dir)"
-		echo "$func_name() {" >> $test_file
-		echo "    pushd $make_dir" >> $test_file
-		echo "    make clean" >> $test_file
-		echo "    popd" >> $test_file
-		echo "}" >> $test_file
-		echo "" >> $test_file
 	fi
 done
 
 $PWD/roundup $test_file
-rm -f $PWD/file.txt
-IFS=$SAVEIFS
+
+for root_lib_dir in $ROOT_LIB_DIR  ; do
+	make_dir="$root_lib_dir/$MF_SUFFIX/$LIBMAKE_SUFFIX/"
+	pushd $make_dir > /dev/null
+	make clean > /dev/null 2> /dev/null
+	rm -rf ./$LIBOUT_SUFFIX/
+	popd > /dev/null
+done
+for clean_file in $TEST_BUILD; do
+	rm -f $clean_file
+done
+
+PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+rm -f $PWD/out.txt
+
+if [ $UNAME == "Darwin" ]; then
+	IFS=$SAVEIFS
+fi
