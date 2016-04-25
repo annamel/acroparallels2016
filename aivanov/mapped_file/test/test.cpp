@@ -72,7 +72,7 @@ int main()
 		for (int j = 0; j < MINOR_ITERATIONS; j++)
 		{
 			ssize_t offset = rand() % (TEST_SIZE - 1);
-			ssize_t size = rand() % (TEST_SIZE - offset);
+			ssize_t size = 1 + rand() % (TEST_SIZE - offset);
 			uint8_t* buf = new uint8_t[size];
 			for (int k = 0; k < size; k++)
 				buf[k] = (uint8_t) rand();
