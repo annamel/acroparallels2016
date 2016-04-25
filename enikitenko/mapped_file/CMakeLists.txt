@@ -2,6 +2,7 @@ project (Logger)
 cmake_minimum_required (VERSION 2.8)
 
 set (WITH_LOGGER                  OFF  CACHE BOOL   "Enable logger")
+set (DEBUG_MODE                   ON   CACHE BOOL   "Debug mode")
 
 list (APPEND SOURCES
 	mapped_file.c
@@ -18,6 +19,10 @@ if (WITH_LOGGER)
 		../logger/not_demangle.c)
 	add_definitions (-DWITH_LOGGER)
 endif (WITH_LOGGER)
+
+if (DEBUG_MODE)
+	add_definitions (-DDEBUG_MODE)
+endif (DEBUG_MODE)
 
 add_library (mappedfile ${SOURCES})
 include_directories (${CMAKE_CURRENT_SOURCE_DIR}/../../include)

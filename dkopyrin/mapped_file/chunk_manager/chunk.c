@@ -1,12 +1,14 @@
 #include "chunk.h"
 
+#define __USE_GNU
+#include <sys/mman.h>
+
 #define COLOR(x) "\x1B[34m"x"\x1B[0m"
 #define LOGCOLOR(x) COLOR("%s: ")x, __func__
 #include "../logger/log.h"
 
 #include <errno.h>
 #include <assert.h>
-#include <sys/mman.h>
 #include <string.h>
 
 int chunk_init_unused (struct chunk *ch) {

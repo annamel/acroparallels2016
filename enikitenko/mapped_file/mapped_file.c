@@ -36,7 +36,7 @@
 		return val;													\
 	} while (0)
 
-	#define BEGIN_FUNCTION											\
+	#define BEGIN_FUNCTION()										\
 		logi("Function %s begin", __FUNCTION__);
 #else
 	#define RETURN(val)												\
@@ -58,11 +58,11 @@
 		return val;													\
 	} while (0)
 
-	#define BEGIN_FUNCTION
+	#define BEGIN_FUNCTION()
 #endif // WITH_LOGGER
 
 #define GET_MAPPED_FILE(retval) 									\
-	BEGIN_FUNCTION													\
+	BEGIN_FUNCTION()												\
 	mapped_file_t* file = (mapped_file_t*) mf;						\
 	if (!file)														\
 		RETURN_ERRNO(EINVAL, retval);
@@ -82,69 +82,91 @@
 	}
 #endif
 
+static void invalidate_data(void* data, size_t size)
+{
+#ifdef DEBUG_MODE
+	int i;
+	for (i = 0; i < size / sizeof (int); i++)
+		((int*) data)[i] = 0xDEADBABA;
+#endif // DEBUG_MODE
+}
+
 static size_t mapmem_hashfunction(void* key)
 {
-	mapped_key_t* mapmem = (mapped_key_t*) key;
+	mapped_chunk_key_t* mapmem = (mapped_chunk_key_t*) key;
 	return mapmem->offset;
 }
 
 int mapmem_comparator(void* key1, void* key2)
 {
-	mapped_key_t* mapmem1 = (mapped_key_t*) key1;
-	mapped_key_t* mapmem2 = (mapped_key_t*) key2;
+	mapped_chunk_key_t* mapmem1 = (mapped_chunk_key_t*) key1;
+	mapped_chunk_key_t* mapmem2 = (mapped_chunk_key_t*) key2;
 
 	return mapmem1->offset == mapmem2->offset && mapmem1->size == mapmem2->size;
 }
 
 static int mapmem_destroy(void* key, void* value)
 {
-	mapped_key_t* mapped_key = (mapped_key_t*) key;
-	mapped_chunk_t* mapped_value = (mapped_chunk_t*) value;
+	mapped_chunk_key_t* chunk_key = (mapped_chunk_key_t*) key;
+	mapped_chunk_t* chunk = (mapped_chunk_t*) value;
 
-	mapped_value->ref_count--;
-	if (mapped_value->ref_count != 0)
+	chunk->ref_count--;
+	if (chunk->ref_count != 0)
 		return 0;
 
-	munmap(mapped_value->data, mapped_key->size);
+	munmap(chunk->data, chunk_key->size);
 
-	free(mapped_key);
-	free(mapped_value);
+	invalidate_data(chunk_key, sizeof (mapped_chunk_key_t));
+	invalidate_data(chunk, sizeof (mapped_chunk_t));
+
+	free(chunk_key);
+	free(chunk);
 
 	return 1;
 }
 
 mf_handle_t mf_open(const char* pathname)
 {
-	BEGIN_FUNCTION
+	BEGIN_FUNCTION()
 
 	if (!pathname)
 		RETURN_ERRNO(EINVAL, MF_OPEN_FAILED);
 	
-	mapped_file_t* mf = malloc(sizeof (mapped_file_t));
-	if (!mf)
+	mapped_file_t* file = malloc(sizeof (mapped_file_t));
+	if (!file)
 		RETURN_ERRNO(ENOMEM, MF_OPEN_FAILED);
 
-	mf->fd = open(pathname, O_RDWR);
-	if (mf->fd == -1)
-		RETURN_FAIL(MF_OPEN_FAILED);
-
-	hashtable_init(&mf->chunks, CHUNKS_HASHTABLE_SIZE, mapmem_hashfunction, mapmem_comparator);
-
-	struct stat st;
-	if (fstat(mf->fd, &st) == -1)
+	file->fd = open(pathname, O_RDWR);
+	if (file->fd == -1)
 	{
-		free(mf);
-		close(mf->fd);
+		invalidate_data(file, sizeof (mapped_file_t));
+		free(file);
 		RETURN_FAIL(MF_OPEN_FAILED);
 	}
-	mf->file_size = st.st_size;
-	mf->page_size = (size_t) sysconf(_SC_PAGE_SIZE);
-	if (mf->page_size == (size_t) -1)
+
+	hashtable_init(&file->chunks, CHUNKS_HASHTABLE_SIZE, mapmem_hashfunction, mapmem_comparator);
+
+	struct stat st;
+	if (fstat(file->fd, &st) == -1)
+	{
+		invalidate_data(file, sizeof (mapped_file_t));
+		free(file);
+		close(file->fd);
 		RETURN_FAIL(MF_OPEN_FAILED);
+	}
+	file->file_size = st.st_size;
+	file->page_size = (size_t) sysconf(_SC_PAGE_SIZE);
+	if (file->page_size == (size_t) -1)
+	{
+		invalidate_data(file, sizeof (mapped_file_t));
+		free(file);
+		close(file->fd);
+		RETURN_FAIL(MF_OPEN_FAILED);
+	}
 
-	mf->data = NULL;
+	file->data = NULL;
 
-	RETURN(mf);
+	RETURN((mf_handle_t) file);
 }
 
 int mf_close(mf_handle_t mf)
@@ -159,6 +181,7 @@ int mf_close(mf_handle_t mf)
 	if (file->data)
 		munmap(file->data, file->size);
 
+	invalidate_data(file, sizeof (mapped_file_t));
 	free(file);
 
 	RETURN(0);
@@ -184,7 +207,7 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
 	size += offset_delta;
 	size_t aligned_size = (size / file->page_size) * file->page_size;
 
-	mapped_key_t key = 
+	mapped_chunk_key_t key = 
 	{
 		.size = aligned_size, 
 		.offset = aligned_offset
@@ -199,7 +222,7 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
 		RETURN(data);
 	}
 
-	mapped_key_t* key_ptr = malloc(sizeof (mapped_key_t));
+	mapped_chunk_key_t* key_ptr = malloc(sizeof (mapped_chunk_key_t));
 	if (!key_ptr)
 		RETURN_ERRNO(EINVAL, MF_MAP_FAILED);
 	key_ptr->size = aligned_size;
@@ -232,16 +255,17 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle)
 	if (!mapmem_handle)
 		RETURN_ERRNO(EINVAL, -1);
 
-	mapped_chunk_t* mapped_chunk = (mapped_chunk_t*) mapmem_handle;
-	mapped_key_t key = 
+	mapped_chunk_t* chunk = (mapped_chunk_t*) mapmem_handle;
+	mapped_chunk_key_t key = 
 	{
-		.size = mapped_chunk->size, 
-		.offset = mapped_chunk->offset
+		.size = chunk->size, 
+		.offset = chunk->offset
 	};
 
 	if (!hashtable_remove(&file->chunks, &key, mapmem_destroy))
 	{
-		free(mapped_chunk);
+		invalidate_data(chunk, sizeof (mapped_chunk_t));
+		free(chunk);
 		RETURN_ERRNO(EINVAL, -1);
 	}
 
