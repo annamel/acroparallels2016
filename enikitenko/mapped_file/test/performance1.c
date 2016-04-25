@@ -4,7 +4,7 @@
 
 int main()
 {
-	int fd = open("file.txt", O_RDWR | O_CREAT, 0777);
+	int fd = open("file", O_RDWR | O_CREAT, 0777);
 	CHECK(fd != -1);
 	CHECK(!ftruncate(fd, FILE_SIZE));
 	CHECK(!close(fd));

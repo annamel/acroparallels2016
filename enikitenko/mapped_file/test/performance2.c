@@ -5,7 +5,7 @@
 
 int main()
 {
-	int fd = open("file.txt", O_RDWR | O_CREAT, 0777);
+	int fd = open("file", O_RDWR | O_CREAT, 0777);
 	CHECK(fd != -1);
 	CHECK(!ftruncate(fd, FILE_SIZE));
 	CHECK(!close(fd));
@@ -19,7 +19,7 @@ int main()
 	int i;
 	for (i = 0; i < NUM_MAPS; i++)
 	{
-		CHECK(mf_map(mf, 10, 1000, &mapmems[i]) != MF_MAP_FAILED);
+		CHECK(mf_map(mf, 10 + i, 1000, &mapmems[i]) != MF_MAP_FAILED);
 	}
 	for (i = 0; i < NUM_MAPS; i++)
 		CHECK(mf_unmap(mf, mapmems[i]) != -1);
