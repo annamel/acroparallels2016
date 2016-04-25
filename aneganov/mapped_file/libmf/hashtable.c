@@ -83,26 +83,7 @@ static int hashtable_init(hashtable_t *ht, int (*cmp)(hkey_t, hkey_t), size_t (*
         if( (res = mf_malloc(MIN_ROW_LEN*sizeof(elem_t), (void **)&ht->payload[i].data)) )
             return res;
 
-    log_write(LOG_INFO, "hashtable initiated: cmp_fn = %p, hash_fn = %p\n", cmp, hash);
-
-    return 0;
-}
-
-static int hashtable_fini(hashtable_t *ht) {
-    if(ht == NULL)
-        return EINVAL;
-
-    ht->cmp_fn = NULL;
-    ht->hash_fn = NULL;
-
-    int i = 0;
-    for( i = 0; i < HASHTABLE_SIZE; i++ ) {
-        mf_free(ht->payload[i].len, (void **)&ht->payload[i].data);
-        ht->payload[i].data_len = 0;
-        ht->payload[i].len = 0;
-    }
-
-    log_write(LOG_INFO, "hashtable finalized\n");
+    log_write(LOG_DEBUG, "hashtable initiated: cmp_fn = %p, hash_fn = %p\n", cmp, hash);
 
     return 0;
 }
@@ -113,11 +94,23 @@ int hashtable_construct(int (*cmp)(hkey_t, hkey_t), size_t (*hash)(hkey_t), hash
     return hashtable_init(*ht, cmp, hash);
 }
 
-int hashtable_destruct(hashtable_t **ht) {
-    if(ht == NULL) return EINVAL;
-    int err = hashtable_fini(*ht);
-    if(err) return err;
-    return mf_free( sizeof(hashtable_t), (void**)ht );
+int hashtable_destruct(hashtable_t *ht) {
+    if(ht == NULL)
+        return EINVAL;
+
+    ht->cmp_fn = NULL;
+    ht->hash_fn = NULL;
+
+    int i = 0;
+    for( i = 0; i < HASHTABLE_SIZE; i++ ) {
+        mf_free(ht->payload[i].len, (void *)ht->payload[i].data);
+        ht->payload[i].data_len = 0;
+        ht->payload[i].len = 0;
+    }
+
+    log_write(LOG_DEBUG, "hashtable finalized\n");
+
+    return mf_free( sizeof(hashtable_t), (void*)ht );
 }
 
 int hashtable_add(hashtable_t * ht, hkey_t key, hval_t val) {
@@ -153,7 +146,7 @@ int hashtable_add(hashtable_t * ht, hkey_t key, hval_t val) {
 end:
     data[pos].val = val;
 
-    log_write(LOG_INFO, "hashtable_add: idx=%u, pos=%zd, key=%jd, val=%p\n", idx, pos, key, val);
+    log_write(LOG_DEBUG, "hashtable_add: idx=%u, pos=%zd, key=%jd, val=%p\n", idx, pos, key, val);
     log_write(LOG_DEBUG, "hashtable_add: data_len = %zu\n", data_len);
 
     return 0;
@@ -177,7 +170,7 @@ int hashtable_get(const hashtable_t * ht, hkey_t key, hval_t *val) {
     BUG_ON(found == ERROR);
 
     if(found == NOTFOUND) {
-        log_write(LOG_INFO, "hashtable_get: key=%jd: no such key\n", key);
+        log_write(LOG_DEBUG, "hashtable_get: key=%jd: no such key\n", key);
         for(int i=0; i<data_len; i++)
             log_write(LOG_DEBUG, "hashtable_get: data[%d].key = %jd\n", i, data[i].key);
         return ENOKEY;
@@ -185,7 +178,7 @@ int hashtable_get(const hashtable_t * ht, hkey_t key, hval_t *val) {
 
     *val = data[pos].val;
 
-    log_write(LOG_INFO, "hashtable_get: idx=%u, pos=%zd, key=%jd, val=%p\n", idx, pos, key, *val);
+    log_write(LOG_DEBUG, "hashtable_get: idx=%u, pos=%zd, key=%jd, val=%p\n", idx, pos, key, *val);
     return 0;
 }
 
@@ -206,7 +199,7 @@ int hashtable_del(hashtable_t *ht, hkey_t key) {
     BUG_ON(found == ERROR);
 
     if(found == NOTFOUND) {
-        log_write(LOG_INFO, "hashtable_del: key=%jd: no such key\n", key);
+        log_write(LOG_DEBUG, "hashtable_del: key=%jd: no such key\n", key);
         return ENOKEY;
     }
 
@@ -214,6 +207,6 @@ int hashtable_del(hashtable_t *ht, hkey_t key) {
 
     ht->payload[idx].data_len--;
 
-    log_write(LOG_INFO, "hashtable_del: idx=%u, pos=%zd, key=%jd\n", idx, pos, key);
+    log_write(LOG_DEBUG, "hashtable_del: idx=%u, pos=%zd, key=%jd\n", idx, pos, key);
     return 0;
 }
