@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdio.h>
+#include <errno.h>
 
 #define MIN(x,y) (x < y? x: y)
 
@@ -13,19 +15,22 @@ int main(int argc, char *argv[]){
 
 	mf_mapmem_handle_t mh;
 
-	void *ptr = mf_map(file1, 0, 12345, &mh);
+	void *ptr = mf_map(file1, 0, 123, &mh);
+	if (ptr == NULL){
+		return mf_file_size(file1) > 123;
+	}
 
-	void *buf1 = malloc(12345);
-	void *buf2 = malloc(12345);
+	void *buf1 = malloc(123);
+	void *buf2 = malloc(123);
 
-	int len = MIN(mf_file_size(file1), 12345);
+	int len = MIN(mf_file_size(file1), 123);
 
 	memcpy(buf1, ptr, len);
-	read(file2, buf2, 12345);
+	read(file2, buf2, 123);
 
 	mf_unmap(file1, mh);
 
-	if (memcmp(buf1, buf2, 12345))
+	if (memcmp(buf1, buf2, 123))
 		return 1;
 
  	mf_close(file1);

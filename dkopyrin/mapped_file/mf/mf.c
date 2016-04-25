@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <stdarg.h>
+#include <errno.h>
 
 #define COLOR(x) "\x1B[36m"x"\x1B[0m"
 #define LOGCOLOR(x) COLOR("%s: ")x, __func__
@@ -121,6 +122,10 @@ ssize_t _mf_write(struct _mf *mf, const void *buf, size_t nbyte){
 }
 
 void *_mf_map(struct _mf *mf, off_t offset, size_t size, void ** mh){
+	if (offset + size > mf -> size){
+		errno = ENOMEM;
+		return NULL;
+	}
   	struct chunk *ch = NULL;
 	int ch_offset = 0;
 	long int av_chunk_size = chunk_manager_offset2chunk(&mf -> cm, offset, size, &ch, &ch_offset, 1);
