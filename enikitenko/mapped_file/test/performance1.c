@@ -11,14 +11,14 @@ int main()
 
 	long long time = time_ms();
 
-	mf_handle_t mf = mf_open("file.txt", 0);
-	CHECK(mf);
+	mf_handle_t mf = mf_open("file.txt");
+	CHECK(mf != MF_OPEN_FAILED);
 
 	int i;
 	for (i = 0; i < FILE_SIZE; i++)
 	{
 		char c;
-		mf_read(mf, i, 1, &c);
+		mf_read(mf, &c, 1, i);
 	}
 
 	CHECK(!mf_close(mf));

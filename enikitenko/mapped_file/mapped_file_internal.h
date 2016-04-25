@@ -5,7 +5,7 @@
 #include "../logger/log.h"
 #include "hashtable.h"
 
-typedef struct
+typedef struct // TODO: size & offset align by PAGE_SIZE
 {
 	size_t size;
 	off_t offset;
@@ -17,7 +17,6 @@ struct mapped_file;
 typedef struct
 {
 	void* data;
-	struct mapped_file* file;
 	size_t size;
 	off_t offset;
 	int ref_count;
@@ -27,8 +26,6 @@ typedef struct
 typedef struct mapped_file
 {
 	int fd;
-	size_t max_memory_usage;
-	size_t memory_usage;
 	size_t page_size;
 	size_t file_size;
 	hashtable_t chunks; // hashtable is useless for this task so fuck performance and memory use

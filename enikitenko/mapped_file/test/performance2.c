@@ -12,18 +12,17 @@ int main()
 
 	long long time = time_ms();
 
-	mf_handle_t mf = mf_open("file.txt", 0);
-	CHECK(mf);
+	mf_handle_t mf = mf_open("file.txt");
+	CHECK(mf != MF_OPEN_FAILED);
 
-	mf_mapmem_t* mapmems[NUM_MAPS];
+	mf_mapmem_handle_t mapmems[NUM_MAPS];
 	int i;
 	for (i = 0; i < NUM_MAPS; i++)
 	{
-		mapmems[i] = mf_map(mf, 10, 1000);
-		CHECK(mapmems[i]);
+		CHECK(mf_map(mf, 10, 1000, &mapmems[i]) != MF_MAP_FAILED);
 	}
 	for (i = 0; i < NUM_MAPS; i++)
-		CHECK(mf_unmap(mapmems[i]) != -1);
+		CHECK(mf_unmap(mf, mapmems[i]) != -1);
 
 	CHECK(!mf_close(mf));
 
