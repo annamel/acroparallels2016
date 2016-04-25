@@ -1,13 +1,12 @@
 #ifndef __MF_ITERATOR_H__
 #define __MF_ITERATOR_H__
 
-#include <unistd.h>
+#include <sys/types.h>
 #include "chunk_manager.h"
 
 struct mf_iter {
 	chpool_t *cpool;
 	chunk_t *chunk;
-	off_t choff;
 	off_t offset;
 	void *ptr;
 	size_t size;

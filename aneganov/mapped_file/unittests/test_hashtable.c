@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
 		if(err || (data1[0] != data) ) nr_faults++;
 	}
 
-	err = hashtable_destruct(&ht);
+	err = hashtable_destruct(ht);
 	log_write(err ? LOG_FATAL : LOG_INFO, "hashtable_destruct: %s\n", strerror(err));
 	nr_tests++;
 	if(err) nr_faults++;

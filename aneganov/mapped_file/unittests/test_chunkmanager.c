@@ -6,6 +6,7 @@
 #include <sys/mman.h>
 #include <signal.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "chunk_manager.h"
 #include "log.h"
@@ -14,7 +15,6 @@
     do { perror(msg); exit(EXIT_FAILURE); } while(0)
 
 #define FILE_NAME "file"
-#define MAX_MEMORY (4096 * 10)
 
 static void print_usage(const char * const program_name, FILE * const stream, const int exit_code) {
     fprintf(stream, "Usage: %s options\n", program_name);
@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
 		handle_error("open");
 
 	chpool_t *cpool = NULL;
-	int err = chpool_construct(MAX_MEMORY, fd, PROT_READ | PROT_WRITE, &cpool);
+	int err = chpool_construct(fd, PROT_READ | PROT_WRITE, &cpool);
 	log_write(err ? LOG_FATAL : LOG_INFO, "chpool_construct: %s\n", strerror(err));
 	nr_tests++;
 	if(err) nr_faults++;
@@ -129,9 +129,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	err = chunk_acquire(cpool, 20 + 8000*5, 8000, &chunk);
-	log_write( (err != ENOBUFS) ? LOG_ERR : LOG_INFO, "chunk_acquire: %s\n", strerror(err));
+	log_write( (err) ? LOG_ERR : LOG_INFO, "chunk_acquire: %s\n", strerror(err));
 	nr_tests++;
-	if(err != ENOBUFS) nr_faults++;
+	if(err ) nr_faults++;
 
 
 	for(int i = 0; i < 5; i++) {
@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
 	nr_tests++;
 	if(err) nr_faults++;
 
-	err = chpool_destruct(&cpool);
+	err = chpool_destruct(cpool);
 	log_write(err ? LOG_FATAL : LOG_INFO, "chpool_destruct: %s\n", strerror(err));
 	nr_tests++;
 	if(err) nr_faults++;
@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
 	if(fd == -1)
 		handle_error("open");
 
-	err = chpool_construct(MAX_MEMORY, fd, PROT_READ | PROT_WRITE, &cpool);
+	err = chpool_construct(fd, PROT_READ | PROT_WRITE, &cpool);
 	log_write(err ? LOG_FATAL : LOG_INFO, "chpool_construct: %s\n", strerror(err));
 	nr_tests++;
 	if(err) nr_faults++;
@@ -194,18 +194,7 @@ int main(int argc, char *argv[]) {
 	nr_tests++;
 	if(fd1 != fd) nr_faults++;
 
-	err = chpool_mem_add((void *)buf, chunk);
-	log_write(err ? LOG_ERR : LOG_INFO, "chunk_mem_add: %s\n", strerror(err));
-	nr_tests++;
-	if(err) nr_faults++;
-
-	err = chpool_mem_get(cpool, (void *)buf, &chunk1);
-	log_write(err ? LOG_ERR : LOG_INFO, "chpool_mem_get: %s\n", strerror(err));
-	log_write( (chunk != chunk1) ? LOG_ERR : LOG_INFO, "value = %p, expected value = %p\n", chunk1, chunk );
-	nr_tests++;
-	if(err || chunk != chunk1) nr_faults++;
-
-	err = chpool_destruct(&cpool);
+	err = chpool_destruct(cpool);
 	log_write(err ? LOG_FATAL : LOG_INFO, "chpool_destruct: %s\n", strerror(err));
 	nr_tests++;
 	if(err) nr_faults++;
