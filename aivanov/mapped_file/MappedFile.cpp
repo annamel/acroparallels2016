@@ -21,11 +21,12 @@ CFileRegion* CMappedFile::map(off_t offset, off_t size, void** address)
 {
 	long pageSize = sysconf(_SC_PAGE_SIZE);
 	off_t properOffset = (offset / pageSize) * pageSize;
-	size_t properSize = size + (offset - properOffset);
+	size_t properSize = ((size + (offset - properOffset) + pageSize - 1) / pageSize) * pageSize;
 
 	CFileRegion* newRegion = new CFileRegion(properOffset, properSize);
 	CFileRegion* region = root_.takeChild(newRegion);
 	region->addReference();
+	assert(region->references_ > 0);
 	
 	if (region == newRegion)
 	{
@@ -34,6 +35,7 @@ CFileRegion* CMappedFile::map(off_t offset, off_t size, void** address)
 		if (!region->address_ || region->address_ == MAP_FAILED)
 		{
 			delete region;
+			abort();
 			return NULL;
 		}
 	}

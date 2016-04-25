@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 project (mapped_file)
 
 set (CMAKE_C_FLAGS "-Ofast")
+set (CMAKE_SHARED_LINKER_FLAGS "-Ofast")
 include_directories (${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "out")
