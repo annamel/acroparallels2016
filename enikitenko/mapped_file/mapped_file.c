@@ -182,11 +182,12 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
 	size_t aligned_offset = (offset / file->page_size) * file->page_size;
 	size_t offset_delta = offset - aligned_offset;
 	size += offset_delta;
+	size_t aligned_size = (size / file->page_size) * file->page_size;
 
 	mapped_key_t key = 
 	{
-		.size = size, 
-		.offset = offset
+		.size = aligned_size, 
+		.offset = aligned_offset
 	};
 	mapped_chunk_t* chunk = hashtable_get(&file->chunks, &key);
 
@@ -194,14 +195,15 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
 	{
 		chunk->ref_count++;
 		*mapmem_handle = (mf_mapmem_handle_t) chunk;
-		RETURN(chunk->data);
+		void* data = (void*) (&((char*) chunk->data)[offset_delta]);
+		RETURN(data);
 	}
 
 	mapped_key_t* key_ptr = malloc(sizeof (mapped_key_t));
 	if (!key_ptr)
 		RETURN_ERRNO(EINVAL, MF_MAP_FAILED);
-	key_ptr->size = size;
-	key_ptr->offset = offset;
+	key_ptr->size = aligned_size;
+	key_ptr->offset = aligned_offset;
 
 	void* pointer = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, aligned_offset);
 	if (pointer == MAP_FAILED)
@@ -211,9 +213,10 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
 	if (!chunk)
 		RETURN_ERRNO(EINVAL, MF_MAP_FAILED);
 
-	chunk->data = (void*) (&((char*) pointer)[offset_delta]);
-	chunk->size = size;
-	chunk->offset = offset;
+	void* data = (void*) (&((char*) pointer)[offset_delta]);
+	chunk->data = pointer;
+	chunk->size = aligned_size;
+	chunk->offset = aligned_offset;
 	chunk->ref_count = 1;
 
 	hashtable_add(&file->chunks, key_ptr, chunk);
@@ -297,6 +300,9 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset)
 		RETURN_ERRNO(EINVAL, -1);
 	if (offset + count > file->file_size)
 		count = file->file_size - offset;
+
+	if (mf_map_internal(mf, offset, count) == -1)
+		RETURN_FAIL(-1);
 
 	memcpy(&(((char*) file->data)[offset - file->offset]), buf, count);
 

@@ -8,20 +8,22 @@
 
 int main(int argc, char *argv[]){
 	LOG(DEBUG, "---Open\n");
-	struct mf *file1 = mf_open(argv[1], 12345);
+	struct mf *file1 = mf_open(argv[1]);
 	int file2 = open(argv[1], O_RDONLY);
 
-	mf_mapmem_t * mm = mf_map(file1, 0, 12345);
+	mf_mapmem_handle_t mh;
+
+	void *ptr = mf_map(file1, 0, 12345, &mh);
 
 	void *buf1 = malloc(12345);
 	void *buf2 = malloc(12345);
 
 	int len = MIN(mf_file_size(file1), 12345);
 
-	memcpy(buf1, mm -> ptr, len);
+	memcpy(buf1, ptr, len);
 	read(file2, buf2, 12345);
 
-	mf_unmap(mm);
+	mf_unmap(file1, mh);
 
 	if (memcmp(buf1, buf2, 12345))
 		return 1;
