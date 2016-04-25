@@ -155,10 +155,11 @@ int mf_close(mf_handle_t mf)
 		RETURN_FAIL(-1);
 	
 	hashtable_destroy(&file->chunks, mapmem_destroy);
-	free(file);
 
 	if (file->data)
 		munmap(file->data, file->size);
+
+	free(file);
 
 	RETURN(0);
 }
