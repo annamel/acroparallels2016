@@ -1,7 +1,7 @@
 #include "tests.h"
 
 #define FILE_SIZE (4096*1024)
-#define NUM_MAPS 40000
+#define NUM_MAPS 500000
 
 int main()
 {

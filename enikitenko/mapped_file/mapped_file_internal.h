@@ -10,7 +10,7 @@ typedef struct
 	size_t size;
 	off_t offset;
 
-} mapped_key_t;
+} mapped_chunk_key_t;
 
 struct mapped_file;
 
