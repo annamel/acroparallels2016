@@ -113,7 +113,7 @@ void CFileRegion::removeReference()
 
 bool CFileRegion::operator !()
 {
-	return !!references_;
+	return !references_;
 }
 
 bool CFileRegion::isLess_(CFileRegion* a, CFileRegion* b)
