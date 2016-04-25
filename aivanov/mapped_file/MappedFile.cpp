@@ -9,7 +9,7 @@ CMappedFile::CMappedFile(const char* fileName) :
 	desc_(-1),
 	root_(0, std::max(2000l, std::numeric_limits<off_t>::max()))
 {
-	desc_ = open(fileName, O_RDWR);
+	desc_ = open(fileName, O_RDWR | O_CREAT, 0755);
 }
 
 CMappedFile::~CMappedFile()
@@ -21,11 +21,12 @@ CFileRegion* CMappedFile::map(off_t offset, off_t size, void** address)
 {
 	long pageSize = sysconf(_SC_PAGE_SIZE);
 	off_t properOffset = (offset / pageSize) * pageSize;
-	size_t properSize = size + (offset - properOffset);
+	size_t properSize = ((size + (offset - properOffset) + pageSize - 1) / pageSize) * pageSize;
 
 	CFileRegion* newRegion = new CFileRegion(properOffset, properSize);
 	CFileRegion* region = root_.takeChild(newRegion);
 	region->addReference();
+	assert(region->references_ > 0);
 	
 	if (region == newRegion)
 	{

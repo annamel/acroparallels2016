@@ -24,16 +24,18 @@ CFileRegion* CFileRegion::takeChild(CFileRegion* region)
 	
 		if ((*prev)->doesInclude(region))
 			return (*prev)->takeChild(region);
+			
+		if (parent_ && !*region)
+			return this;
 		
 		if (region->doesInclude(*prev))
 			region->readopt(*prev);
 	}
+	else if (parent_ && !*region)
+		return this;
 	
 	while (next != children_.end() && region->doesInclude(*next))
 		region->readopt(*next++);
-		
-	if (parent_ && !*region)
-		return this;
 	
 	adopt(region);
 	return region;

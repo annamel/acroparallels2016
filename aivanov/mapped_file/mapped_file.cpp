@@ -5,6 +5,9 @@
 #include "log/log.h"
 #include <string.h>
 
+//#define LOGE(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
+//#define LOGI(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
+
 mf_handle_t mf_open(const char *pathname)
 {
 	LOGI("Opening file %s", pathname);
@@ -69,14 +72,14 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 	}
 	
 	
-	LOGI("Mapped to address %p with mf_mapmem_t* %p and handle %p", mm->ptr, mm, mm->handle);
+	LOGI("Mapped to address %p with handle %p", data, *mapmem_handle);
 	
 	return data;
 }
 
 int mf_unmap(mf_handle_t, mf_mapmem_handle_t mm)
 {
-	LOGI("Unmapping %p for file %p", mm);
+	LOGI("Unmapping %p", mm);
 	CFileRegion* region = ((CFileRegion*) mm);
 	
 	region->unmap();
