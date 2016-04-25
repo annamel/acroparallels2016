@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Made by Denis Kopyrin
 # This script goes through all dirs in ../ and makes cross-people tests

@@ -5,7 +5,7 @@
 #include "../logger/log.h"
 #include "hashtable.h"
 
-typedef struct // TODO: size & offset align by PAGE_SIZE
+typedef struct
 {
 	size_t size;
 	off_t offset;
