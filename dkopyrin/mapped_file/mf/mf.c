@@ -123,7 +123,7 @@ ssize_t _mf_write(struct _mf *mf, const void *buf, size_t nbyte){
 
 void *_mf_map(struct _mf *mf, off_t offset, size_t size, void ** mh){
 	if (offset + size > mf -> size){
-		errno = ENOMEM;
+		errno = EINVAL;
 		return NULL;
 	}
   	struct chunk *ch = NULL;
