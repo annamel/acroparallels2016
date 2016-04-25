@@ -301,6 +301,9 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset)
 	if (offset + count > file->file_size)
 		count = file->file_size - offset;
 
+	if (mf_map_internal(mf, offset, count) == -1)
+		RETURN_FAIL(-1);
+
 	memcpy(&(((char*) file->data)[offset - file->offset]), buf, count);
 
 	if (count >= UNMAP_READ_WRITE_SIZE)
