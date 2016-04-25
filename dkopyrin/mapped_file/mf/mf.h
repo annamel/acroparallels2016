@@ -33,7 +33,7 @@ int _mf_seek(struct _mf *mf, long int offset);
 long int _mf_tell(struct _mf *mf);
 ssize_t _mf_read(struct _mf *mf, void *buf, size_t nbyte);
 ssize_t _mf_write(struct _mf *mf, const void *buf, size_t nbyte);
-struct _mf_mapped_memory *_mf_map(struct _mf *mf, off_t offset, size_t size);
-int _mf_unmap(struct _mf_mapped_memory *mm);
+void* _mf_map(struct _mf *mf, off_t offset, size_t size, void ** mh);
+int _mf_unmap(void *mm);
 
 #endif
