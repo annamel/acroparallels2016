@@ -1,7 +1,7 @@
 #ifndef __MAPPED_FILE_INTERNAL__
 #define __MAPPED_FILE_INTERNAL__
 
-#include "../../include/mapped_file.h"
+#include <mapped_file.h>
 #include "../logger/log.h"
 #include "hashtable.h"
 

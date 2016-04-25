@@ -109,7 +109,9 @@ int hashtable_remove(hashtable_t* h, void* key, destroyfunction destroy)
 		if (h->comparator(prev->key, key))
 		{
 			if (destroy)
-				destroy(prev->key, prev->data);
+				if (!destroy(prev->key, prev->data))
+					return 1;
+
 			free(prev);
 			h->elements[elem] = NULL;
 
@@ -125,7 +127,9 @@ int hashtable_remove(hashtable_t* h, void* key, destroyfunction destroy)
 		{
 			_list_t* next = l->next;
 			if (destroy)
-				destroy(l->key, l->data);
+				if (!destroy(l->key, l->data))
+					return 1;
+
 			free(l);
 			prev->next = next;
 			return 1;

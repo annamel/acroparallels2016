@@ -20,6 +20,7 @@ if (WITH_LOGGER)
 endif (WITH_LOGGER)
 
 add_library (mappedfile ${SOURCES})
+include_directories (${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 
 if (WITH_LOGGER)
 	target_link_libraries (testapp dl pthread)

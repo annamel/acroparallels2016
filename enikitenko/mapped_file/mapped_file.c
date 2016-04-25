@@ -95,20 +95,22 @@ int mapmem_comparator(void* key1, void* key2)
 	return mapmem1->offset == mapmem2->offset && mapmem1->size == mapmem2->size;
 }
 
-static void mapmem_destroy(void* key, void* value)
+static int mapmem_destroy(void* key, void* value)
 {
 	mapped_key_t* mapped_key = (mapped_key_t*) key;
 	mapped_chunk_t* mapped_value = (mapped_chunk_t*) value;
 
 	mapped_value->ref_count--;
 	if (mapped_value->ref_count != 0)
-		return;
+		return 0;
 
 	munmap(mapped_value->data, mapped_key->size);
 	mapped_value->file->memory_usage -= mapped_key->size;
 
 	free(mapped_key);
 	free(mapped_value);
+
+	return 1;
 }
 
 mf_handle_t mf_open(const char* pathname, size_t max_memory_usage)
@@ -209,7 +211,7 @@ mf_mapmem_t* mf_map(mf_handle_t mf, off_t offset, size_t size)
 	mapped_chunk->file = file;
 	mapped_chunk->size = size;
 	mapped_chunk->offset = offset;
-	mapped_chunk->ref_count = 0;
+	mapped_chunk->ref_count = 1;
 
 	hashtable_add(&file->chunks, key, mapped_chunk);
 
