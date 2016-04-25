@@ -9,7 +9,7 @@ CMappedFile::CMappedFile(const char* fileName) :
 	desc_(-1),
 	root_(0, std::max(2000l, std::numeric_limits<off_t>::max()))
 {
-	desc_ = open(fileName, O_RDWR);
+	desc_ = open(fileName, O_RDWR | O_CREAT, 0755);
 }
 
 CMappedFile::~CMappedFile()
@@ -35,7 +35,6 @@ CFileRegion* CMappedFile::map(off_t offset, off_t size, void** address)
 		if (!region->address_ || region->address_ == MAP_FAILED)
 		{
 			delete region;
-			abort();
 			return NULL;
 		}
 	}
