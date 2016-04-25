@@ -25,7 +25,7 @@ int main()
 
 	printf("PERFORMANCE TEST 1: %lldms\n", time_ms() - time);
 
-	remove("file.txt");
+	remove("testfile");
 
 	return 0;
 }
