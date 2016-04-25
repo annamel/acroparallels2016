@@ -22,6 +22,7 @@ else
 fi
 
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+CALL_PWD="$(pwd)"
 test_file=$(mktemp /tmp/tmp.XXXXXXXXXX)
 echo $test_file
 echo "#!$PWD/roundup" > $test_file
@@ -56,13 +57,20 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 	lib_dir="$root_lib_dir/$MF_SUFFIX/$LIBOUT_SUFFIX/"
 	if [ -d $make_dir ]; then
 		out_dir="$root_lib_dir/$MF_SUFFIX/$LIBOUT_SUFFIX"
-		echo "pushd '$make_dir'" >> $test_file
 		if [ -f $make_dir/CMakeLists.txt ]; then
-			echo "cmake ." >> $test_file
-			echo ""
+			echo "mkdir -p $PWD/build_dir" >> $test_file
+			echo "pushd $PWD/build_dir" >> $test_file
+			echo "cmake '$CALL_PWD/$make_dir'" >> $test_file
+			echo "make" >> $test_file
+			echo "mkdir -p '$CALL_PWD/$out_dir'" >> $test_file
+			echo "cp -f './$LIBOUT_SUFFIX'/* '$CALL_PWD/$out_dir/'" >> $test_file
+			echo "rm -rf '$PWD/build_dir'" >> $test_file
+			echo "popd" >> $test_file
+		else
+			echo "pushd '$make_dir'" >> $test_file
+			echo "make" >> $test_file
+			echo "popd" >> $test_file
 		fi
-		echo "make" >> $test_file
-		echo "popd" >> $test_file
 		echo "" >> $test_file
 		for root_test_dir in $ROOT_TEST_DIR ; do
 			for test in $root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/*.c ; do
@@ -116,7 +124,8 @@ $PWD/roundup $test_file
 for root_lib_dir in $ROOT_LIB_DIR  ; do
 	make_dir="$root_lib_dir/$MF_SUFFIX/$LIBMAKE_SUFFIX/"
 	pushd $make_dir > /dev/null
-	make clean > /dev/null
+	make clean > /dev/null 2> /dev/null
+	rm -rf ./$LIBOUT_SUFFIX/
 	popd > /dev/null
 done
 for clean_file in $TEST_BUILD; do
