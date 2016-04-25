@@ -141,7 +141,7 @@ static int unmap_internal(void* addr, size_t size, size_t page_size)
 static size_t mapmem_hashfunction(void* key)
 {
 	mapped_chunk_key_t* mapmem = (mapped_chunk_key_t*) key;
-	return mapmem->offset;
+	return mapmem->offset ^ mapmem->size;
 }
 
 int mapmem_comparator(void* key1, void* key2)
@@ -257,6 +257,8 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
 	size_t offset_delta = offset - aligned_offset;
 	size += offset_delta;
 	size_t aligned_size = (size / file->page_size) * file->page_size;
+	if (size % file->page_size != 0)
+		aligned_size += file->page_size;
 
 	mapped_chunk_key_t key = 
 	{

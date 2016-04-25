@@ -36,7 +36,7 @@ typedef struct mapped_file
 
 } mapped_file_t;
 
-#define CHUNKS_HASHTABLE_SIZE 4095
+#define CHUNKS_HASHTABLE_SIZE 8761
 #define READ_WRITE_MIN_SIZE (4096*1024)
 #define MIN_MEMORY_USAGE (64*1024*1024)
 #define UNMAP_READ_WRITE_SIZE (16*1024*1024)
