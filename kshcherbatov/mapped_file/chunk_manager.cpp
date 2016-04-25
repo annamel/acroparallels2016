@@ -24,7 +24,7 @@ struct chunk_t *chunk_get(struct mapped_file_t *mapped_file, off_t offset, size_
 bool mapped_file_is_ok(mapped_file_t *mapped_file) {
     assert(mapped_file);
     return mapped_file->chunk_ptr_ht && hash_is_ok(mapped_file->chunk_ptr_ht) && mapped_file->chunk_pool
-           && (mapped_file->chunk_pool_size > 0) && (mapped_file->fd >= 0) && (mapped_file->file_size > 0)
+           && (mapped_file->chunk_pool_size > 0) && (mapped_file->fd >= 0) && (mapped_file->file_size >= 0)
            && (mapped_file->chunk_std_size == (ssize_t)pa_offset(mapped_file->chunk_std_size));
 }
 
