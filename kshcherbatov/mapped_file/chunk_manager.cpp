@@ -138,18 +138,17 @@ void *chunk_mem_acquire(struct mapped_file_t *mapped_file, off_t offset, size_t 
         LOG_WARN("chunk_mem_acquire: offset is out of the file.\n", NULL);
         return NULL;
     }
-    if (size == 0) {
-        size = mapped_file->chunk_std_size;
-    } else {
-        size = (ssize_t)pa_offset(size + sysconf(_SC_PAGE_SIZE) - 1);
-    }
-    if ((ssize_t)(offset + size) > mapped_file->file_size) {
-        LOG_DEBUG("chunk_mem_acquire: chunk_pa_offset + size out of the file\n", NULL);
-        size = mapped_file->file_size - offset;
-    }
 
     off_t chunk_pa_offset = pa_offset(offset);
-    size_t mem_size = size + (offset - chunk_pa_offset);
+    if (size == 0) {
+        size = mapped_file->chunk_std_size;
+    }
+    size_t mem_size = (size_t)pa_offset(size + (offset - chunk_pa_offset) + + sysconf(_SC_PAGE_SIZE) - 1);
+
+    if ((ssize_t)(offset + mem_size) > mapped_file->file_size) {
+        LOG_DEBUG("chunk_mem_acquire: chunk_pa_offset + size out of the file\n", NULL);
+        mem_size = mapped_file->file_size - offset;
+    }
 
     chunk_t *chunk = chunk_get(mapped_file, chunk_pa_offset, mem_size, choose_biggest);
     if (!chunk) {
@@ -233,7 +232,9 @@ ssize_t mapped_file_data_memcpy(struct mapped_file_t *mapped_file, off_t offset,
     while (offset < end_offset) {
         size_t read_size;
         chunk_t *chunk;
-        void *data_ptr = chunk_mem_acquire(mapped_file, offset, 0, true, &read_size, &chunk);
+        size_t req_size = (ssize_t)size < mapped_file->chunk_std_size ? size : 0;
+
+        void *data_ptr = chunk_mem_acquire(mapped_file, offset, req_size, true, &read_size, &chunk);
         if (!data_ptr)
             break;
 

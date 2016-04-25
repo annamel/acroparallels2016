@@ -24,13 +24,11 @@ ssize_t mf_write(mf_handle_t mf, const void *buf, size_t size, off_t offset){
 
 //TODO: Rewrite
 void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle){
-	struct _mf_mapped_memory* mmh = _mf_map((struct _mf *)mf, offset, size);
-	*mapmem_handle = (mf_mapmem_handle_t) mmh;
-	return mmh -> ptr;
+	return _mf_map((struct _mf *)mf, offset, size, mapmem_handle);
 }
 
 int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle){
-	return _mf_unmap((struct _mf_mapmem_t *) mapmem_handle);
+	return _mf_unmap(mapmem_handle);
 }
 
 ssize_t mf_file_size(mf_handle_t mf){

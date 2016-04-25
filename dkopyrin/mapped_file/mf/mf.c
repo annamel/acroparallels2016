@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <stdarg.h>
+#include <errno.h>
 
 #define COLOR(x) "\x1B[36m"x"\x1B[0m"
 #define LOGCOLOR(x) COLOR("%s: ")x, __func__
@@ -120,7 +121,11 @@ ssize_t _mf_write(struct _mf *mf, const void *buf, size_t nbyte){
 	return write_bytes;
 }
 
-struct _mf_mapped_memory *_mf_map(struct _mf *mf, off_t offset, size_t size){
+void *_mf_map(struct _mf *mf, off_t offset, size_t size, void ** mh){
+	if (offset + size > mf -> size){
+		errno = EINVAL;
+		return NULL;
+	}
   	struct chunk *ch = NULL;
 	int ch_offset = 0;
 	long int av_chunk_size = chunk_manager_offset2chunk(&mf -> cm, offset, size, &ch, &ch_offset, 1);
@@ -128,19 +133,10 @@ struct _mf_mapped_memory *_mf_map(struct _mf *mf, off_t offset, size_t size){
 		return (void *) -1;
 
 	ch -> ref_cnt++;
-	struct _mf_mapped_memory *mm = malloc(sizeof(struct _mf_mapped_memory));
-	mm -> ptr = ch -> addr + ch_offset;
-	mm -> handle = malloc(sizeof(struct _mf_mapmem_handle));
-	mm -> handle -> mf = mf;
-	mm -> handle -> ch = ch;
-	return mm;
+	*mh = ch;
+	return ch -> addr + ch_offset;
 }
-int _mf_unmap(struct _mf_mapped_memory *mm){
-	assert(mm);
-	assert(mm -> handle);
-
-	mm -> handle -> ch -> ref_cnt--;
-	free(mm -> handle);
-	free(mm);
+int _mf_unmap(void *mm){
+	((struct chunk *)mm) -> ref_cnt--;
 	return 0;
 }

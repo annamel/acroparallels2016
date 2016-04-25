@@ -1,11 +1,11 @@
 #include "MappedFile.h"
-#include "mapped_file.h"
+#include <mapped_file.h>
 //#define _LOG_ENABLED
 #define _LOG_FLUSH true
 #include "log/log.h"
 #include <string.h>
 
-mf_handle_t mf_open(const char *pathname, size_t)
+mf_handle_t mf_open(const char *pathname)
 {
 	LOGI("Opening file %s", pathname);
 	CMappedFile* mapped_file = new CMappedFile(pathname);
@@ -29,7 +29,7 @@ int mf_close(mf_handle_t mf)
 	return 0;
 }
 
-ssize_t mf_read(mf_handle_t mf, off_t offset, size_t size, void *buf)
+ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset)
 {
 	LOGI("Reading %lu bytes at offset %ld from file %p to address %p)", size, offset, mf, buf);
 	ssize_t bytes = ((CMappedFile*) mf)->read(offset, size, buf);
@@ -42,7 +42,7 @@ ssize_t mf_read(mf_handle_t mf, off_t offset, size_t size, void *buf)
 	return bytes;	
 }
 
-ssize_t mf_write(mf_handle_t mf, off_t offset, size_t size, const void *buf)
+ssize_t mf_write(mf_handle_t mf, const void *buf, size_t size, off_t offset)
 {
 	LOGI("Writing %lu bytes from address %p to file %p at offset %ld)", size, buf, mf, offset);
 	ssize_t bytes = ((CMappedFile*) mf)->write(offset, size, buf);
@@ -55,22 +55,15 @@ ssize_t mf_write(mf_handle_t mf, off_t offset, size_t size, const void *buf)
 	return bytes;
 }
 
-mf_mapmem_t *mf_map(mf_handle_t mf, off_t offset, size_t size)
+void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle)
 {
 	LOGI("Mapping region of file %p of %lu bytes at offset %ld", mf, size, offset);
-	
-	struct mf_mapped_memory* mm = new mf_mapped_memory;
-	if (!mm)
-	{
-		LOGE("Mapping failed(%d): \"%s\"", errno, strerror(errno));
-		return NULL;
-	}
 		
-	mm->handle = ((CMappedFile*) mf)->map(offset, size, &mm->ptr);
+	void* data = NULL;
+	*mapmem_handle = ((CMappedFile*) mf)->map(offset, size, &data);
 	
-	if (!mm->handle)
+	if (!*mapmem_handle)
 	{
-		delete mm;
 		LOGE("Mapping failed(%d): \"%s\"", errno, strerror(errno));
 		return NULL;
 	}
@@ -78,26 +71,24 @@ mf_mapmem_t *mf_map(mf_handle_t mf, off_t offset, size_t size)
 	
 	LOGI("Mapped to address %p with mf_mapmem_t* %p and handle %p", mm->ptr, mm, mm->handle);
 	
-	return mm;
+	return data;
 }
 
-int mf_unmap(mf_mapmem_t *mm)
+int mf_unmap(mf_handle_t, mf_mapmem_handle_t mm)
 {
-	LOGI("Unmapping %p", mm);
-	CFileRegion* region = ((CFileRegion*) mm->handle);
+	LOGI("Unmapping %p for file %p", mm);
+	CFileRegion* region = ((CFileRegion*) mm);
 	
 	region->unmap();
 	
 	if (!*region)
 		delete region;
 		
-	delete mm;
-		
 	LOGI("Unmapped region");
 	return 0;
 }
 
-ssize_t mf_file_size(mf_handle_t mf)
+off_t mf_file_size(mf_handle_t mf)
 {
 	LOGI("Getting file size of %p", mf);
 	ssize_t size = ((CMappedFile*) mf)->getSize();

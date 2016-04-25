@@ -1,4 +1,4 @@
-#include "../mapped_file.h"
+#include <mapped_file.h>
 #include <cstdio>
 #include <vector>
 #include <stdint.h>
@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <cstring>
 #include <sys/time.h>
+#include <errno.h>
 
 #define TEST_SIZE 10000
 #define MAJOR_ITERATIONS 10
@@ -56,22 +57,22 @@ int main()
 	
 	long long time_start = time_ms();
 
-	mf_handle_t mf1 = mf_open("test1", 0);
+	mf_handle_t mf1 = mf_open("test1");
 	CHECK(mf1);
 	
-	mf_handle_t mf2 = mf_open("test2", 0);	
+	mf_handle_t mf2 = mf_open("test2");	
 	CHECK(mf2);
 	
 	for (int i = 0; i < MAJOR_ITERATIONS; i++)
 	{
 		printf("Step %d / %d...\n", i, MAJOR_ITERATIONS);
 		
-		std::vector<mf_mapmem_t*> regions;
+		std::vector<mf_mapmem_handle_t> regions;
 		
 		for (int j = 0; j < MINOR_ITERATIONS; j++)
 		{
 			ssize_t offset = rand() % (TEST_SIZE - 1);
-			ssize_t size = rand() % (TEST_SIZE - offset);
+			ssize_t size = 1 + rand() % (TEST_SIZE - offset);
 			uint8_t* buf = new uint8_t[size];
 			for (int k = 0; k < size; k++)
 				buf[k] = (uint8_t) rand();
@@ -79,13 +80,13 @@ int main()
 			CHECK(lseek(f0, offset, SEEK_SET) == offset);
 			CHECK(write(f0, buf, size) == size);
 			
-			mf_mapmem_t* mm = mf_map(mf1, offset, size);
-			CHECK(mm);
-			CHECK(mm->ptr);
-			regions.push_back(mm);
-			memcpy(mm->ptr, buf, size);
+			mf_mapmem_handle_t handle = NULL;
+			void* data = mf_map(mf1, offset, size, &handle);
+			CHECK(data);
+			regions.push_back(handle);
+			memcpy(data, buf, size);
 			
-			CHECK(mf_write(mf2, offset, size, buf) == size);
+			CHECK(mf_write(mf2, buf, size, offset) == size);
 			
 			delete[] buf;
 		}
@@ -94,7 +95,7 @@ int main()
 		CHECK(mf_file_size(mf2) == TEST_SIZE);
 		
 		for (auto handle : regions)
-			CHECK(!mf_unmap(handle));
+			CHECK(!mf_unmap(mf1, handle));
 	}
 	
 	CHECK(!close(f0));
