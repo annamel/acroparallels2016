@@ -8,8 +8,8 @@
 #include <errno.h>
 
 #include "mapped_file.h"
-#include "log.h"
-#include "mfdef.h"
+#include "../libmf/log.h" //style for testing
+#include "../libmf/mfdef.h"
 
 #define handle_error(msg) \
     do { perror(msg); exit(EXIT_FAILURE); } while(0)
@@ -18,7 +18,7 @@ static void print_usage(const char * const program_name, FILE * const stream, co
     fprintf(stream, "Usage: %s -f file [options]\n", program_name);
     fprintf(stream,
         "   -h   --help                    Display this usage information\n"
-        "   -f   --file         filename   A file for mapping\n"
+	"    			filename   File for testing\n"
         "   -L   --log-file     filename   Set log file\n"
         "   -d   --log-level    lvl        Set log level to lvl: fatal = 1, error = 2, warning = 3, info = 4, debug = 5\n");
     exit(exit_code);
@@ -30,17 +30,16 @@ void bus_handler() {
 }
 
 int main(int argc, char *argv[]) {
-    const char * const short_options = "hf:L:d:";
+    const char * const short_options = "hL:d:";
 
     const struct option long_options[] = {
         {"help",         0, NULL, 'h'},
-        {"file",         1, NULL, 'f'},
         {"log-file",     1, NULL, 'L'},
         {"log-level",    1, NULL, 'd'},
         {NULL,           0, NULL,  0}
     };
 
-    char *pathname = NULL;
+    char *pathname = argv[1];
 
     int ch = 0;
 	while ((ch = getopt_long(argc, argv, short_options, long_options, NULL)) != -1)
@@ -48,9 +47,6 @@ int main(int argc, char *argv[]) {
 		switch (ch) {
 		case 'h':
 			print_usage(argv[0], stdout, EXIT_SUCCESS);
-			break;
-		case 'f':
-			pathname = optarg;
 			break;
 		case 'L':
 			log_configure(optarg, LOG_DUMMY);
@@ -95,6 +91,9 @@ int main(int argc, char *argv[]) {
 	nr_tests++;
 	if(file_size == -1) {
 		nr_faults++;
+		goto done;
+	}
+	if(file_size == 0) {
 		goto done;
 	}
 
