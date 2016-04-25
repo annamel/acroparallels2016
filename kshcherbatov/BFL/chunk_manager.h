@@ -17,21 +17,21 @@ struct chunk_t {
     hash_list_t *hash_list;
 
     off_t pa_offset;
-    size_t mapped_area_size;
-    size_t reference_counter;
+    ssize_t mapped_area_size;
+    ssize_t reference_counter;
 
     ht_node_ref_t *ht_node;
 };
 
 struct mapped_file_t {
     int fd;
-    size_t file_size;
-    size_t chunk_std_size;
+    ssize_t file_size;
+    ssize_t chunk_std_size;
     struct hash_t *chunk_ptr_ht;
 
-    size_t chunk_pool_size;
+    ssize_t chunk_pool_size;
     struct chunk_t *chunk_pool;
-    size_t chunk_pool_w_idx;
+    ssize_t chunk_pool_w_idx;
 };
 
 bool mapped_file_is_ok(mapped_file_t *mapped_file);

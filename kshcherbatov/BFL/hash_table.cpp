@@ -2,7 +2,7 @@
 // Created by kir on 25.02.16.
 //
 
-#define DEBUG 4
+//#define DEBUG 4
 
 #include "hash_table.h"
 #include "logger.h"
@@ -61,7 +61,7 @@ struct hash_list_t *hash_find(const struct hash_t *hash, const size_t cmp_identi
 
     struct hash_list_t *hash_elem_ptr = hash->table[hash->hash_func(cmp_identity) % hash->table_size];
     for (; hash_elem_ptr; hash_elem_ptr = hash_elem_ptr->next) {
-        if (cmp_identity == hash_elem_ptr->cmp_identity) {
+        if ((ssize_t)cmp_identity == hash_elem_ptr->cmp_identity) {
             LOG_DEBUG("hash_find: value IS exists [%p].\n", hash_elem_ptr);
             return hash_elem_ptr;
         }

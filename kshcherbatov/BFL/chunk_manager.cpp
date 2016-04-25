@@ -24,12 +24,13 @@ struct chunk_t *chunk_get(struct mapped_file_t *mapped_file, off_t offset, size_
 bool mapped_file_is_ok(mapped_file_t *mapped_file) {
     assert(mapped_file);
     return mapped_file->chunk_ptr_ht && hash_is_ok(mapped_file->chunk_ptr_ht) && mapped_file->chunk_pool
-           && (mapped_file->chunk_pool_size > 0) && (mapped_file->fd >= 0) && (mapped_file->file_size > 0);
+           && (mapped_file->chunk_pool_size > 0) && (mapped_file->fd >= 0) && (mapped_file->file_size > 0)
+           && (mapped_file->chunk_std_size == (ssize_t)pa_offset(mapped_file->chunk_std_size));
 }
 
 bool chunk_is_empty(chunk_t *chunk) {
     assert(chunk);
-    return !chunk->mapped_area && chunk->mapped_area_size == 0;
+    return !chunk->mapped_area && chunk->mapped_area_size <= 0;
 }
 
 mapped_file_t *mapped_file_construct(const char *filename, size_t std_chunk_size,
@@ -94,14 +95,36 @@ void mapped_file_destruct(mapped_file_t *mapped_file) {
     assert(mapped_file);
     assert(mapped_file_is_ok(mapped_file));
 
-    for (size_t i = 0; i < mapped_file->chunk_pool_size; i++) {
+    for (ssize_t i = 0; i < mapped_file->chunk_pool_size; i++) {
         chunk_unmap(&(mapped_file->chunk_pool[i]));
+#ifdef DEBUG
+        mapped_file->chunk_pool[i].hash_list = NULL;
+        mapped_file->chunk_pool[i].ht_node = NULL;
+        mapped_file->chunk_pool[i].mapped_area = NULL;
+        mapped_file->chunk_pool[i].pa_offset = (off_t)(-1);
+        mapped_file->chunk_pool[i].mapped_area_size = -1;
+        mapped_file->chunk_pool[i].reference_counter = -1;
+#endif
     }
 
     free((void *) mapped_file->chunk_pool);
     hash_destruct(mapped_file->chunk_ptr_ht);
     close(mapped_file->fd);
+
+#ifdef DEBUG
+    mapped_file->chunk_pool = NULL;
+    mapped_file->chunk_ptr_ht = NULL;
+    mapped_file->chunk_pool_size = -1;
+    mapped_file->chunk_pool_w_idx = -1;
+    mapped_file->chunk_std_size = -1;
+    mapped_file->file_size = -1;
+    mapped_file->fd = -1;
+#endif
+
     free((void *)mapped_file);
+#ifdef DEBUG
+    mapped_file = NULL;
+#endif
 }
 
 void *chunk_mem_acquire(struct mapped_file_t *mapped_file, off_t offset, size_t size,
@@ -115,14 +138,16 @@ void *chunk_mem_acquire(struct mapped_file_t *mapped_file, off_t offset, size_t 
         LOG_WARN("chunk_mem_acquire: offset is out of the file.\n", NULL);
         return NULL;
     }
-    if (offset + size > mapped_file->file_size) {
+    if (size == 0) {
+        size = mapped_file->chunk_std_size;
+    } else {
+        size = (ssize_t)pa_offset(size + sysconf(_SC_PAGE_SIZE) - 1);
+    }
+    if ((ssize_t)(offset + size) > mapped_file->file_size) {
         LOG_DEBUG("chunk_mem_acquire: chunk_pa_offset + size out of the file\n", NULL);
         size = mapped_file->file_size - offset;
     }
 
-    if (size == 0) {
-        size = mapped_file->chunk_std_size;
-    }
     off_t chunk_pa_offset = pa_offset(offset);
     size_t mem_size = size + (offset - chunk_pa_offset);
 
@@ -135,6 +160,7 @@ void *chunk_mem_acquire(struct mapped_file_t *mapped_file, off_t offset, size_t 
     }
 
     if (!chunk->mapped_area) {
+        assert(chunk_is_empty(chunk));
         LOG_DEBUG("chunk_mem_acquire: opening the gate in chunk.\n", NULL);
 
         chunk->reference_counter = 0;
@@ -161,18 +187,20 @@ void *chunk_mem_acquire(struct mapped_file_t *mapped_file, off_t offset, size_t 
             off_iterator += sysconf(_SC_PAGE_SIZE);
         }
     } else {
+        assert(!chunk_is_empty(chunk));
         LOG_DEBUG("chunk_mem_acquire: loaded chunk [%p]: av. size %d\n",
                   chunk, chunk->mapped_area_size - (offset - chunk->pa_offset));
-        assert(chunk->mapped_area_size - (offset - chunk->pa_offset) >= size);
+        assert(chunk->mapped_area_size - (offset - chunk->pa_offset) >= (ssize_t)size);
         LOG_DEBUG("chunk_mem_acquire: chunk already has a gate.\n", NULL);
     }
 
     chunk->reference_counter++;
 
-    LOG_DEBUG("\n\n", NULL);
-
     *read_size = chunk->mapped_area_size - (offset - chunk->pa_offset);
     *associated_chunk = chunk;
+
+    LOG_DEBUG("Exit chunk_mem_acquire: obtained memory region pointer, size = %u\n\n", *read_size);
+
     return (void *) ((size_t) chunk->mapped_area + (offset - chunk->pa_offset));
 }
 
@@ -183,10 +211,16 @@ void chunk_mem_unacquire(struct chunk_t *chunk) {
 
     if (chunk->reference_counter > 0)
         chunk->reference_counter--;
+
+    LOG_DEBUG("\n\n", NULL);
 }
 
 ssize_t mapped_file_data_memcpy(struct mapped_file_t *mapped_file, off_t offset,
                                 size_t size, void *buf, bool write_mode) {
+    LOG_DEBUG("Called mapped_file_data_memcpy (mapped_file = [%p],"
+                      " offset = [%u], size = [%u], buf  = [%p], write_mode = %d).\n",
+              mapped_file, offset, size, buf, write_mode);
+
     assert(mapped_file);
     assert(mapped_file_is_ok(mapped_file));
     assert(size > 0);
@@ -228,6 +262,7 @@ ssize_t mapped_file_data_memcpy(struct mapped_file_t *mapped_file, off_t offset,
         offset = pa_offset(offset);
     }
 
+    LOG_DEBUG("Exit mapped_file_data_memcpy: processed bytes = %d\n\n", bytes_processed);
     return bytes_processed;
 }
 
@@ -280,7 +315,7 @@ ssize_t chunk_pool_place_idx_find(struct mapped_file_t *mapped_file) {
         }
     }
 
-    LOG_DEBUG("chunk_pool_place_idx_find: return %d\n", chunk_pool_w_idx_new);
+    LOG_DEBUG("Exit chunk_pool_place_idx_find: return %d\n", chunk_pool_w_idx_new);
     return chunk_pool_w_idx_new;
 }
 
@@ -305,16 +340,15 @@ struct hash_list_t *chunk_approp_hash_list(struct hash_t *hash, size_t offset, s
     int sign = (choose_biggest) ? -1 : 1;
 
     while (hash_list_node_iterator) {
-        if (hash_list_node_iterator->cmp_identity != offset) {
+        if (hash_list_node_iterator->cmp_identity != (ssize_t)offset) {
             hash_list_node_iterator = hash_list_node_iterator->next;
             continue;
         }
 
         struct chunk_t *approp_chunk_temp = (chunk_t *)hash_list_node_iterator->data;
-
         if (approp_chunk_temp && approp_chunk_temp->mapped_area_size
                                  - (offset - approp_chunk_temp->pa_offset) >= size) {
-            assert(approp_chunk_temp->mapped_area);
+            assert(!chunk_is_empty(approp_chunk_temp));
             // big enough
             // it is possible few strategies here: first one, the biggest, the smallest
             if (!appropriate_chunk ||
@@ -352,7 +386,7 @@ struct chunk_t *chunk_get(struct mapped_file_t *mapped_file, off_t offset, size_
         chunk_t *chunk = (chunk_t *)chunk_hash_list->data;
         assert(chunk->mapped_area);
         assert(chunk->hash_list);
-        assert(chunk->mapped_area_size - (offset - chunk->pa_offset) >= size);
+        assert(chunk->mapped_area_size - (offset - chunk->pa_offset) >= (ssize_t)size);
 
         LOG_DEBUG("chunk_get: appropriate chunk already exists\n", NULL);
         return chunk;
@@ -399,7 +433,6 @@ struct chunk_t *chunk_get(struct mapped_file_t *mapped_file, off_t offset, size_
     chunk->pa_offset = offset;
     chunk->hash_list = chunk_hash_list;
 
-    //LOG_DEBUG("\n\n", NULL);
     return chunk;
 }
 
@@ -416,7 +449,15 @@ int chunk_map(struct chunk_t *chunk, int fd, off_t offset, size_t size) {
     if (chunk->mapped_area == MAP_FAILED) {
         LOG_ERROR("chunk_map: mmap offset [%p] failed: %s.\n", offset, strerror(errno));
         chunk->mapped_area = NULL;
-        chunk->mapped_area_size = 0;
+        chunk->mapped_area_size = -1;
+
+#ifdef DEBUG
+        chunk->hash_list = NULL;
+        chunk->ht_node = NULL;
+        chunk->pa_offset = (off_t)(-1);
+        chunk->reference_counter = -1;
+#endif
+
         return -1;
     }
 
@@ -438,4 +479,11 @@ void chunk_unmap(struct chunk_t *chunk) {
 
     chunk->mapped_area = NULL;
     chunk->mapped_area_size = 0;
+
+#ifdef DEBUG
+    chunk->hash_list = NULL;
+    chunk->ht_node = NULL;
+    chunk->pa_offset = (off_t)(-1);
+    chunk->reference_counter = -1;
+#endif
 }
