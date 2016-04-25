@@ -5,14 +5,14 @@
 
 int main()
 {
-	int fd = open("file", O_RDWR | O_CREAT, 0777);
+	int fd = open("testfile", O_RDWR | O_CREAT, 0777);
 	CHECK(fd != -1);
 	CHECK(!ftruncate(fd, FILE_SIZE));
 	CHECK(!close(fd));
 
 	long long time = time_ms();
 
-	mf_handle_t mf = mf_open("file.txt");
+	mf_handle_t mf = mf_open("testfile");
 	CHECK(mf != MF_OPEN_FAILED);
 
 	mf_mapmem_handle_t mapmems[NUM_MAPS];
