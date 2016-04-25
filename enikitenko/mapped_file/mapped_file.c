@@ -101,7 +101,7 @@ static void mapmem_destroy(void* key, void* value)
 	mapped_chunk_t* mapped_value = (mapped_chunk_t*) value;
 
 	mapped_value->ref_count--;
-	if (mapped_value->ref_count == 0)
+	if (mapped_value->ref_count != 0)
 		return;
 
 	munmap(mapped_value->data, mapped_key->size);
