@@ -130,12 +130,12 @@ for root_lib_dir in $ROOT_LIB_DIR  ; do
 	make_dir="$root_lib_dir/$MF_SUFFIX/$LIBMAKE_SUFFIX/"
 	pushd $make_dir > /dev/null
 	make clean > /dev/null 2> /dev/null
-	#rm -rf ./$LIBOUT_SUFFIX/
+	rm -rf ./$LIBOUT_SUFFIX/
 	popd > /dev/null
 done
 for clean_file in $TEST_BUILD; do
 	echo $clean_file
-	#rm -f $clean_file
+	rm -f $clean_file
 done
 
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
