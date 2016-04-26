@@ -57,17 +57,14 @@ int mf_realloc(size_t size, void **ptr) {
 	return 0;
 }
 
-int mf_free(size_t size, void **ptr) {
+int mf_free(size_t size, void *ptr) {
 	if(ptr == NULL)
-		return EINVAL;
+		return 0;
 
 #ifdef DEBUG2
-	if(*ptr != NULL)
-		memset(*ptr, MF_MALLOC_POISON, size);
+	memset(ptr, MF_MALLOC_POISON, size);
 #endif
 
-	free(*ptr);
-	*ptr = NULL;
-
+	free(ptr);
 	return 0;
 }

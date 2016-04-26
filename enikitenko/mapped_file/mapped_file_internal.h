@@ -1,7 +1,7 @@
 #ifndef __MAPPED_FILE_INTERNAL__
 #define __MAPPED_FILE_INTERNAL__
 
-#include "../../include/mapped_file.h"
+#include <mapped_file.h>
 #include "../logger/log.h"
 #include "hashtable.h"
 
@@ -10,14 +10,13 @@ typedef struct
 	size_t size;
 	off_t offset;
 
-} mapped_key_t;
+} mapped_chunk_key_t;
 
 struct mapped_file;
 
 typedef struct
 {
 	void* data;
-	struct mapped_file* file;
 	size_t size;
 	off_t offset;
 	int ref_count;
@@ -27,21 +26,21 @@ typedef struct
 typedef struct mapped_file
 {
 	int fd;
-	size_t max_memory_usage;
-	size_t memory_usage;
 	size_t page_size;
+	size_t chunk_size;
 	size_t file_size;
 	hashtable_t chunks; // hashtable is useless for this task so fuck performance and memory use
 
+	int fully_mapped;
 	void* data;
 	size_t size;
 	off_t offset;
 
 } mapped_file_t;
 
-#define CHUNKS_HASHTABLE_SIZE 4095
-#define READ_WRITE_MIN_SIZE (4096*1024)
-#define MIN_MEMORY_USAGE (64*1024*1024)
-#define UNMAP_READ_WRITE_SIZE (16*1024*1024)
+#define CHUNKS_HASHTABLE_SIZE 40009
+#define READ_WRITE_MIN_SIZE (4*1024*1024)
+#define UNMAP_READ_WRITE_SIZE (64*1024*1024)
+#define MAP_CHUNK_SIZE (1024*1024)
 
 #endif // __MAPPED_FILE_INTERNAL__

@@ -8,11 +8,11 @@ enum log_level cur_log_level;
 struct ring_buf log_ring_buf;
 
 #ifdef DEBUG_LOG
-#define INFO  LOGLEVEL_INFO
-#define DEBUG LOGLEVEL_DEBUG
-#define WARN  LOGLEVEL_WARN
-#define ERROR LOGLEVEL_ERROR
-#define FATAL LOGLEVEL_FATAL
+#define INFOL  LOGLEVEL_INFO
+#define DEBUGL LOGLEVEL_DEBUG
+#define WARNL  LOGLEVEL_WARN
+#define ERRORL LOGLEVEL_ERROR
+#define FATALL LOGLEVEL_FATAL
 
 #ifndef LOGCOLOR
 #define LOGCOLOR(x) x

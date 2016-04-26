@@ -1,25 +1,27 @@
 MAKE_DIR := $(PWD)/out
-DIRS := logger hash chunk_manager mf mapped_file
+DIRS := logger hash chunk_manager mapped_file
 BUILDDIRS := $(DIRS:%=build-%)
 INSTALLDIRS := $(DIRS:%=install-%)
 CLEANDIRS := $(DIRS:%=clean-%)
 TESTDIRS := $(DIRS:%=test-%)
 
-CFLAGS += -DDEBUG_STDERRLOG -g
+CFLAGS += -Ofast
 export CFLAGS MAKE_DIR
 
 all: make_dir_init $(BUILDDIRS)
-	ar rcs $(PWD)/out/libmappedfile.a $(PWD)/out/*.o
+	ar rcs "$(PWD)/out/libmappedfile.a" "$(PWD)/out"/*.o
 
 make_dir_init:
-	mkdir -p $(MAKE_DIR)
+	mkdir -p "$(MAKE_DIR)"
 
 $(DIRS): $(BUILDDIRS)
 $(BUILDDIRS):
 	$(MAKE) -C $(@:build-%=%)
 
 clean: make_dir_init $(CLEANDIRS)
-	rm -rf *.o
+	rm -rf "$(PWD)/out/"*.o
+	rm -rf "$(PWD)/out/libmappedfile.a"
+
 $(CLEANDIRS):
 	$(MAKE) -C $(@:clean-%=%) clean
 

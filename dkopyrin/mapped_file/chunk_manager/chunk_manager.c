@@ -7,6 +7,9 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 
+#define MAX(x,y) ((x > y) ? x: y)
+#define MIN(x,y) ((x < y) ? x: y)
+
 int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
 	LOG(INFO, "chunk_manager_init called\n");
 	cm -> fd = fd;
@@ -77,7 +80,7 @@ long int chunk_manager_offset2chunk (struct chunk_manager *cm, long int offset, 
 		if (new_chunk == NULL)
 			return -1;
 
-		chunk_init (new_chunk, plength, poffset, cm -> prot, cm -> fd);
+		chunk_init (new_chunk, MAX(MIN_CHUNK_SIZE, plength), poffset, cm -> prot, cm -> fd);
 
 		long int new_chunk_offset = new_chunk -> offset;
 		long int new_chunk_length = new_chunk -> length;
