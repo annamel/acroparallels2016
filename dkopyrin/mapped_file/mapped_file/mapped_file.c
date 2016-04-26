@@ -45,6 +45,7 @@ mf_handle_t mf_open(const char *pathname){
 }
 
 int mf_close(mf_handle_t mf){
+	LOG(INFO, "mf_close called\n");
 	assert(mf);
 
 	struct _mf * _mf = (struct _mf *) mf;
@@ -136,6 +137,8 @@ ssize_t mf_write(mf_handle_t mf, const void *buf, size_t size, off_t offset){
 }
 
 void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle){
+	LOG(INFO, "mf_map called\n");
+
 	struct _mf * _mf = (struct _mf *) mf;
 	if (offset + size > _mf -> size){
 		errno = EINVAL;
@@ -153,10 +156,14 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 }
 
 int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle){
+	LOG(INFO, "mf_unmap called\n");
+
 	((struct chunk *)mapmem_handle) -> ref_cnt--;
 	return 0;
 }
 
 ssize_t mf_file_size(mf_handle_t mf){
+	LOG(INFO, "mf_file_size called\n");
+
 	return ((struct _mf *)mf) -> size;
 }

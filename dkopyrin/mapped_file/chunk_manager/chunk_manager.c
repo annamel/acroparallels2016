@@ -73,7 +73,7 @@ long int chunk_manager_offset2chunk (struct chunk_manager *cm, long int offset, 
 	hashtable_value_t val = hashtable_get (&cm -> ht, poffset);
 	struct chunk *cur_ch = (struct chunk *)val.ptr;
 
-	if (cur_ch == NULL || cur_ch -> state != val.state) {
+	if (cur_ch == NULL || cur_ch -> state != val.state || (remap && cur_ch -> length - offset + cur_ch -> offset < length)) {
 		LOG(DEBUG, "No chunk found - making new one of size %d\n", plength);
 		//TODO: Logics on generating new chunk
 		struct chunk *new_chunk = chunk_manager_get_av_chunk_index(cm);
@@ -97,8 +97,8 @@ long int chunk_manager_offset2chunk (struct chunk_manager *cm, long int offset, 
 		LOG(DEBUG, "Chunk found - nice!\n");
 		*chunk_offset = offset - cur_ch -> offset;
 		*ret_ch = cur_ch;
-		if (remap && cur_ch -> length - offset + cur_ch -> offset < length)
-			chunk_remap(cur_ch, plength);
+		//if (remap && cur_ch -> length - offset + cur_ch -> offset < length)
+		//	chunk_remap(cur_ch, plength);
 		return cur_ch -> length - offset + cur_ch -> offset;
 	}
 }

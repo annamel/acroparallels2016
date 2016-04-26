@@ -6,7 +6,7 @@
 
 #define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
 
-#define POOL_SIZE 256
+#define POOL_SIZE 1024
 #define MAX_CHUNK_SIZE 4096*sysconf(_SC_PAGESIZE)
 #define MIN_CHUNK_SIZE 16*sysconf(_SC_PAGESIZE)
 
