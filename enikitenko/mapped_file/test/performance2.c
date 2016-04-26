@@ -15,7 +15,7 @@ int main()
 	mf_handle_t mf = mf_open("testfile");
 	CHECK(mf != MF_OPEN_FAILED);
 
-	mf_mapmem_handle_t mapmems[NUM_MAPS];
+	mf_mapmem_handle_t* mapmems = malloc(sizeof (mf_mapmem_handle_t) * NUM_MAPS);
 	int i;
 	for (i = 0; i < NUM_MAPS; i++)
 	{
@@ -23,6 +23,7 @@ int main()
 	}
 	for (i = 0; i < NUM_MAPS; i++)
 		CHECK(mf_unmap(mf, mapmems[i]) != -1);
+	free(mapmems);
 
 	CHECK(!mf_close(mf));
 

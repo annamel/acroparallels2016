@@ -1,11 +1,11 @@
 MAKE_DIR := $(PWD)/out
-DIRS := logger hash chunk_manager mapped_file
+DIRS := logger rbtree chunk_manager mapped_file test
 BUILDDIRS := $(DIRS:%=build-%)
 INSTALLDIRS := $(DIRS:%=install-%)
 CLEANDIRS := $(DIRS:%=clean-%)
 TESTDIRS := $(DIRS:%=test-%)
 
-CFLAGS += -Ofast
+CFLAGS += -O3#-g -DDEBUG_LOG -DDEBUG_STDERRLOG
 export CFLAGS MAKE_DIR
 
 all: make_dir_init $(BUILDDIRS)
