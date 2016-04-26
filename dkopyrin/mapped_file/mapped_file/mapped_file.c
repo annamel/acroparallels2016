@@ -46,8 +46,9 @@ mf_handle_t mf_open(const char *pathname){
 	struct sysinfo info; //I know :)
 	if (sysinfo(&info) == 0) {
 		int tmp;
-		struct chunk *ch;
+		struct chunk *ch = NULL;
 		chunk_manager_offset2chunk(&mf -> cm, 0, info.freeram / 2, &ch, &tmp, 0);
+		mf -> prev_ch = ch;
 	}
 	return (mf_handle_t) mf;
 }
@@ -80,7 +81,7 @@ ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset){
 		int ch_size = ch -> length;
 		ch_offset = ch -> offset;
 		LOG(DEBUG, "Got prev chunk of size %d\n", ch_size);
-		if (ch_offset < offset && offset < ch_offset + ch_size){
+		if (ch_offset <= offset && offset < ch_offset + ch_size){
 			ch_offset = offset - ch_offset;
 			long int av_chunk_size = ch_size - ch_offset;
 			LOG(DEBUG, "Using chunk prev chunk of av_size %d\n", av_chunk_size);
@@ -155,7 +156,7 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 	//TODO: Optimization?
   	struct chunk *ch = _mf -> prev_ch;
 	int ch_offset = 0;
-  	if (ch && ch -> offset < offset && offset < ch -> offset + ch -> length){
+  	if (ch && ch -> offset <= offset && offset < ch -> offset + ch -> length){
 		ch_offset = offset - ch -> offset;
 	}else{
 		long int av_chunk_size = chunk_manager_offset2chunk(&_mf -> cm, offset, size, &ch, &ch_offset, 1);
