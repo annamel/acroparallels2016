@@ -27,6 +27,7 @@ typedef struct mapped_file
 {
 	int fd;
 	size_t page_size;
+	size_t chunk_size;
 	size_t file_size;
 	hashtable_t chunks; // hashtable is useless for this task so fuck performance and memory use
 
@@ -36,9 +37,9 @@ typedef struct mapped_file
 
 } mapped_file_t;
 
-#define CHUNKS_HASHTABLE_SIZE 8761
-#define READ_WRITE_MIN_SIZE (4096*1024)
-#define MIN_MEMORY_USAGE (64*1024*1024)
-#define UNMAP_READ_WRITE_SIZE (16*1024*1024)
+#define CHUNKS_HASHTABLE_SIZE 40009
+#define READ_WRITE_MIN_SIZE (4*1024*1024)
+#define UNMAP_READ_WRITE_SIZE (64*1024*1024)
+#define MAP_CHUNK_SIZE (1024*1024)
 
 #endif // __MAPPED_FILE_INTERNAL__
