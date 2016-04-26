@@ -134,21 +134,28 @@ void *chunk_mem_acquire(struct mapped_file_t *mapped_file, off_t offset, size_t 
     assert(mapped_file);
     assert(mapped_file_is_ok(mapped_file));
 
-    if (offset >= (off_t)mapped_file->file_size) {
+    if (offset > (off_t)mapped_file->file_size) {
         LOG_WARN("chunk_mem_acquire: offset is out of the file.\n", NULL);
         return NULL;
     }
-
-    off_t chunk_pa_offset = pa_offset(offset);
     if (size == 0) {
         size = mapped_file->chunk_std_size;
     }
-    size_t mem_size = (size_t)pa_offset(size + (offset - chunk_pa_offset) + sysconf(_SC_PAGE_SIZE));
 
-    if ((ssize_t)(offset + mem_size) > mapped_file->file_size) {
-        LOG_DEBUG("chunk_mem_acquire: chunk_pa_offset + size out of the file\n", NULL);
-        mem_size = mapped_file->file_size - offset;
+    off_t chunk_pa_offset = pa_offset(offset);
+    size_t mem_size;
+    if ((ssize_t)(offset + size) > mapped_file->file_size) {
+        size = mapped_file->file_size - offset;
+        mem_size = size;
+    } else {
+        mem_size = (size_t)pa_offset(size + (offset - chunk_pa_offset) + sysconf(_SC_PAGE_SIZE));
+        if ((ssize_t)(chunk_pa_offset + mem_size) > mapped_file->file_size) {
+            mem_size = mapped_file->file_size - chunk_pa_offset;
+        }
     }
+
+    if (mem_size == 0)
+        return NULL;
 
     chunk_t *chunk = chunk_get(mapped_file, chunk_pa_offset, mem_size, choose_biggest);
     if (!chunk) {
@@ -187,8 +194,8 @@ void *chunk_mem_acquire(struct mapped_file_t *mapped_file, off_t offset, size_t 
         }
     } else {
         assert(!chunk_is_empty(chunk));
-        LOG_DEBUG("chunk_mem_acquire: loaded chunk [%p]: av. size %d\n",
-                  chunk, chunk->mapped_area_size - (offset - chunk->pa_offset));
+        LOG_DEBUG("chunk_mem_acquire: loaded chunk [%p]: av. size %d, req_size %d\n",
+                  chunk, chunk->mapped_area_size - (offset - chunk->pa_offset), size);
         assert(chunk->mapped_area_size - (offset - chunk->pa_offset) >= (ssize_t)size);
         LOG_DEBUG("chunk_mem_acquire: chunk already has a gate.\n", NULL);
     }
@@ -328,6 +335,7 @@ struct hash_list_t *chunk_approp_hash_list(struct hash_t *hash, size_t offset, s
     assert(hash);
     assert(hash_is_ok(hash));
     assert(offset == (size_t)pa_offset(offset));
+    assert(size > 0);
 
     struct hash_list_t *entry_chunk_hash_list = hash_find(hash, offset);
     if (!entry_chunk_hash_list)
@@ -378,7 +386,8 @@ struct chunk_t *chunk_get(struct mapped_file_t *mapped_file, off_t offset, size_
     assert(mapped_file);
     assert(mapped_file_is_ok(mapped_file));
     assert(offset == pa_offset(offset));
-    assert(offset < (off_t)mapped_file->file_size);
+    assert(offset <= (off_t)mapped_file->file_size);
+    assert(size > 0);
 
     struct hash_list_t *chunk_hash_list = chunk_approp_hash_list(mapped_file->chunk_ptr_ht,
                                                                  (size_t) offset, size,

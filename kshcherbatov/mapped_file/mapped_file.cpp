@@ -5,10 +5,12 @@
 #include "logger.h"
 #include "mapped_file.h"
 #include "chunk_manager.h"
+#include <sys/sysinfo.h>
+
 
 const size_t Chunk_size = 2*4096;
-const size_t Hash_table_size = 102400;
-const size_t Chunk_pool_size = 40960;
+const size_t Hash_table_size = 1024;
+const size_t Chunk_pool_size = 2048;
 
 mf_handle_t mf_open(const char *pathname) {
     LOG_DEBUG("Called mf_open (%s)\n", pathname);
@@ -17,10 +19,33 @@ mf_handle_t mf_open(const char *pathname) {
         return NULL;
     }
 
-    mf_handle_t mf = (mf_handle_t)mapped_file_construct(pathname, Chunk_size, Hash_table_size, Chunk_pool_size);
+    mapped_file_t *mapped_file = mapped_file_construct(pathname, Chunk_size, Hash_table_size, Chunk_pool_size);
+    if (!mapped_file)
+        return NULL;
 
-    LOG_DEBUG("mf_open: mf structure were constructed and inited, return [%p].\n\n", mf);
-    return mf;
+    size_t file_size = mapped_file->file_size;
+    LOG_DEBUG("mf_open: filesize is = %u\n", file_size);
+    
+    struct sysinfo info;
+    
+    if (sysinfo(&info) == 0) {
+        size_t read_size;
+        struct chunk_t *chunk;
+
+        if (file_size > 0) {
+            if (file_size < info.freeram) {
+            	chunk_mem_acquire(mapped_file, 0, file_size, true, &read_size, &chunk);
+            	chunk_mem_unacquire(chunk);
+            } else {
+                chunk_mem_acquire(mapped_file, 0, info.freeram / 2, true, &read_size, &chunk);
+                chunk_mem_unacquire(chunk);
+            }
+        }
+
+    }
+
+    LOG_DEBUG("mf_open: mf structure were constructed and inited, return [%p].\n\n", mapped_file);
+    return (mf_handle_t)mapped_file;
 }
 
 int mf_close(mf_handle_t mf) {
