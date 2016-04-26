@@ -225,7 +225,19 @@ mf_handle_t mf_open(const char* pathname)
 		RETURN_ERRNO(EINVAL, MF_OPEN_FAILED);
 	}
 
-	file->data = NULL;
+	file->data = map_internal(0, file->file_size, file->fd, file->page_size, file->file_size);
+	if (file->data == MAP_FAILED)
+	{
+		errno = 0;
+		file->fully_mapped = 0;
+		file->data = NULL;
+	}
+	else
+	{
+		file->fully_mapped = 1;
+		file->offset = 0;
+		file->size = file->file_size;
+	}
 
 	RETURN((mf_handle_t) file);
 }
@@ -265,6 +277,12 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
 		RETURN_ERRNO(EINVAL, MF_MAP_FAILED);
 	if (offset + size > file->file_size || size == 0)
 		RETURN_ERRNO(EINVAL, MF_MAP_FAILED);
+
+	if (file->fully_mapped)
+	{
+		*mapmem_handle = (mf_mapmem_handle_t) 0xDEADBABA;
+		RETURN(&(((char*) file->data)[offset]));
+	}
 
 	size_t aligned_offset = (offset / file->chunk_size) * file->chunk_size;
 	size_t offset_delta = offset - aligned_offset;
@@ -320,6 +338,13 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle)
 
 	if (!mapmem_handle)
 		RETURN_ERRNO(EINVAL, -1);
+	if (file->fully_mapped)
+	{
+		if (mapmem_handle == (mf_mapmem_handle_t) 0xDEADBABA)
+			RETURN(0);
+		else
+			RETURN_ERRNO(EINVAL, -1);
+	}
 
 	mapped_chunk_t* chunk = (mapped_chunk_t*) mapmem_handle;
 	mapped_chunk_key_t key = // TODO: return key
@@ -377,7 +402,7 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset)
 
 	memcpy(buf, &(((char*) file->data)[offset - file->offset]), count);
 
-	if (count >= UNMAP_READ_WRITE_SIZE)
+	if (count >= UNMAP_READ_WRITE_SIZE && !file->fully_mapped)
 	{
 #ifdef DEBUG_MODE
 		if (!unmap_internal(file->data, file->offset, file->size, file->page_size, file->file_size))
@@ -405,7 +430,7 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset)
 
 	memcpy(&(((char*) file->data)[offset - file->offset]), buf, count);
 
-	if (count >= UNMAP_READ_WRITE_SIZE)
+	if (count >= UNMAP_READ_WRITE_SIZE && !file->fully_mapped)
 	{
 #ifdef DEBUG_MODE
 		if (!unmap_internal(file->data, file->offset, file->size, file->page_size, file->file_size))
