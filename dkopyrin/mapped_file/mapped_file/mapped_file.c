@@ -86,7 +86,7 @@ ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset){
 		}
 	}
 
-	while (size >= 0) {
+	while (size > 0) {
 		long int av_chunk_size = chunk_manager_offset2chunk(&_mf -> cm, offset, size, &ch, &ch_offset, 0);
 		LOG(DEBUG, "Got chunk of size %d\n", av_chunk_size);
 		long int read_size = MIN(av_chunk_size, size);
@@ -110,7 +110,7 @@ ssize_t mf_write(mf_handle_t mf, const void *buf, size_t size, off_t offset){
 	struct chunk *ch = NULL;
 	int ch_offset = 0;
 	ssize_t write_bytes = 0;
-	while (size >= 0) {
+	while (size > 0) {
 		long int av_chunk_size = chunk_manager_offset2chunk(&_mf -> cm, offset, size, &ch, &ch_offset, 0);
 		LOG(DEBUG, "Got chunk of size %d\n", av_chunk_size);
 	  	long int write_size = MIN(av_chunk_size, size);

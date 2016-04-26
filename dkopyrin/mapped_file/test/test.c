@@ -46,8 +46,8 @@ int main(int argc, char *argv[]){
   	LOG(DEBUG, "---Read 4\n");
 	memset(buf1, 0, 12345);
 	memset(buf2, 0, 12345);
-  	  lseek(file2, 0, SEEK_SET);
-	mf_read(file1, buf1, 12345, 0);
+  	  lseek(file2, 12, SEEK_SET);
+	mf_read(file1, buf1, 12345, 12);
 	   read(file2, buf2, 12345);
 	if(memcmp(buf1, buf2, 12345))
 		return 4;

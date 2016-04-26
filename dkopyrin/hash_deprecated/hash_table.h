@@ -6,6 +6,7 @@
 typedef uint32_t hashtable_key_t;
 typedef struct {
 	void *ptr;
+	size_t size;
 	int state;
 } hashtable_value_t;
 
