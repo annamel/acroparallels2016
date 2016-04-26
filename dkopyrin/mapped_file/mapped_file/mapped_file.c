@@ -14,6 +14,7 @@ struct _mf {
 	int fd;
 	struct chunk_manager cm;
 	long int size;
+	struct chunk *prev_ch;
 };
 
 off_t fsize(const char *filename) {
@@ -38,6 +39,7 @@ mf_handle_t mf_open(const char *pathname){
 	struct _mf *mf = (struct _mf *) malloc(sizeof(struct _mf));
 	mf -> fd = fd;
 	mf -> size = size;
+	mf -> prev_ch = NULL;
 	chunk_manager_init(&mf -> cm, fd, O_RDWR | O_CREAT);
 	return (mf_handle_t) mf;
 }
@@ -54,13 +56,35 @@ int mf_close(mf_handle_t mf){
 
 ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset){
 	struct _mf * _mf = (struct _mf *) mf;
-	LOG(INFO, "mf_read called\n");
-	if (_mf -> size <= offset)
-		offset = _mf -> size;
+
+	LOG(INFO, "mf_read called to read %d bytes by offt %d\n", size, offset);
+	if (_mf -> size < offset)
+		return 0;
 	size = MIN(size, _mf -> size - offset);
-	struct chunk *ch = NULL;
+
+  	if (_mf -> size <= offset)
+		offset = _mf -> size;
+	struct chunk *ch = _mf -> prev_ch;
 	int ch_offset = 0;
 	ssize_t read_bytes = 0;
+	if (ch){
+		int ch_size = ch -> length;
+		ch_offset = ch -> offset;
+		LOG(DEBUG, "Got prev chunk of size %d\n", ch_size);
+		if (ch_offset < offset && offset < ch_offset + ch_size){
+			ch_offset = offset - ch_offset;
+			long int av_chunk_size = ch_size - ch_offset; //TODO
+			LOG(DEBUG, "Using chunk prev chunk of av_size %d\n", av_chunk_size);
+			long int read_size = MIN(av_chunk_size, size);
+			chunk_cpy_c2b(buf, ch, read_size, ch_offset);
+			buf += read_size;
+			offset += read_size;
+			read_bytes += read_size;
+
+			size -= read_size;
+		}
+	}
+
 	while (size >= 0) {
 		long int av_chunk_size = chunk_manager_offset2chunk(&_mf -> cm, offset, size, &ch, &ch_offset, 0);
 		LOG(DEBUG, "Got chunk of size %d\n", av_chunk_size);
@@ -72,8 +96,9 @@ ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset){
 
 		if (size <= read_size)
 			break;
-		size -= av_chunk_size;
+		size -= read_size;
 	}
+	_mf -> prev_ch = ch;
 	LOG(DEBUG, "End offset is %d\n", offset);
 	return read_bytes;
 }
@@ -104,7 +129,7 @@ ssize_t mf_write(mf_handle_t mf, const void *buf, size_t size, off_t offset){
 
 		if (size <= av_chunk_size)
 			break;
-		size -= av_chunk_size;
+		size -= write_bytes;
 	}
 	LOG(DEBUG, "End offset is %d\n", offset);
 	return write_bytes;

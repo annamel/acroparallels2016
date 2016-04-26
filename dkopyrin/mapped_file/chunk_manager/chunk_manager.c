@@ -74,7 +74,7 @@ long int chunk_manager_offset2chunk (struct chunk_manager *cm, long int offset, 
 	struct chunk *cur_ch = (struct chunk *)val.ptr;
 
 	if (cur_ch == NULL || cur_ch -> state != val.state) {
-		LOG(DEBUG, "No chunk found - making new one\n");
+		LOG(DEBUG, "No chunk found - making new one of size %d\n", plength);
 		//TODO: Logics on generating new chunk
 		struct chunk *new_chunk = chunk_manager_get_av_chunk_index(cm);
 		if (new_chunk == NULL)

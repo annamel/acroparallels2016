@@ -68,11 +68,11 @@ int main(int argc, char *argv[]){
 	struct mf *f1 = mf_open(argv[1]);
 	struct mf *f2 = mf_open(argv[2]);
 
-  	void *buf = malloc(12345);
+  	void *buf = malloc(20000);
 
 	LOG(DEBUG, "---Write 1\n");
-	memset(buf, 0, 12345);
-	int rb = mf_read (f1, buf, 12345, 0);
+	memset(buf, 0, 20000);
+	int rb = mf_read (f1, buf, 20000, 0);
 	mf_write(f2, buf, rb, 0);
 	mf_close(f1);
 	mf_close(f2);
