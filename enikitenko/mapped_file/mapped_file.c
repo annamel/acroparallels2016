@@ -86,15 +86,62 @@ static void invalidate_data(void* data, size_t size)
 {
 #ifdef DEBUG_MODE
 	int i;
-	for (i = 0; i < size / sizeof (int); i++)
-		((int*) data)[i] = 0xDEADBABA;
+	for (i = 0; i < size / sizeof (int32_t); i++)
+		((int32_t*) data)[i] = 0xDEADBABA;
+#endif // DEBUG_MODE
+}
+
+static void* map_internal(off_t offset, size_t size, int fd, size_t page_size)
+{
+#ifndef DEBUG_MODE
+	void* pointer = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
+	return pointer;
+#else
+	size += (size % page_size == 0) ? 0 : (page_size - size % page_size);
+
+	void* pointer = mmap(NULL, size + 2 * page_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (pointer == MAP_FAILED)
+		return MAP_FAILED;
+
+	void* data_pointer = mmap(&(((char*) pointer)[page_size]), size, PROT_READ | PROT_WRITE, 
+		MAP_SHARED | MAP_FIXED, fd, offset);
+	if (data_pointer == MAP_FAILED)
+	{
+		munmap(pointer, size + 2 * page_size);
+		return MAP_FAILED;
+	}
+	if (&(((char*) pointer)[page_size]) != data_pointer)
+	{
+		munmap(pointer, size + 2 * page_size);
+		munmap(data_pointer, size);
+		return MAP_FAILED;
+	}
+
+	int i;
+	for (i = 0; i < page_size / sizeof (int32_t); i++)
+	{
+		((int32_t*) pointer)[i] = 0xDEADBABA;
+		((int32_t*) pointer)[(size + 2 * page_size) / sizeof (int32_t) - i - 1] = 0xDEADBABA;
+	}
+	return data_pointer;
+#endif // DEBUG_MODE
+}
+
+static int unmap_internal(void* addr, size_t size, size_t page_size)
+{
+#ifndef DEBUG_MODE
+	return munmap(addr, size);
+#else
+	int err_code1 = munmap(addr, size);
+	int err_code2 = munmap(&(((char*) addr)[-page_size]), size);
+	return (err_code1 == -1 || err_code2 == -1) ? -1 : 0;
 #endif // DEBUG_MODE
 }
 
 static size_t mapmem_hashfunction(void* key)
 {
 	mapped_chunk_key_t* mapmem = (mapped_chunk_key_t*) key;
-	return mapmem->offset;
+	return mapmem->offset ^ mapmem->size;
 }
 
 int mapmem_comparator(void* key1, void* key2)
@@ -105,7 +152,7 @@ int mapmem_comparator(void* key1, void* key2)
 	return mapmem1->offset == mapmem2->offset && mapmem1->size == mapmem2->size;
 }
 
-static int mapmem_destroy(void* key, void* value)
+static int mapmem_destroy(void* key, void* value, void* data)
 {
 	mapped_chunk_key_t* chunk_key = (mapped_chunk_key_t*) key;
 	mapped_chunk_t* chunk = (mapped_chunk_t*) value;
@@ -114,7 +161,8 @@ static int mapmem_destroy(void* key, void* value)
 	if (chunk->ref_count != 0)
 		return 0;
 
-	munmap(chunk->data, chunk_key->size);
+	size_t page_size = (size_t) data;
+	unmap_internal(chunk->data, chunk_key->size, page_size);
 
 	invalidate_data(chunk_key, sizeof (mapped_chunk_key_t));
 	invalidate_data(chunk, sizeof (mapped_chunk_t));
@@ -176,10 +224,13 @@ int mf_close(mf_handle_t mf)
 	if (close(file->fd) == -1)
 		RETURN_FAIL(-1);
 	
-	hashtable_destroy(&file->chunks, mapmem_destroy);
+	hashtable_destroy(&file->chunks, mapmem_destroy, (void*) file->page_size);
 
 	if (file->data)
-		munmap(file->data, file->size);
+	{
+		if (unmap_internal(file->data, file->size, file->page_size) == -1)
+			RETURN_FAIL(-1);
+	}
 
 	invalidate_data(file, sizeof (mapped_file_t));
 	free(file);
@@ -206,6 +257,8 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
 	size_t offset_delta = offset - aligned_offset;
 	size += offset_delta;
 	size_t aligned_size = (size / file->page_size) * file->page_size;
+	if (size % file->page_size != 0)
+		aligned_size += file->page_size;
 
 	mapped_chunk_key_t key = 
 	{
@@ -228,7 +281,7 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
 	key_ptr->size = aligned_size;
 	key_ptr->offset = aligned_offset;
 
-	void* pointer = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, aligned_offset);
+	void* pointer = map_internal(aligned_offset, size, file->fd, file->page_size);
 	if (pointer == MAP_FAILED)
 		RETURN_FAIL(MF_MAP_FAILED);
 
@@ -245,7 +298,7 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
 	hashtable_add(&file->chunks, key_ptr, chunk);
 
 	*mapmem_handle = (mf_mapmem_handle_t) chunk;
-	RETURN(chunk->data);
+	RETURN(data);
 }
 
 int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle)
@@ -262,7 +315,7 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle)
 		.offset = chunk->offset
 	};
 
-	if (!hashtable_remove(&file->chunks, &key, mapmem_destroy))
+	if (!hashtable_remove(&file->chunks, &key, mapmem_destroy, (void*) file->page_size))
 	{
 		invalidate_data(chunk, sizeof (mapped_chunk_t));
 		free(chunk);
@@ -272,7 +325,7 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle)
 	RETURN(0);
 }
 
-static int mf_map_internal(mf_handle_t mf, off_t offset, size_t size)
+static int map_for_read_write(mf_handle_t mf, off_t offset, size_t size)
 {
 	GET_MAPPED_FILE(-1)
 
@@ -285,7 +338,8 @@ static int mf_map_internal(mf_handle_t mf, off_t offset, size_t size)
 	size_t offset_delta = offset - aligned_offset;
 	size += offset_delta;
 
-	void* pointer = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, aligned_offset);
+	void* pointer = map_internal(aligned_offset, size, file->fd, file->page_size);
+	
 	if (pointer == MAP_FAILED)
 		RETURN_FAIL(-1);
 
@@ -305,13 +359,21 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset)
 	if (offset + count > file->file_size)
 		count = file->file_size - offset;
 
-	if (mf_map_internal(mf, offset, count) == -1)
+	if (map_for_read_write(mf, offset, count) == -1)
 		RETURN_FAIL(-1);
 
 	memcpy(buf, &(((char*) file->data)[offset - file->offset]), count);
 
 	if (count >= UNMAP_READ_WRITE_SIZE)
-		munmap(file->data, file->size);
+	{
+#ifdef DEBUG_MODE
+		if (!unmap_internal(file->data, file->size, file->page_size))
+			abort();
+#else
+		unmap_internal(file->data, file->size, file->page_size);
+#endif // DEBUG_MODE
+		file->data = NULL;
+	}
 
 	RETURN(count);
 }
@@ -325,14 +387,19 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset)
 	if (offset + count > file->file_size)
 		count = file->file_size - offset;
 
-	if (mf_map_internal(mf, offset, count) == -1)
+	if (map_for_read_write(mf, offset, count) == -1)
 		RETURN_FAIL(-1);
 
 	memcpy(&(((char*) file->data)[offset - file->offset]), buf, count);
 
 	if (count >= UNMAP_READ_WRITE_SIZE)
 	{
-		munmap(file->data, file->size);
+#ifdef DEBUG_MODE
+		if (!unmap_internal(file->data, file->size, file->page_size))
+			abort();
+#else
+		unmap_internal(file->data, file->size, file->page_size);
+#endif // DEBUG_MODE
 		file->data = NULL;
 	}
 

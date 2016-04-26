@@ -2,7 +2,7 @@ project (Logger)
 cmake_minimum_required (VERSION 2.8)
 
 set (WITH_LOGGER                  OFF  CACHE BOOL   "Enable logger")
-set (DEBUG_MODE                   ON   CACHE BOOL   "Debug mode")
+set (DEBUG_MODE                   OFF  CACHE BOOL   "Debug mode")
 
 list (APPEND SOURCES
 	mapped_file.c

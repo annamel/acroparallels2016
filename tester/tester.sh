@@ -11,11 +11,12 @@
 # The same way you can change variable ROOT_TEST_DIR
 # CFLAGS are supported
 
+
+SAVEIFS=$IFS
+IFS=$(echo -en ";\n\b")
 LDFLAGS=$LDFLAGS\ "-lmappedfile -lm -lrt -lpthread"
 UNAME=$(uname)
 if [ $UNAME == "Darwin" ]; then
-	SAVEIFS=$IFS
-	IFS=$(echo -en "\n\b")
 	CFLAGS=$CFLAGS\ -DNORT
 else
 	LDFLAGS=$LDFLAGS\ -lrt
@@ -33,11 +34,15 @@ echo "describe \"Test Mapped File\"" >> $test_file
 
 LIB_SOURCE_DIR=$PWD/../**
 if [ -z "$ROOT_LIB_DIR" ]; then
-	ROOT_LIB_DIR=$(ls -d -1 $LIB_SOURCE_DIR)
+	ROOT_LIB_DIR=$(echo $(ls -d -1 $LIB_SOURCE_DIR) | tr ' ' ';')
+else
+	ROOT_LIB_DIR=$(echo $ROOT_LIB_DIR | tr ' ' ';')
 fi
 TEST_SOURCE_DIR=$PWD/../**
 if [ -z "$ROOT_TEST_DIR" ]; then
-	ROOT_TEST_DIR=$(ls -d -1 $TEST_SOURCE_DIR)
+	ROOT_TEST_DIR=$(echo $(ls -d -1 $TEST_SOURCE_DIR) | tr ' ' ';')
+else
+	ROOT_TEST_DIR=$(echo $ROOT_TEST_DIR | tr ' ' ';')
 fi
 if [ -z "PREC" ]; then
 	PREC=""
@@ -58,6 +63,7 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 	if [ -d $make_dir ]; then
 		out_dir="$root_lib_dir/$MF_SUFFIX/$LIBOUT_SUFFIX"
 		if [ -f $make_dir/CMakeLists.txt ]; then
+			echo "rm -rf $PWD/build_dir" >> $test_file
 			echo "mkdir -p $PWD/build_dir" >> $test_file
 			echo "pushd $PWD/build_dir" >> $test_file
 			echo "cmake '$CALL_PWD/$make_dir'" >> $test_file
@@ -79,7 +85,7 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				test_out_name="$out_dir/$(basename $test .c)"
 				test_object_name="$test_out_name.o"
 
-				TEST_BUILD=$TEST_BUILD\ $test_out_name\ $test_object_name
+				TEST_BUILD=$TEST_BUILD\;$test_out_name\;$test_object_name
 				echo "$func_name() {" >> $test_file
 				echo "    gcc $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' $LDFLAGS '$test'" >> $test_file
 				echo "    g++ $CFLAGS -g -o '$test_out_name' '$test_object_name' $LDFLAGS -L'$out_dir'" >> $test_file
