@@ -31,6 +31,7 @@ typedef struct mapped_file
 	size_t file_size;
 	hashtable_t chunks; // hashtable is useless for this task so fuck performance and memory use
 
+	int fully_mapped;
 	void* data;
 	size_t size;
 	off_t offset;
