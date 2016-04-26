@@ -6,9 +6,9 @@
 #include "mapped_file.h"
 #include "chunk_manager.h"
 
-const size_t Chunk_size = 4096;
-const size_t Hash_table_size = 32768;
-const size_t Chunk_pool_size = 4;
+const size_t Chunk_size = 2*4096;
+const size_t Hash_table_size = 102400;
+const size_t Chunk_pool_size = 40960;
 
 mf_handle_t mf_open(const char *pathname) {
     LOG_DEBUG("Called mf_open (%s)\n", pathname);

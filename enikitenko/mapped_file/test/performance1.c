@@ -18,7 +18,7 @@ int main()
 	for (i = 0; i < FILE_SIZE; i++)
 	{
 		char c;
-		mf_read(mf, &c, 1, i);
+		CHECK(mf_read(mf, &c, 1, i) == 1);
 	}
 
 	CHECK(!mf_close(mf));

@@ -13,7 +13,7 @@ typedef struct _list
 
 typedef size_t (*hashfunction)(void* key);
 typedef int (*keycomparator)(void* key1, void* key2);
-typedef int (*destroyfunction)(void* key, void* value);
+typedef int (*destroyfunction)(void* key, void* value, void* data);
 
 typedef struct hashtable
 {
@@ -25,9 +25,9 @@ typedef struct hashtable
 } hashtable_t;
 
 void	hashtable_init		(hashtable_t* h, size_t size, hashfunction hash, keycomparator comparator);
-void	hashtable_destroy	(hashtable_t* h, destroyfunction destroy);
+void	hashtable_destroy	(hashtable_t* h, destroyfunction destroy, void* data);
 int		hashtable_add		(hashtable_t* h, void* key, void* element);
 void*	hashtable_get		(hashtable_t* h, void* key);
-int		hashtable_remove	(hashtable_t* h, void* key, destroyfunction destroy);
+int		hashtable_remove	(hashtable_t* h, void* key, destroyfunction destroy, void* data);
 
 #endif // HASHTABLE

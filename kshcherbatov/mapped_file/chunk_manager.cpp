@@ -143,7 +143,7 @@ void *chunk_mem_acquire(struct mapped_file_t *mapped_file, off_t offset, size_t 
     if (size == 0) {
         size = mapped_file->chunk_std_size;
     }
-    size_t mem_size = (size_t)pa_offset(size + (offset - chunk_pa_offset) + + sysconf(_SC_PAGE_SIZE) - 1);
+    size_t mem_size = (size_t)pa_offset(size + (offset - chunk_pa_offset) + sysconf(_SC_PAGE_SIZE));
 
     if ((ssize_t)(offset + mem_size) > mapped_file->file_size) {
         LOG_DEBUG("chunk_mem_acquire: chunk_pa_offset + size out of the file\n", NULL);
