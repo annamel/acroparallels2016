@@ -8,6 +8,7 @@
 #define LOGCOLOR(x) COLOR("%s: ")x, __func__
 #include "../logger/log.h"
 #include <assert.h>
+#include <sys/sysinfo.h>
 #define MIN(x,y) ((x>y) ? y: x)
 
 struct _mf {
@@ -41,6 +42,13 @@ mf_handle_t mf_open(const char *pathname){
 	mf -> size = size;
 	mf -> prev_ch = NULL;
 	chunk_manager_init(&mf -> cm, fd, O_RDWR | O_CREAT);
+
+	struct sysinfo info; //I know :)
+	if (sysinfo(&info) == 0) {
+		int tmp;
+		struct chunk *ch;
+		chunk_manager_offset2chunk(&mf -> cm, 0, info.freeram / 2, &ch, &tmp, 0);
+	}
 	return (mf_handle_t) mf;
 }
 
@@ -74,7 +82,7 @@ ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset){
 		LOG(DEBUG, "Got prev chunk of size %d\n", ch_size);
 		if (ch_offset < offset && offset < ch_offset + ch_size){
 			ch_offset = offset - ch_offset;
-			long int av_chunk_size = ch_size - ch_offset; //TODO
+			long int av_chunk_size = ch_size - ch_offset;
 			LOG(DEBUG, "Using chunk prev chunk of av_size %d\n", av_chunk_size);
 			long int read_size = MIN(av_chunk_size, size);
 			chunk_cpy_c2b(buf, ch, read_size, ch_offset);
@@ -144,11 +152,16 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 		errno = EINVAL;
 		return NULL;
 	}
-  	struct chunk *ch = NULL;
+	//TODO: Optimization?
+  	struct chunk *ch = _mf -> prev_ch;
 	int ch_offset = 0;
-	long int av_chunk_size = chunk_manager_offset2chunk(&_mf -> cm, offset, size, &ch, &ch_offset, 1);
-	if (av_chunk_size == -1)
-		return (void *) -1;
+  	if (ch && ch -> offset < offset && offset < ch -> offset + ch -> length){
+		ch_offset = offset - ch -> offset;
+	}else{
+		long int av_chunk_size = chunk_manager_offset2chunk(&_mf -> cm, offset, size, &ch, &ch_offset, 1);
+		if (av_chunk_size == -1)
+			return NULL;
+	}
 
 	ch -> ref_cnt++;
 	*mapmem_handle = ch;

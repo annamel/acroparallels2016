@@ -93,9 +93,8 @@ long int chunk_manager_offset2chunk (struct chunk_manager *cm, long int offset, 
 
 		chunk_init (new_chunk, MAX(MIN_CHUNK_SIZE, plength), poffset, cm -> prot, cm -> fd);
 
-		//long int new_chunk_offset = new_chunk -> offset;
 		long int new_chunk_length = new_chunk -> length;
-	  	LOG(DEBUG, "Adding offset %d to rbtree\n", new_chunk_offset);
+	  	LOG(DEBUG, "Adding offset %d to rbtree\n", new_chunk -> offset);
 		rbtree_insert(cm -> rbtree, new_chunk);
 		*ret_ch = new_chunk;
 		*chunk_offset = offset - new_chunk -> offset;
