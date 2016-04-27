@@ -12,16 +12,14 @@
 
 int main(){
 	int fd = open(FILENAME, O_RDWR | O_CREAT, 0777);
-	ftruncate(fd, GB);
+	ftruncate(fd, 8*GB);
 	close(fd);
 
 	mf_handle_t file = mf_open(FILENAME);
 	mf_mapmem_handle_t handle;
 
-	void *ptr = mf_map(file, 0, GB, &handle);
-
 	long it = 0;
-	for (it = 0; it < GB; it += rand() % MB){
+	for (it = 0; it < 8*GB; it += rand() % MB){
 		mf_mapmem_handle_t loc_handle;
 		void *loc_ptr = mf_map(file, it, MB, &loc_handle);
 		if (loc_ptr == NULL && errno != EINVAL){
@@ -30,7 +28,6 @@ int main(){
 		mf_unmap(file, loc_handle);
 	}
 
-	mf_unmap(file, handle);
 	mf_close(file);
 
 	remove(FILENAME);

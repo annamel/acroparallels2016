@@ -34,10 +34,10 @@ int chunk_init (struct chunk *ch, size_t length, long int offset, int prot, int 
 
 int chunk_finalize (struct chunk *ch) {
 	LOG(INFO, "Chunk finalize called\n");
-	if (msync(ch -> addr, ch -> length, MS_SYNC) == -1) {
+	/*if (msync(ch -> addr, ch -> length, MS_SYNC) == -1) {
 		LOG(ERROR, "Can't sync file, %s\n", strerror(errno));
 		return -1;
-	}
+	}*/
 
 	if (munmap(ch -> addr, ch -> length)) {
 		LOG(ERROR, "Can't munmap file in chunk, %s\n", strerror(errno));

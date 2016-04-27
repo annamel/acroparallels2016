@@ -35,7 +35,7 @@ mf_handle_t mf_open(const char *pathname) {
             	chunk_mem_acquire(mapped_file, 0, file_size, true, &read_size, &chunk);
             	chunk_mem_unacquire(chunk);
             } else {
-                chunk_mem_acquire(mapped_file, 0, info.freeram / 4, true, &read_size, &chunk);
+                chunk_mem_acquire(mapped_file, 0, info.freeram / 2, true, &read_size, &chunk);
                 chunk_mem_unacquire(chunk);
             }
         }
