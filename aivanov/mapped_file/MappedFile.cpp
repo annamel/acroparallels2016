@@ -20,7 +20,8 @@ CMappedFile::CMappedFile(const char* fileName) :
 		struct stat buf = {};
 		fstat(desc_, &buf);
 		size_ = buf.st_size;
-		root_.size_ = size_;
+		
+		root_ = CFileRegion(0, size_);
 		
 		if (size_ && size_ <= MAX_ENTIRELY_MAPPED_SIZE)
 			entireFile_ = map(0, size_, NULL);
@@ -30,10 +31,10 @@ CMappedFile::CMappedFile(const char* fileName) :
 CMappedFile::~CMappedFile()
 {
 	if (entireFile_)
-		entireFile_->unmap();
+		entireFile_->removeReference();
 		
 	if (cache_)
-		cache_->unmap();
+		cache_->removeReference();
 		
 	close(desc_);
 }
@@ -53,28 +54,16 @@ CFileRegion* CMappedFile::map(off_t offset, off_t size, void** address)
 	
 	CFileRegion* newRegion = new CFileRegion(mapOffset, mapSize);
 	CFileRegion* region = root_.takeChild(newRegion);
-	assert(region->doesInclude(newRegion));
-	region->addReference();
-	assert(region->references_ > 0);
-	#define REGION_PROTECTION
+	
 	if (region == newRegion)
-	{
-		#ifdef REGION_PROTECTION
-			uint8_t* address = (uint8_t*) mmap(NULL, memoryRegionSize + 2 * pageSize, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
-			assert(address != MAP_FAILED);
-		
-			region->address_ = (uint8_t*) mmap(address + pageSize, region->size_, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, desc_, region->offset_);
-		#else
-			region->address_ = (uint8_t*) mmap(NULL, region->size_, PROT_READ | PROT_WRITE, MAP_SHARED, desc_, region->offset_);
-		#endif
-
-		assert(region->address_ != MAP_FAILED);
-	}
+		region->map(desc_);
 	else
 		delete newRegion;
+		
+	region->addReference();
 	
 	if (address)
-		*address = region->address_ + (offset - region->offset_);
+		*address = region->getAddress(offset);
 		
 	return region;
 }
@@ -95,9 +84,9 @@ ssize_t CMappedFile::fileCopy_(off_t offset, size_t size, uint8_t* to, const uin
 		{
 			if (cache_)
 			{
-				cache_->unmap();
+				cache_->removeReference();
 				
-				if (!*cache_)
+				if (!cache_->isReferenced())
 					delete cache_;
 			}
 			
@@ -106,9 +95,8 @@ ssize_t CMappedFile::fileCopy_(off_t offset, size_t size, uint8_t* to, const uin
 		
 		assert(region);
 		
-		off_t offsetAtRegion = offset - region->offset_;
-		void* mappedAddress = region->address_ + offsetAtRegion;
-		size_t mappedSize = region->size_ - offsetAtRegion;
+		void* mappedAddress = region->getAddress(offset);
+		size_t mappedSize = region->getSizeAfter(offset);
 		mappedSize = std::min(mappedSize, size);
 		
 		if (to)

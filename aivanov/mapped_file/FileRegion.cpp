@@ -2,7 +2,7 @@
 #include <sys/mman.h>
 
 
-CFileRegion::CFileRegion(off_t offset, off_t size) :
+CFileRegion::CFileRegion(off_t offset, size_t size) :
 	offset_(offset),
 	size_(size),
 	references_(0),
@@ -25,19 +25,19 @@ CFileRegion* CFileRegion::takeChild(CFileRegion* region)
 		if ((*prev)->doesInclude(region))
 			return (*prev)->takeChild(region);
 			
-		if (parent_ && !*region)
+		if (parent_ && !region->isReferenced())
 			return this;
 		
 		if (region->doesInclude(*prev))
-			region->readopt(*prev);
+			region->readopt_(*prev);
 	}
-	else if (parent_ && !*region)
+	else if (parent_ && !region->isReferenced())
 		return this;
 	
 	while (next != children_.end() && region->doesInclude(*next))
-		region->readopt(*next++);
+		region->readopt_(*next++);
 	
-	adopt(region);
+	adopt_(region);
 	return region;
 }
 
@@ -53,57 +53,29 @@ CFileRegion* CFileRegion::maxAt(off_t offset)
 	if (prev == children_.end())
 		return NULL;
 		
-	assert(!!**prev);
+	assert((*prev)->isReferenced());
 	return (*prev)->doesInclude(&temp) ? *prev : NULL;
 }
 
-void CFileRegion::unmap()
-{
-	removeReference();
-}
-
-void CFileRegion::adopt(CFileRegion* child)
-{
-	assert(!child->parent_);
-	
-	children_.insert(child);
-	child->parent_ = this;
-}
-
-void CFileRegion::orphan()
-{
-	assert(parent_);
-	
-	parent_->children_.erase(this);
-	parent_ = NULL;
-}
-
-void CFileRegion::readopt(CFileRegion* child)
-{
-	child->orphan();
-	adopt(child);
-}
-
-CFileRegion::~CFileRegion()
+//#define REGION_PROTECTION
+void CFileRegion::map(int fd)
 {	
-	assert(!*this);
+	#ifdef REGION_PROTECTION
+		long pageSize = sysconf(_SC_PAGE_SIZE);
 	
-	for (auto it = children_.begin(); it != children_.end(); it = children_.begin())
-	{
-		CFileRegion* child = *it;
-		
-		if (parent_)
-			parent_->readopt(child);
-		else
-		{
-			child->orphan();
-			delete child;
-		}
-	}
+		uint8_t* address = (uint8_t*) mmap(NULL, memoryRegionSize + 2 * pageSize, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+		assert(address != MAP_FAILED);
 	
-	if (parent_)
-		orphan();
-	
+		address_ = (uint8_t*) mmap(address + pageSize, size_, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, region->offset_);
+	#else
+		address_ = (uint8_t*) mmap(NULL, size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset_);
+	#endif
+
+	assert(address_ != MAP_FAILED);
+}
+
+void CFileRegion::unmap_()
+{
 	if (address_)
 	{
 		#ifdef REGION_PROTECTION
@@ -114,6 +86,51 @@ CFileRegion::~CFileRegion()
 			munmap(address_, size_);
 		#endif
 	}
+}
+
+void CFileRegion::adopt_(CFileRegion* child)
+{
+	assert(!child->parent_);
+	
+	children_.insert(child);
+	child->parent_ = this;
+}
+
+void CFileRegion::orphan_()
+{
+	assert(parent_);
+	
+	parent_->children_.erase(this);
+	parent_ = NULL;
+}
+
+void CFileRegion::readopt_(CFileRegion* child)
+{
+	child->orphan_();
+	adopt_(child);
+}
+
+CFileRegion::~CFileRegion()
+{	
+	assert(!isReferenced());
+	
+	for (auto it = children_.begin(); it != children_.end(); it = children_.begin())
+	{
+		CFileRegion* child = *it;
+		
+		if (parent_)
+			parent_->readopt_(child);
+		else
+		{
+			child->orphan_();
+			delete child;
+		}
+	}
+	
+	if (parent_)
+		orphan_();
+		
+	unmap_();
 }
 
 bool CFileRegion::operator <(const CFileRegion& a)
@@ -128,22 +145,46 @@ bool CFileRegion::doesInclude(const CFileRegion* a)
 
 void CFileRegion::addReference()
 {
+	assert(address_);
 	references_++;
 }
 
 void CFileRegion::removeReference()
 {
+	assert(address_);
 	assert(references_);
 	references_--;
 }
 
-bool CFileRegion::operator !()
+bool CFileRegion::isReferenced()
 {
-	return !references_;
+	return !!references_;
 }
 
 bool CFileRegion::isLess_(CFileRegion* a, CFileRegion* b)
 {
 	return *a < *b;
 }
+
+bool CFileRegion::doesInclude(off_t offset)
+{
+	return offset >= offset_ && offset < offset_ + size_;
+}
+
+void* CFileRegion::getAddress(off_t offset)
+{
+	assert(address_);
+	assert(doesInclude(offset));
+	
+	return address_ + (offset - offset_);
+}
+
+size_t CFileRegion::getSizeAfter(off_t offset)
+{
+	assert(doesInclude(offset));
+	
+	return size_ - (offset - offset_);
+}
+
+
 

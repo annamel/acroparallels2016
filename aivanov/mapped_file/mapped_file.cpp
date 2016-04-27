@@ -82,9 +82,9 @@ int mf_unmap(mf_handle_t, mf_mapmem_handle_t mm)
 	LOGI("Unmapping %p", mm);
 	CFileRegion* region = ((CFileRegion*) mm);
 	
-	region->unmap();
+	region->removeReference();
 	
-	if (!*region)
+	if (!region->isReferenced())
 		delete region;
 		
 	LOGI("Unmapped region");
