@@ -370,6 +370,14 @@ static int map_for_read_write(mf_handle_t mf, off_t offset, size_t size)
 	if (file->data && offset >= file->offset && offset + size <= file->offset + file->size)
 		RETURN(0);
 
+	if (file->data)
+#ifdef DEBUG_MODE
+		if (!unmap_internal(file->data, file->offset, file->size, file->page_size, file->file_size))
+			abort();
+#else
+		unmap_internal(file->data, file->offset, file->size, file->page_size, file->file_size);
+#endif // DEBUG_MODE
+
 	size = max(READ_WRITE_MIN_SIZE, size);
 
 	size_t aligned_offset = (offset / file->page_size) * file->page_size;
