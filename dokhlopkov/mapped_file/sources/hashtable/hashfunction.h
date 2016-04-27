@@ -8,7 +8,7 @@
 
  */
 
-#import <stdint.h>
+#include <stdint.h>
 
 /* String hash functions */
 uint32_t hash_knuth(char *key);

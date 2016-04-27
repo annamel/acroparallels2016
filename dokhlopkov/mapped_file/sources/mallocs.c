@@ -50,10 +50,11 @@ int _realloc(size_t size, void **ptr) {
 	return 0;
 }
 
-int _free(void **ptr) {
+int _free(size_t size, void *ptr) {
 	if (ptr == NULL) return EINVAL;
+	memset(ptr, 0xDEADDEAD, size);
 
-	free(*ptr);
-	*ptr = NULL;
+	free(ptr);
+	ptr = NULL;
 	return 0;
 }

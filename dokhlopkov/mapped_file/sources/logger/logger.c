@@ -8,12 +8,13 @@
 
  */
 
-#import <unistd.h>  // for log file finder
+#include <stdint.h>
+#include <unistd.h>  // for log file finder
 #include <string.h> // for memset
 #include <assert.h>
 #include <stdio.h>
 
-#import "logger.h"
+#include "logger.h"
 
 /* PRIVATE FUNCTIONS */
 // finds propriate file to write logs

@@ -9,6 +9,7 @@
  */
 
 #include <stdlib.h>
+#include <stdint.h>
 
 // EXAMPLE: "sources/logger"
 #define PATH_TO_LOGGER_FOLDER "sources/logger"
