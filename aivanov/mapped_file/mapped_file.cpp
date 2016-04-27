@@ -35,7 +35,7 @@ int mf_close(mf_handle_t mf)
 ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset)
 {
 	LOGI("Reading %lu bytes at offset %ld from file %p to address %p)", size, offset, mf, buf);
-	ssize_t bytes = ((CMappedFile*) mf)->read(offset, size, buf);
+	ssize_t bytes = ((CMappedFile*) mf)->read(offset, size, (uint8_t*) buf);
 	
 	if (bytes < 0)
 		LOGE("Reading failed(%d): \"%s\"", errno, strerror(errno));
@@ -48,7 +48,7 @@ ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset)
 ssize_t mf_write(mf_handle_t mf, const void *buf, size_t size, off_t offset)
 {
 	LOGI("Writing %lu bytes from address %p to file %p at offset %ld)", size, buf, mf, offset);
-	ssize_t bytes = ((CMappedFile*) mf)->write(offset, size, buf);
+	ssize_t bytes = ((CMappedFile*) mf)->write(offset, size, (const uint8_t*) buf);
 	
 	if (bytes < 0)
 		LOGE("Writing failed(%d): \"%s\"", errno, strerror(errno));

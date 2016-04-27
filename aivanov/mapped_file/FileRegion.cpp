@@ -41,6 +41,22 @@ CFileRegion* CFileRegion::takeChild(CFileRegion* region)
 	return region;
 }
 
+CFileRegion* CFileRegion::maxAt(off_t offset)
+{
+	CFileRegion temp(offset, 1);
+	
+	auto next = children_.upper_bound(&temp);
+	if (next == children_.begin())
+		return NULL;
+		
+	auto prev = std::prev(next);
+	if (prev == children_.end())
+		return NULL;
+		
+	assert(!!**prev);
+	return (*prev)->doesInclude(&temp) ? *prev : NULL;
+}
+
 void CFileRegion::unmap()
 {
 	removeReference();

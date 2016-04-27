@@ -36,6 +36,7 @@ public:
 	bool doesInclude(const CFileRegion* a);
 	void unmap();
 	CFileRegion* takeChild(CFileRegion* region);
+	CFileRegion* maxAt(off_t offset);
 	
 	friend class CMappedFile;
 };
