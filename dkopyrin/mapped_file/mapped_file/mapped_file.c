@@ -153,7 +153,6 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 		errno = EINVAL;
 		return NULL;
 	}
-	//TODO: Optimization?
   	struct chunk *ch = _mf -> prev_ch;
 	int ch_offset = 0;
   	if (ch && ch -> offset <= offset && offset < ch -> offset + ch -> length){
