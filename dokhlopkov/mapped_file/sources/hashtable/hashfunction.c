@@ -8,7 +8,7 @@
 
  */
 
-#import <stdint.h>
+#include <stdint.h>
 
 /* Supportive int to int hash */
 

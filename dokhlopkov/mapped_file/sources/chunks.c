@@ -1,3 +1,6 @@
+#define _GNU_SOURCE 1
+#define _XOPEN_SOURCE 500
+
 #include <unistd.h>
 #include <sys/mman.h>
 #include <errno.h>
@@ -21,11 +24,10 @@ struct Chunk {
 
 struct ChunkPool {
 	int fd;
-	size_t size;
+	size_t threshold;
 	size_t nr_pages;
-	chunk_t *ch_list;
+	chunk_t *head;
 	hashtable_t *ht;
-	hashtable_t *mem_ht;
 }; /* typedef cpool_t */
 
 
@@ -34,12 +36,10 @@ struct ChunkPool {
 static int ch_init(off_t idx, off_t len, cpool_t *cpool, chunk_t *ch);
 static int ch_construct(cpool_t *cpool, off_t idx, off_t len, chunk_t **ch);
 static int ch_destruct(chunk_t *ch);
-static int ch_get(cpool_t *cpool, off_t idx, chunk_t **ch);
+static int ch_get(cpool_t *cpool, off_t idx, off_t len, chunk_t **ch);
 static size_t get_ch_size(off_t multiplier);
 
 /* ------- pool of chs's ------- */
-static int cpool_init(cpool_t *cpool, size_t size, int fd);
-static int cpool_fini(cpool_t *cpool);
 static int cpool_add(chunk_t *ch);
 static int cpool_del(chunk_t *ch);
 
@@ -53,7 +53,7 @@ int ch_find(cpool_t *cpool, off_t offset, size_t size, chunk_t **ch);
 
 /* ------- pool of chs's ------- */
 int cpool_construct(size_t max_mem, int fd, cpool_t **cpool);
-int cpool_destruct(cpool_t **cpool);
+int cpool_destruct(cpool_t *cpool);
 int cpool_mem_add(void *ptr, chunk_t *ch);
 int cpool_mem_get(cpool_t *cpool, void *ptr, chunk_t **ch);
 int cpool_fd(cpool_t *cpool);
@@ -68,8 +68,8 @@ static int ch_init(off_t idx, off_t len, cpool_t *cpool, chunk_t *ch) {
 	ch->idx = idx;
 	ch->len = len;
 	ch->ref_cnt = 1;
-	ch->prev = NULL;
-	ch->next = NULL;
+	ch->next = ch;
+	ch->prev = ch;
 	ch->cpool = cpool;
 	ch->payload = mmap(NULL,
 					   get_ch_size(ch->len),
@@ -82,51 +82,53 @@ static int ch_init(off_t idx, off_t len, cpool_t *cpool, chunk_t *ch) {
 }
 
 static int ch_destruct(chunk_t *ch) {
-	if (munmap(ch->payload, ch->len * get_ch_size(1)) == -1) return errno;
-    return _free((void **)&ch);
+	if (munmap(ch->payload, get_ch_size(ch->len)) == -1) return errno;
+    return _free(sizeof(chunk_t), (void *)ch);
 }
 
 static int cpool_del(chunk_t *ch) {
 	if (ch == NULL || ch->ref_cnt != 0) return EBUSY;
 
-	cpool_t *cpool = ch->cpool;
-
-	if(ch->prev) ch->prev->next = ch->next;
-	if(ch->next) ch->next->prev = ch->prev;
+	if (ch != ch->next) {
+		ch->prev->next = ch->next;
+		ch->next->prev = ch->prev;
+		if (ch == ch->cpool->head) ch->cpool->head = ch->next;
+	} else ch->cpool->head = NULL;
 
 	int err;
 	for(unsigned i = 0; i < ch->len; ++i) {
-		err = hashtable_delete(cpool->ht, ch->idx + i);
+		err = hashtable_delete(ch->cpool->ht, ch->idx + i);
 		if (err && err != ENODATA) return err;
 	}
 
-	cpool->nr_pages -= ch->len;
+	ch->cpool->nr_pages -= ch->len;
 
 	err = ch_destruct(ch);
-	if(err) return err;
+	if (err) return err;
 
 	return 0;
 }
 
 static int cpool_add(chunk_t *ch) {
-	cpool_t *cpool = ch->cpool;
-
 	int err = 0;
-	while (cpool->nr_pages + ch->len > cpool->size && !(err = cpool_del(cpool->ch_list)));
+	while (ch->cpool->nr_pages + ch->len > ch->cpool->threshold && !(err = cpool_del(ch->cpool->head)));
 
-	if(err == EBUSY) return ENOBUFS;
-	if(err) return err;
+	if (err == EBUSY) return ENOBUFS;
+	if (err) return err;
 
-	ch->next = cpool->ch_list;
-	ch->prev = NULL;
-	cpool->ch_list = ch;
+	if (ch->cpool->head != NULL) {
+		ch->next = ch->cpool->head;
+		ch->prev = ch->cpool->head->prev;
+		ch->next->prev = ch;
+		ch->prev->next = ch;
+	} else ch->cpool->head = ch;
 
 	for (unsigned i = 0; i < ch->len; ++i) {
-		err = hashtable_add(cpool->ht, ch->idx+i, (hval_t)ch);
-		if(err) return err;
+		err = hashtable_add(ch->cpool->ht, ch->idx+i, (hval_t)ch);
+		if (err) return err;
 	}
 
-	cpool->nr_pages += ch->len;
+	ch->cpool->nr_pages += ch->len;
 	return 0;
 }
 
@@ -143,18 +145,56 @@ static int ch_construct(cpool_t *cpool, off_t idx, off_t len, chunk_t **ch) {
 	return 0;
 }
 
-static int ch_get(cpool_t *cpool, off_t idx, chunk_t **ch) {
+static int ch_get(cpool_t *cpool, off_t idx, off_t len, chunk_t **ch) {
 	*ch = NULL;
 
 	*ch = hashtable_get(cpool->ht, idx);
 	if (*ch == NULL) return ENODATA;
+	if ((*ch)->idx + (*ch)->len < idx + len) return ENODATA;
 
 	return 0;
 }
 
-int ch_acquire(cpool_t *cpool, off_t offset, size_t size, chunk_t **ch) {
+int ch_acquire(cpool_t *cpool, off_t offset, size_t size, chunk_t **ch_ptr) {
+	if (!cpool || !ch_ptr || !cpool->ht || cpool->fd < 0) return EINVAL;
+
+	if (size == 0) {
+		*ch_ptr = NULL;
+		return 0;
+	}
+
+	off_t idx = (off_t) (offset / get_ch_size(1));
+	off_t len = (off_t) (size / get_ch_size(1) + 1);
+
+	chunk_t *ch = *ch_ptr;
+
+	int err = ch_get(cpool, idx, len, ch_ptr);
+
+	switch(err) {
+		case 0:
+			ch->ref_cnt++;
+			return 0;
+		case ENODATA:
+			if (ch == NULL || !(err = cpool_del(ch)))
+				return ch_construct(cpool, idx, len, ch_ptr);
+			if (err != EBUSY) return err;
+			void *newpl = mremap(ch->payload, get_ch_size(ch->len), get_ch_size(idx + len - ch->idx), 0);
+			if (newpl != MAP_FAILED) {
+				ch->payload = newpl;
+				ch->ref_cnt++;
+				return 0;
+			} else {
+				if (errno != ENOMEM) return errno;
+				return ch_construct(cpool, idx, len, ch_ptr);
+			}
+		default:
+			return err;
+	}
+}
+
+int ch_find(cpool_t *cpool, off_t offset, size_t size, chunk_t **ch) {
 	if (!cpool || !ch || !cpool->ht || cpool->fd < 0 ||
-		  cpool->nr_pages > cpool->size) return EINVAL;
+		   cpool->nr_pages > cpool->threshold) return EINVAL;
 
 	if (size == 0) {
 		*ch = NULL;
@@ -164,31 +204,11 @@ int ch_acquire(cpool_t *cpool, off_t offset, size_t size, chunk_t **ch) {
 	off_t idx = (off_t) (offset / get_ch_size(1));
 	off_t len = (off_t) (size / get_ch_size(1) + 1);
 
-	int err = ch_get(cpool, idx, ch);
+	int err = ch_get(cpool, idx, len, ch);
+	if (err) return err;
+	(*ch)->ref_cnt++;
+	return 0;
 
-	if (err == ENODATA) {
-		if( *ch != NULL ) {
-			err = cpool_del(*ch);
-			if (err && err != EBUSY) return err;
-		}
-		ch_construct(cpool, idx, len, ch);
-		return 0;
-	}
-	else return err;
-}
-
-int ch_find(cpool_t *cpool, off_t offset, size_t size, chunk_t **ch) {
-	if (!cpool || !ch || !cpool->ht || cpool->fd < 0 ||
-		   cpool->nr_pages > cpool->size) return EINVAL;
-
-	if (size == 0) {
-		*ch = NULL;
-		return 0;
-	}
-
-	off_t idx = (off_t) (offset / get_ch_size(1));
-
-	return ch_get(cpool, idx, ch);
 }
 
 int ch_release(chunk_t *ch) {
@@ -196,39 +216,55 @@ int ch_release(chunk_t *ch) {
 
 	if (ch->ref_cnt == 0) return EAGAIN;
 
-	if (--ch->ref_cnt == 0) {
-		if(ch->prev) ch->prev->next = ch->next;
-		if(ch->next) ch->next->prev = ch->prev;
-		ch->next = ch->cpool->ch_list;
-		ch->prev = NULL;
+	if (--ch->ref_cnt == 0 && ch != ch->cpool->head) {
+		ch->prev->next = ch->next;
+		ch->next->prev = ch->prev;
+
+		chunk_t *old = ch->cpool->head;
+
+		ch->next = old;
+		ch->prev->next = ch;
+
+		ch->next->prev = ch;
+		ch->prev->next = ch;
+
+		ch->cpool->head = ch;
 	}
 
 	return 0;
 }
 
-static int cpool_init(cpool_t *cpool, size_t size, int fd) {
-	cpool->ch_list = NULL;
-	cpool->size = size;
-	cpool->nr_pages = 0;
-	cpool->fd = fd;
-  	cpool->ht = hashtable_construct(HTBL_SIZE);
-  	cpool->mem_ht = hashtable_construct(HTBL_SIZE);
-	return 0;
-}
+int cpool_construct(size_t max_mem, int fd, cpool_t **cpool_ptr) {
+	if (fd < 0 || cpool_ptr == NULL) return EINVAL;
 
-int cpool_construct(size_t max_mem, int fd, cpool_t **cpool) {
 	size_t size = max_mem ? max_mem / get_ch_size(1) : DEFAULT_CPOOL_SIZE;
 
-	int err = _malloc (sizeof(cpool_t), (void **)cpool);
+	int err = _malloc (sizeof(cpool_t), (void **)cpool_ptr);
 	if (err) return err;
 
-	return cpool_init(*cpool, size, fd);
+	cpool_t *cpool = *cpool_ptr;
+
+	cpool->head = NULL;
+	cpool->threshold = size;
+	cpool->nr_pages = 0;
+	cpool->fd = fd;
+	cpool->ht = hashtable_construct(HTBL_SIZE);
+
+	if (cpool->ht == NULL) return 1;
+	return err;
 }
 
-static int cpool_fini(cpool_t *cpool) {
-	while(cpool->ch_list) {
-		chunk_t *iter = cpool->ch_list;
-		cpool->ch_list = iter->next;
+int cpool_destruct(cpool_t *cpool) {
+	if (cpool == NULL) return EINVAL;
+
+	if (cpool->head) {
+		cpool->head->prev->next = NULL;
+		cpool->head->prev = NULL;
+	}
+
+	while (cpool->head) {
+		chunk_t *iter = cpool->head;
+		cpool->head = iter->next;
 
 		int err = ch_destruct(iter);
 		if(err) return err;
@@ -237,25 +273,12 @@ static int cpool_fini(cpool_t *cpool) {
 	cpool->nr_pages = 0;
 
 	int err = hashtable_destruct(cpool->ht);
-	if(err) return err;
-
-	err = hashtable_destruct(cpool->mem_ht);
-	if(err) return err;
-
-	err = close(cpool->fd);
-	if(err == -1) return errno;
-
-	return 0;
-}
-
-int cpool_destruct(cpool_t **cpool) {
-	if (cpool == NULL)
-		return EINVAL;
-
-	int err = cpool_fini(*cpool);
 	if (err) return err;
 
-	err = _free((void **)cpool);
+	err = close(cpool->fd);
+	if (err == -1) return errno;
+
+	err = _free (sizeof(cpool_t), (void *)cpool);
 	if (err) return err;
 
 	return 0;
@@ -267,15 +290,13 @@ int ch_get_mem(chunk_t *ch, off_t offset, void **buf) {
 	off_t left = (off_t) (get_ch_size(ch->idx));
 	off_t right = (off_t) (left + get_ch_size(ch->len));
 
-	if (offset < left || offset > right)
-		return EINVAL;
+	if (offset < left || offset > right) return EINVAL;
 
 	*buf = ch->payload + offset - left;
 	return 0;
 }
 
 int cpool_fd(cpool_t *cpool) {
-	if (!cpool || !cpool->ht || cpool->fd < 0 ||
-		  cpool->nr_pages > cpool->size) return -1;
+	if (!cpool || cpool->fd < 0) return -1;
 	return cpool->fd;
 }

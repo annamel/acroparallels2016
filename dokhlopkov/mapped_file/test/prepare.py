@@ -19,7 +19,7 @@ big.write("4" * (7))
 big.write("\n")
 big.close()
 
-petite = 10 * 4
+petite = 10 ** 4
 
 small = open('small', 'w')
 small.write("1" * petite)

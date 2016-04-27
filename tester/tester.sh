@@ -11,7 +11,6 @@
 # The same way you can change variable ROOT_TEST_DIR
 # CFLAGS are supported
 
-
 SAVEIFS=$IFS
 IFS=$(echo -en ";\n\b")
 LDFLAGS=$LDFLAGS\ "-lmappedfile -lm -lrt -lpthread"
@@ -135,6 +134,7 @@ for root_lib_dir in $ROOT_LIB_DIR  ; do
 	popd > /dev/null
 done
 for clean_file in $TEST_BUILD; do
+	echo $clean_file
 	rm -f $clean_file
 done
 

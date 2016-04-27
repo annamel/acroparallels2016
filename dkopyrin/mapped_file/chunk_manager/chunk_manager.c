@@ -10,10 +10,16 @@
 #define MAX(x,y) ((x > y) ? x: y)
 #define MIN(x,y) ((x < y) ? x: y)
 
+struct chunk search_chunk = {0, NULL, 0, 0, 0};
+
+int chunk_cmp(const void *l, const void *r){
+	return (long long)(((struct chunk *)l) -> offset)
+	     - (long long)(((struct chunk *)r) -> offset);
+}
+
 int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
 	LOG(INFO, "chunk_manager_init called\n");
 	cm -> fd = fd;
-	hashtable_init(&cm -> ht, 65535);
 	int i;
 	for (i = 0; i < POOL_SIZE; i++){
 		chunk_init_unused(cm -> chunk_pool + i);
@@ -28,16 +34,17 @@ int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
 	LOG(INFO, "prot: %d, %d %d\n", prot, PROT_READ, PROT_WRITE);
 	cm -> prot = prot;
 	cm -> cur_chunk_index = 0;
+	cm -> rbtree = rbtree_create(chunk_cmp, NULL, 1);
 	return 0;
 }
 
 int chunk_manager_finalize (struct chunk_manager *cm){
 	LOG(INFO, "chunk_manager_finalize called\n");
-	hashtable_finalize(&cm -> ht);
 	int i;
  	for (i = 0; i < POOL_SIZE; i++)
  		if (cm -> chunk_pool[i].state != -1)
 			chunk_finalize (cm -> chunk_pool + i);
+	rbtree_free(cm -> rbtree);
 	return 0;
 }
 
@@ -54,6 +61,7 @@ struct chunk *chunk_manager_get_av_chunk_index (struct chunk_manager *cm){
 			return cur_ch;
 		}else{
 			LOG(DEBUG, "Refirbished chunk %d returned\n", (cm -> cur_chunk_index - 1) % POOL_SIZE);
+			rbtree_deletebydata(cm -> rbtree, cur_ch);
 			if (cur_ch -> ref_cnt == 0){
 				chunk_finalize(cur_ch);
 				return cur_ch;
@@ -70,11 +78,14 @@ long int chunk_manager_offset2chunk (struct chunk_manager *cm, long int offset, 
 	long int plength = ((offset + length) & ~(sysconf(_SC_PAGE_SIZE) - 1)) +
 		sysconf(_SC_PAGE_SIZE) - poffset;
 
-	hashtable_value_t val = hashtable_get (&cm -> ht, poffset);
-	struct chunk *cur_ch = (struct chunk *)val.ptr;
+	search_chunk.offset = poffset;
+	struct chunk *cur_ch = (struct chunk *)rbtree_finddata(cm -> rbtree, &search_chunk);
 
-	if (cur_ch == NULL || cur_ch -> state != val.state) {
-		LOG(DEBUG, "No chunk found - making new one\n");
+	if (cur_ch != NULL) LOG(DEBUG, "Closest chunk is offset %d, size %d\n", cur_ch -> offset, cur_ch -> length);
+	//TODO: Wrong check
+	if (cur_ch == NULL || cur_ch -> length < offset - cur_ch -> offset ||
+	   (remap && cur_ch -> length - offset + cur_ch -> offset < length)) {
+		LOG(DEBUG, "No chunk found - making new one of size %d\n", MAX(MIN_CHUNK_SIZE, plength));
 		//TODO: Logics on generating new chunk
 		struct chunk *new_chunk = chunk_manager_get_av_chunk_index(cm);
 		if (new_chunk == NULL)
@@ -82,14 +93,9 @@ long int chunk_manager_offset2chunk (struct chunk_manager *cm, long int offset, 
 
 		chunk_init (new_chunk, MAX(MIN_CHUNK_SIZE, plength), poffset, cm -> prot, cm -> fd);
 
-		long int new_chunk_offset = new_chunk -> offset;
 		long int new_chunk_length = new_chunk -> length;
-	  	long int hashtable_offset = 0;
-		for(hashtable_offset = 0; hashtable_offset < new_chunk_length; hashtable_offset += sysconf(_SC_PAGE_SIZE), new_chunk_offset += sysconf(_SC_PAGE_SIZE)){
-			LOG(DEBUG, "Adding offset %d to hashtable\n", new_chunk_offset);
-			hashtable_value_t val = {new_chunk, new_chunk -> state};
-			hashtable_set (&cm -> ht, new_chunk_offset, val);
-		}
+	  	LOG(DEBUG, "Adding offset %d to rbtree\n", new_chunk -> offset);
+		rbtree_insert(cm -> rbtree, new_chunk);
 		*ret_ch = new_chunk;
 		*chunk_offset = offset - new_chunk -> offset;
 		return new_chunk_length - offset + new_chunk -> offset;
@@ -97,8 +103,6 @@ long int chunk_manager_offset2chunk (struct chunk_manager *cm, long int offset, 
 		LOG(DEBUG, "Chunk found - nice!\n");
 		*chunk_offset = offset - cur_ch -> offset;
 		*ret_ch = cur_ch;
-		if (remap && cur_ch -> length - offset + cur_ch -> offset < length)
-			chunk_remap(cur_ch, plength);
 		return cur_ch -> length - offset + cur_ch -> offset;
 	}
 }

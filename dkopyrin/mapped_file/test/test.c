@@ -46,8 +46,8 @@ int main(int argc, char *argv[]){
   	LOG(DEBUG, "---Read 4\n");
 	memset(buf1, 0, 12345);
 	memset(buf2, 0, 12345);
-  	  lseek(file2, 0, SEEK_SET);
-	mf_read(file1, buf1, 12345, 0);
+  	  lseek(file2, 12, SEEK_SET);
+	mf_read(file1, buf1, 12345, 12);
 	   read(file2, buf2, 12345);
 	if(memcmp(buf1, buf2, 12345))
 		return 4;
@@ -68,11 +68,11 @@ int main(int argc, char *argv[]){
 	struct mf *f1 = mf_open(argv[1]);
 	struct mf *f2 = mf_open(argv[2]);
 
-  	void *buf = malloc(12345);
+  	void *buf = malloc(20000);
 
 	LOG(DEBUG, "---Write 1\n");
-	memset(buf, 0, 12345);
-	int rb = mf_read (f1, buf, 12345, 0);
+	memset(buf, 0, 20000);
+	int rb = mf_read (f1, buf, 20000, 0);
 	mf_write(f2, buf, rb, 0);
 	mf_close(f1);
 	mf_close(f2);
