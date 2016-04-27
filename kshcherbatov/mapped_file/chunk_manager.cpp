@@ -33,16 +33,11 @@ bool chunk_is_empty(chunk_t *chunk) {
     return !chunk->mapped_area && chunk->mapped_area_size <= 0;
 }
 
-mapped_file_t *mapped_file_construct(const char *filename, size_t std_chunk_size,
-                                     size_t hash_table_size, size_t chunk_pool_size) {
-    LOG_DEBUG("Called mapped_file_construct (pathname = %s, std_chunk_size = %u, "
-                      "hash_table_size = %u, chunk_pool_size = %u).\n",
-              filename, std_chunk_size, hash_table_size, chunk_pool_size);
+mapped_file_t *mapped_file_construct(const char *filename, size_t std_chunk_size) {
+    LOG_DEBUG("Called mapped_file_construct (pathname = %s, std_chunk_size = %u\n", filename, std_chunk_size=);
 
     assert(filename);
     assert(std_chunk_size > 0);
-    assert(hash_table_size > 0);
-    assert(chunk_pool_size > 0);
 
     struct mapped_file_t *mapped_file = (struct mapped_file_t *)calloc(1, sizeof(struct mapped_file_t));
 
@@ -62,11 +57,13 @@ mapped_file_t *mapped_file_construct(const char *filename, size_t std_chunk_size
         return NULL;
     }
     mapped_file->file_size = (size_t) sb.st_size;
+    size_t hash_table_size = 6*(size_t) sb.st_size / (size_t)sysconf(_SC_PAGE_SIZE);
 
     std_chunk_size = (size_t)pa_offset(std_chunk_size);
     if (!std_chunk_size)
         std_chunk_size = (size_t)sysconf(_SC_PAGE_SIZE);
     mapped_file->chunk_std_size = std_chunk_size;
+    size_t chunk_pool_size = 4*(mapped_file->file_size / std_chunk_size);
 
     mapped_file->chunk_ptr_ht = hash_construct(hash_table_size, hash_func);
     if (!mapped_file->chunk_ptr_ht) {
