@@ -37,8 +37,7 @@ struct mapped_file_t {
 bool mapped_file_is_ok(mapped_file_t *mapped_file);
 bool chunk_is_empty(chunk_t *chunk);
 
-mapped_file_t *mapped_file_construct(const char *filename, size_t std_chunk_size,
-                                     size_t hash_table_size, size_t chunk_pool_size);
+mapped_file_t *mapped_file_construct(const char *filename, size_t std_chunk_size);
 void mapped_file_destruct(mapped_file_t *mapped_file);
 
 void *chunk_mem_acquire(struct mapped_file_t *mapped_file, off_t offset, size_t size,

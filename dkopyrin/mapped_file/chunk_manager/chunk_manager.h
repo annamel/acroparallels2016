@@ -8,7 +8,7 @@
 
 #define POOL_SIZE 1024
 #define MAX_CHUNK_SIZE 4096*4096
-#define MIN_CHUNK_SIZE 1024*4096
+#define MIN_CHUNK_SIZE 8*1024*4096
 
 struct chunk_manager {
 	int fd;

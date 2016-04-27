@@ -60,7 +60,8 @@ struct chunk *chunk_manager_get_av_chunk_index (struct chunk_manager *cm){
 		}else{
 			LOG(DEBUG, "Refirbished chunk %d returned\n", (cm -> cur_chunk_index - 1) % POOL_SIZE);
 			rbtree_deletebydata(cm -> rbtree, cur_ch);
-			if (cur_ch -> ref_cnt == 0){
+			LOG(DEBUG, "Current size of rbtree is %d\n", rbtree_num_elements(cm -> rbtree));
+		  	if (cur_ch -> ref_cnt == 0){
 				chunk_finalize(cur_ch);
 				return cur_ch;
 			}
