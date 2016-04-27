@@ -31,6 +31,10 @@
 # -----------------------
 
 # Exit if any following command exits with a non-zero status.
+PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+test_res_file="$PWD/test_result"
+rm -rf $test_res_file
+
 set -e
 
 # The current version is set during `make version`.  Do not modify this line in
@@ -294,7 +298,7 @@ do
 
                 # This is the final step of a test.  Print its pass/fail signal
                 # and name.
-                cat "$roundup_tmp/($roundup_test_name)1"
+                cat "$roundup_tmp/($roundup_test_name)1" >> $test_res_file
                 if [ "$roundup_result" -ne 0 ]
                 then printf "f"
                 else printf "p"
