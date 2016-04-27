@@ -20,6 +20,8 @@ struct chunk_t {
     ssize_t mapped_area_size;
     ssize_t reference_counter;
 
+    bool in_cache;
+
     ht_node_ref_t *ht_node;
 };
 
@@ -28,6 +30,8 @@ struct mapped_file_t {
     ssize_t file_size;
     ssize_t chunk_std_size;
     struct hash_t *chunk_ptr_ht;
+    
+    chunk_t *cache;
 
     ssize_t chunk_pool_size;
     struct chunk_t *chunk_pool;

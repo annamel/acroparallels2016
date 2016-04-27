@@ -47,7 +47,7 @@ mf_handle_t mf_open(const char *pathname){
 	if (sysinfo(&info) == 0) {
 		int tmp;
 		struct chunk *ch = NULL;
-		chunk_manager_offset2chunk(&mf -> cm, 0, info.freeram / 3, &ch, &tmp, 0);
+		chunk_manager_offset2chunk(&mf -> cm, 0, info.freeram / 2, &ch, &tmp, 0);
 		mf -> prev_ch = ch;
 	}
 	return (mf_handle_t) mf;

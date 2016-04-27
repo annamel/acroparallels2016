@@ -73,6 +73,8 @@ mapped_file_t *mapped_file_construct(const char *filename, size_t std_chunk_size
         return NULL;
     }
 
+    mapped_file->cache = NULL;
+    
     mapped_file->chunk_pool_size = chunk_pool_size;
     mapped_file->chunk_pool_w_idx = 0;
     mapped_file->chunk_pool = (struct chunk_t *) calloc(chunk_pool_size, sizeof(struct chunk_t));
@@ -116,6 +118,7 @@ void mapped_file_destruct(mapped_file_t *mapped_file) {
     mapped_file->chunk_std_size = -1;
     mapped_file->file_size = -1;
     mapped_file->fd = -1;
+    mapped_file->cache = NULL;
 #endif
 
     free((void *)mapped_file);
@@ -136,23 +139,36 @@ void *chunk_mem_acquire(struct mapped_file_t *mapped_file, off_t offset, size_t 
         return NULL;
     }
     if (size == 0) {
-        size = mapped_file->chunk_std_size;
+        size = (size_t)mapped_file->chunk_std_size;
     }
 
     off_t chunk_pa_offset = pa_offset(offset);
     size_t mem_size;
     if ((ssize_t)(offset + size) > mapped_file->file_size) {
-        size = mapped_file->file_size - offset;
+        size = (size_t)mapped_file->file_size - offset;
         mem_size = size;
     } else {
         mem_size = (size_t)pa_offset(size + (offset - chunk_pa_offset) + sysconf(_SC_PAGE_SIZE));
         if ((ssize_t)(chunk_pa_offset + mem_size) > mapped_file->file_size) {
-            mem_size = mapped_file->file_size - chunk_pa_offset;
+            mem_size = (size_t)mapped_file->file_size - chunk_pa_offset;
         }
     }
 
     if (mem_size == 0)
         return NULL;
+
+    if (mapped_file->cache) {
+        off_t cache_offset = mapped_file->cache->pa_offset;
+        size_t cache_mapped_area_size = (size_t)mapped_file->cache->mapped_area_size;
+
+        if (offset > cache_offset && offset+size < cache_offset + cache_mapped_area_size) {
+            *read_size = cache_mapped_area_size - (offset - cache_offset);
+            *associated_chunk = mapped_file->cache;
+
+            LOG_DEBUG("Exit chunk_mem_acquire: cache fit!\n", NULL);
+            return (void *) ((size_t)mapped_file->cache->mapped_area + (offset - cache_offset));
+        }
+    }
 
     chunk_t *chunk = chunk_get(mapped_file, chunk_pa_offset, mem_size, choose_biggest);
     if (!chunk) {
@@ -199,8 +215,9 @@ void *chunk_mem_acquire(struct mapped_file_t *mapped_file, off_t offset, size_t 
 
     chunk->reference_counter++;
 
-    *read_size = chunk->mapped_area_size - (offset - chunk->pa_offset);
+    *read_size = (size_t)chunk->mapped_area_size - (offset - chunk->pa_offset);
     *associated_chunk = chunk;
+    mapped_file->cache = chunk;
 
     LOG_DEBUG("Exit chunk_mem_acquire: obtained memory region pointer, size = %u\n\n", *read_size);
 
@@ -299,8 +316,8 @@ ssize_t chunk_pool_place_idx_find(struct mapped_file_t *mapped_file) {
     assert(mapped_file);
     assert(mapped_file_is_ok(mapped_file));
 
-    size_t chunk_pool_size = mapped_file->chunk_pool_size;
-    size_t chunk_pool_w_idx = mapped_file->chunk_pool_w_idx;
+    size_t chunk_pool_size = (size_t)mapped_file->chunk_pool_size;
+    size_t chunk_pool_w_idx = (size_t)mapped_file->chunk_pool_w_idx;
     chunk_t *chunk_pool = mapped_file->chunk_pool;
 
     assert(chunk_pool_size > 0);
@@ -425,7 +442,10 @@ struct chunk_t *chunk_get(struct mapped_file_t *mapped_file, off_t offset, size_
         }
 
         chunk->ht_node = NULL;
-
+        if (chunk->in_cache) {
+            mapped_file->cache = NULL;
+            chunk->in_cache = false;
+        }
         chunk_unmap(chunk);
     }
 
@@ -469,6 +489,7 @@ int chunk_map(struct chunk_t *chunk, int fd, off_t offset, size_t size) {
     }
 
     chunk->mapped_area_size = size;
+    chunk->in_cache = false;
     return 0;
 }
 
@@ -481,7 +502,7 @@ void chunk_unmap(struct chunk_t *chunk) {
     }
 
     if (chunk->mapped_area) {
-        munmap(chunk->mapped_area, chunk->mapped_area_size);
+        munmap(chunk->mapped_area, (size_t)chunk->mapped_area_size);
     }
 
     chunk->mapped_area = NULL;
