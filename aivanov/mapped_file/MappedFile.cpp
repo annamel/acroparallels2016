@@ -23,10 +23,7 @@ CMappedFile::CMappedFile(const char* fileName) :
 		root_.size_ = size_;
 		
 		if (size_ && size_ <= MAX_ENTIRELY_MAPPED_SIZE)
-		{
 			entireFile_ = map(0, size_, NULL);
-			assert(entireFile_);
-		}
 	}
 }
 
@@ -44,24 +41,34 @@ CMappedFile::~CMappedFile()
 CFileRegion* CMappedFile::map(off_t offset, off_t size, void** address)
 {
 	long pageSize = sysconf(_SC_PAGE_SIZE);
-	off_t properOffset = (offset / pageSize) * pageSize;
-	size_t properSize = ((size + (offset - properOffset) + pageSize - 1) / pageSize) * pageSize;
-	properSize = std::min(properSize, size_t(size_ - properOffset));
-	CFileRegion* newRegion = new CFileRegion(properOffset, properSize);
+	off_t mapOffset = (offset / pageSize) * pageSize;
+	size_t memoryRegionSize = ((size + (offset - mapOffset) + pageSize - 1) / pageSize) * pageSize;
+	size_t mapSize = std::min(memoryRegionSize, size_t(size_ - mapOffset));
+	
+	if (!mapSize)
+	{
+		errno = EINVAL;
+		return NULL;
+	}
+	
+	CFileRegion* newRegion = new CFileRegion(mapOffset, mapSize);
 	CFileRegion* region = root_.takeChild(newRegion);
 	assert(region->doesInclude(newRegion));
 	region->addReference();
 	assert(region->references_ > 0);
-	
+	#define REGION_PROTECTION
 	if (region == newRegion)
 	{
-		region->address_ = (uint8_t*) mmap(NULL, region->size_, PROT_READ | PROT_WRITE, MAP_SHARED, desc_, region->offset_);
+		#ifdef REGION_PROTECTION
+			uint8_t* address = (uint8_t*) mmap(NULL, memoryRegionSize + 2 * pageSize, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+			assert(address != MAP_FAILED);
 		
-		if (!region->address_ || region->address_ == MAP_FAILED)
-		{
-			delete region;
-			return NULL;
-		}
+			region->address_ = (uint8_t*) mmap(address + pageSize, region->size_, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, desc_, region->offset_);
+		#else
+			region->address_ = (uint8_t*) mmap(NULL, region->size_, PROT_READ | PROT_WRITE, MAP_SHARED, desc_, region->offset_);
+		#endif
+
+		assert(region->address_ != MAP_FAILED);
 	}
 	else
 		delete newRegion;

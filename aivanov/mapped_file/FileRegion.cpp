@@ -86,6 +86,8 @@ void CFileRegion::readopt(CFileRegion* child)
 
 CFileRegion::~CFileRegion()
 {	
+	assert(!*this);
+	
 	for (auto it = children_.begin(); it != children_.end(); it = children_.begin())
 	{
 		CFileRegion* child = *it;
@@ -104,7 +106,13 @@ CFileRegion::~CFileRegion()
 	
 	if (address_)
 	{
-		munmap(address_, size_);
+		#ifdef REGION_PROTECTION
+			long pageSize = sysconf(_SC_PAGE_SIZE);
+			munmap(address_ - pageSize, ((size_ + pageSize - 1) / pageSize + 2) * pageSize);
+		#else
+			
+			munmap(address_, size_);
+		#endif
 	}
 }
 
