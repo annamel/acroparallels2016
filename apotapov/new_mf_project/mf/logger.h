@@ -6,14 +6,10 @@
 #include <malloc.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 #define BUFFER_SIZE 20
-#define LOG_FILE_BY_DEFAULT "log.txt"
-#define AMOUNT_OF_OPTIONS 5
 
-typedef enum condition 
-{
+typedef enum condition {
 	Debug = 0, 
 	Info, 
 	Warning, 
@@ -36,13 +32,8 @@ typedef struct logger
     log_type_t type_of_log_by_default;
 } logger_t;
 
-const char *log_types[AMOUNT_OF_OPTIONS] = {"DEBUG:: ",
-                                       		"INFO:: ",
-                                       		"WARNING:: ",
-                                       		"ERROR:: ",
-                                       		"FATAL:: "};
-
 logger_t *created_logger;
+
 logger_t* logger_init(char *filename);
 void logger_deinit();
 int buff_init();
@@ -52,3 +43,4 @@ int write_log(log_type_t log_type, char *message);
 int write_log_to_file(log_type_t log_type, char *message);
 
 #endif 
+
