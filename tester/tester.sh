@@ -104,7 +104,7 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo "    (>&4 echo '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c)')" >> $test_file
 				echo "    $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt' 2>&4 1>&4" >> $test_file
 				echo '    (>&4 echo "")' >> $test_file
-				echo "    (>&3 echo '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c)')" >> $test_file
+				echo "    (>&3 echo -n '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c) ')" >> $test_file
 				echo '    for i in `seq 0 9`; do' >> $test_file
 				echo "        rm -rf ./times" >> $test_file
 				echo '        start=$(date +"%s.%N")' >> $test_file
@@ -113,26 +113,13 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo '        resarr[$i]=$(bc <<< "$end-$start")' >> $test_file
 				echo "    done" >> $test_file
 				echo '    (>&3 echo ${resarr[*]})' >> $test_file
-				echo '    (>&3 echo "")' >> $test_file
+				echo '    (>&4 echo ${resarr[*]})' >> $test_file
+				#echo '    (>&3 echo "")' >> $test_file
+				echo '    (>&4 echo "")' >> $test_file
 				echo "}" >> $test_file
 				echo "" >> $test_file
 			fi
 			done
-			#for test in $root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/*.cpp ; do
-			#if [ -f $test ]; then
-			#	func_name="it_check_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .cpp)"
-			#	test_out_name="$out_dir/$(basename $test .cpp)"
-			#	test_object_name="$test_out_name.o"
-			#	echo "$func_name() {" >> $test_file
-			#	echo "    g++ $CFLAGS -std=c++14 $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' $LDFLAGS '$test'" >> $test_file
-			#	echo "    g++ $CFLAGS -g -o '$test_out_name' '$test_object_name' $LDFLAGS  -L'$out_dir'" >> $test_file
-			#	echo "    set -x" >> $test_file
-			#	echo "    $PREC '$test_out_name' '$PWD/small.txt' '$PWD/out.txt'" >> $test_file
-			#	echo "    set +x" >> $test_file
-			#	echo "}" >> $test_file
-			#	echo "" >> $test_file
-			#fi
-			#done
 		done
 	fi
 done
