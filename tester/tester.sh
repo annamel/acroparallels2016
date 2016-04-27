@@ -91,15 +91,16 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo "$func_name() {" >> $test_file
 				echo "    gcc $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' $LDFLAGS '$test'" >> $test_file
 				echo "    g++ $CFLAGS -g -o '$test_out_name' '$test_object_name' $LDFLAGS -L'$out_dir'" >> $test_file
-				echo '    resarr[0]=' >> $test_file
+				echo '    resarr[0]=' >> $test_file	
+				echo "    $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt'" >> $test_file
+				echo "    (>&3 echo '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c)')" >> $test_file
 				echo '    for i in `seq 0 9`; do' >> $test_file
 				echo "        rm -rf ./times" >> $test_file
 				echo '        start=$(date +"%s.%N")' >> $test_file
-				echo "        $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt'" >> $test_file
+				echo "        $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt' 1>&3" >> $test_file
 				echo '        end=$(date +"%s.%N")' >> $test_file
 				echo '        resarr[$i]=$(bc <<< "$end-$start")' >> $test_file
 				echo "    done" >> $test_file
-				echo "    (>&3 echo '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c)')" >> $test_file
 				echo '    (>&3 echo ${resarr[*]})' >> $test_file
 				echo '    (>&3 echo "")' >> $test_file
 				echo "}" >> $test_file
