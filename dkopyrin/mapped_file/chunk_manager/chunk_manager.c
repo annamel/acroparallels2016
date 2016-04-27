@@ -28,8 +28,6 @@ int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
 	int prot = 0;
 	LOG(INFO, "mode: %d, %d %d %d\n", mode & 3, O_RDONLY, O_WRONLY, O_RDWR);
 	if ((mode & 3) == O_RDONLY) prot = PROT_READ;
-	//TODO: Not supported
-	//if ((mode & 3) == O_WRONLY) prot = PROT_WRITE;
 	if ((mode & 3) == O_RDWR) prot = PROT_READ | PROT_WRITE;
 	LOG(INFO, "prot: %d, %d %d\n", prot, PROT_READ, PROT_WRITE);
 	cm -> prot = prot;
@@ -62,7 +60,8 @@ struct chunk *chunk_manager_get_av_chunk_index (struct chunk_manager *cm){
 		}else{
 			LOG(DEBUG, "Refirbished chunk %d returned\n", (cm -> cur_chunk_index - 1) % POOL_SIZE);
 			rbtree_deletebydata(cm -> rbtree, cur_ch);
-			if (cur_ch -> ref_cnt == 0){
+			LOG(DEBUG, "Current size of rbtree is %d\n", rbtree_num_elements(cm -> rbtree));
+		  	if (cur_ch -> ref_cnt == 0){
 				chunk_finalize(cur_ch);
 				return cur_ch;
 			}
@@ -82,7 +81,6 @@ long int chunk_manager_offset2chunk (struct chunk_manager *cm, long int offset, 
 	struct chunk *cur_ch = (struct chunk *)rbtree_finddata(cm -> rbtree, &search_chunk);
 
 	if (cur_ch != NULL) LOG(DEBUG, "Closest chunk is offset %d, size %d\n", cur_ch -> offset, cur_ch -> length);
-	//TODO: Wrong check
 	if (cur_ch == NULL || cur_ch -> length < offset - cur_ch -> offset ||
 	   (remap && cur_ch -> length - offset + cur_ch -> offset < length)) {
 		LOG(DEBUG, "No chunk found - making new one of size %d\n", MAX(MIN_CHUNK_SIZE, plength));

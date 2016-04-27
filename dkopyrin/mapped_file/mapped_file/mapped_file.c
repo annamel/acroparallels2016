@@ -47,7 +47,7 @@ mf_handle_t mf_open(const char *pathname){
 	if (sysinfo(&info) == 0) {
 		int tmp;
 		struct chunk *ch = NULL;
-		chunk_manager_offset2chunk(&mf -> cm, 0, info.freeram / 2, &ch, &tmp, 0);
+		chunk_manager_offset2chunk(&mf -> cm, 0, info.freeram / 3, &ch, &tmp, 0);
 		mf -> prev_ch = ch;
 	}
 	return (mf_handle_t) mf;
@@ -146,14 +146,13 @@ ssize_t mf_write(mf_handle_t mf, const void *buf, size_t size, off_t offset){
 }
 
 void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle){
-	LOG(INFO, "mf_map called\n");
+	LOG(INFO, "mf_map called with %d\n", sizeof(long int));
 
 	struct _mf * _mf = (struct _mf *) mf;
 	if (offset + size > _mf -> size){
 		errno = EINVAL;
 		return NULL;
 	}
-	//TODO: Optimization?
   	struct chunk *ch = _mf -> prev_ch;
 	int ch_offset = 0;
   	if (ch && ch -> offset <= offset && offset < ch -> offset + ch -> length){

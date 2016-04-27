@@ -34,10 +34,10 @@ int chunk_init (struct chunk *ch, size_t length, long int offset, int prot, int 
 
 int chunk_finalize (struct chunk *ch) {
 	LOG(INFO, "Chunk finalize called\n");
-	if (msync(ch -> addr, ch -> length, MS_SYNC) == -1) {
+	/*if (msync(ch -> addr, ch -> length, MS_SYNC) == -1) {
 		LOG(ERROR, "Can't sync file, %s\n", strerror(errno));
 		return -1;
-	}
+	}*/
 
 	if (munmap(ch -> addr, ch -> length)) {
 		LOG(ERROR, "Can't munmap file in chunk, %s\n", strerror(errno));
@@ -56,11 +56,3 @@ void *chunk_cpy_b2c(struct chunk *ch, const void *buf, size_t num, long int offs
   	//TODO: Clever checks for overflow
 	return memcpy(ch -> addr + offset, buf, num);
 }
-
-//void *chunk_remap(struct chunk *ch, size_t new_length){
-//	void *ret = mremap(ch -> addr, ch -> length, new_length, 0);
-//	if (ret == MAP_FAILED) return ret;
-//	ch -> length = new_length;
-//
-//	return ret;
-//}
