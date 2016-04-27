@@ -35,7 +35,11 @@ LIB_SOURCE_DIR=$PWD/../**
 if [ -z "$ROOT_LIB_DIR" ]; then
 	ROOT_LIB_DIR=$(echo $(ls -d -1 $LIB_SOURCE_DIR) | tr ' ' ';')
 else
-	ROOT_LIB_DIR=$(echo $ROOT_LIB_DIR | tr ' ' ';')
+	ROOT_LIB_DIR_tmp=$(echo $ROOT_LIB_DIR | tr ' ' ';')
+	ROOT_LIB_DIR=""
+	for d in $ROOT_LIB_DIR_tmp; do
+		ROOT_LIB_DIR=$ROOT_LIB_DIR\;$(readlink -f "$d")
+	done
 fi
 TEST_SOURCE_DIR=$PWD/../**
 if [ -z "$ROOT_TEST_DIR" ]; then
@@ -67,10 +71,10 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 			echo "	rm -rf $PWD/build_dir" >> $test_file
 			echo "	mkdir -p $PWD/build_dir" >> $test_file
 			echo "	pushd $PWD/build_dir" >> $test_file
-			echo "	cmake '$CALL_PWD/$make_dir'" >> $test_file
+			echo "	cmake '$make_dir'" >> $test_file
 			echo "	make" >> $test_file
-			echo "	mkdir -p '$CALL_PWD/$out_dir/'" >> $test_file
-			echo "	cp -f './$LIBOUT_SUFFIX'/* '$CALL_PWD/$out_dir/'" >> $test_file
+			echo "	mkdir -p '$out_dir/'" >> $test_file
+			echo "	cp -f './$LIBOUT_SUFFIX'/* '$out_dir/'" >> $test_file
 			echo "	rm -rf '$PWD/build_dir'" >> $test_file
 			echo "	popd" >> $test_file
 		else
