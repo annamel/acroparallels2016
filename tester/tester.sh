@@ -67,10 +67,10 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 			echo "	rm -rf $PWD/build_dir" >> $test_file
 			echo "	mkdir -p $PWD/build_dir" >> $test_file
 			echo "	pushd $PWD/build_dir" >> $test_file
-			echo "	cmake '$make_dir'" >> $test_file
+			echo "	cmake '$CALL_PWD/$make_dir'" >> $test_file
 			echo "	make" >> $test_file
-			echo "	mkdir -p '$out_dir/'" >> $test_file
-			echo "	cp -f './$LIBOUT_SUFFIX'/* '$out_dir/'" >> $test_file
+			echo "	mkdir -p '$CALL_PWD/$out_dir/'" >> $test_file
+			echo "	cp -f './$LIBOUT_SUFFIX'/* '$CALL_PWD/$out_dir/'" >> $test_file
 			echo "	rm -rf '$PWD/build_dir'" >> $test_file
 			echo "	popd" >> $test_file
 		else
