@@ -1,7 +1,5 @@
-#include "hashtable.h"
-
+#include "common_types.h"
 #include <stdio.h>
-#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,6 +10,8 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+
+#include "hash_table.h"
 
 #define DEFAULT_HASH_TABLE_SIZE 1024
 
@@ -153,7 +153,7 @@ int find_value(hash_table_t* h_table, off_t index, off_t length) {
   list_element* ptr = (h_table -> table)[place];
   while(ptr) {
     if(((ptr -> data -> index) == index) && ((ptr -> data -> length) == length)) {
-      ptr -> ref_counter += 1;
+      ptr -> data-> ref_counter += 1;
       return 1;
     }
     ptr = ptr -> next;
@@ -209,26 +209,3 @@ chunk_t* find_in_range(hash_table_t* h_table, off_t offset, size_t size) {
   return NULL;
 }
 
-
-
-
-
-
-
-/*void printElementsInIndex(list_element* ptr, int place) {
-  printf("The number of group is: %d:\n",place);
-  int i = 0;
-  while(ptr) {
-      ptr = ptr -> next;
-      i++;
-    }
-  printf("The end of group: %d, total: %d\n\n\n",place, i);
-}
-
-void print_hash_table(hash_table_t* h_table) {
-  list_element* ptr = NULL;
-  int i = 0;
-  for(i = 0; i < (h_table -> size); i++) {
-    printElementsInIndex((h_table -> table)[i], i);
-  }
-}*/
