@@ -56,11 +56,3 @@ void *chunk_cpy_b2c(struct chunk *ch, const void *buf, size_t num, long int offs
   	//TODO: Clever checks for overflow
 	return memcpy(ch -> addr + offset, buf, num);
 }
-
-//void *chunk_remap(struct chunk *ch, size_t new_length){
-//	void *ret = mremap(ch -> addr, ch -> length, new_length, 0);
-//	if (ret == MAP_FAILED) return ret;
-//	ch -> length = new_length;
-//
-//	return ret;
-//}
