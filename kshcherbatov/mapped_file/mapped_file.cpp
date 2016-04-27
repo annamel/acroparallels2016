@@ -8,7 +8,7 @@
 #include <sys/sysinfo.h>
 
 
-const size_t Chunk_size = 4*4096;
+const size_t Chunk_size = 2*4096;
 
 mf_handle_t mf_open(const char *pathname) {
     LOG_DEBUG("Called mf_open (%s)\n", pathname);
