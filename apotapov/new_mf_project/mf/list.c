@@ -34,7 +34,7 @@ int list_deinit(list_t *list) {
 }
 
 int list_add_last(list_t *list, data_t data) {
-    write_log_to_file (Info, "list_add_last: started!\n");
+   // write_log_to_file (Info, "list_add_last: started!\n");
     if(list == NULL){
         write_log_to_file(Error, "list_add_last: invalid input, list = NULL!\n");
         return EINVAL;
@@ -61,12 +61,12 @@ int list_add_last(list_t *list, data_t data) {
         list -> end = buf_elem;
     }
     list -> size += 1;
-    write_log_to_file (Info, "list_add_last: finished!\n");
+   // write_log_to_file (Info, "list_add_last: finished!\n");
     return 0;
 }
 
 int list_erase_first(list_t *list) {
-    write_log_to_file (Info, "list_erase_first: started!\n");
+   // write_log_to_file (Info, "list_erase_first: started!\n");
     if(list == NULL) {
         write_log_to_file(Error, "list_erase_last: invalid input, list = NULL!\n");
         return EINVAL;
@@ -88,6 +88,6 @@ int list_erase_first(list_t *list) {
         list -> first -> prev = NULL;
     }
     list -> size -= 1;
-    write_log_to_file (Info, "list_erase_first: finished!\n");
+   // write_log_to_file (Info, "list_erase_first: finished!\n");
     return 0;
 }
