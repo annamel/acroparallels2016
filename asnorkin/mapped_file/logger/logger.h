@@ -1,27 +1,29 @@
 //*********************************************************
 //********                                       **********
 //********      Created by Alexander Snorkin     **********
-//********              22.03.2016               **********
+//********              22.04.2016               **********
 //********                                       **********
 //*********************************************************
 #ifndef LOGGER_H
 #define LOGGER_H
 
 
-#define BUFF_SIZE 1024
-#define DEFAULT_LOGFILE "C://logfile.log"
+
+#define BUFF_SIZE 256
+#define DEFAULT_LOGFILE "logfile.txt"
 #define DEFAULT_LOGLEVEL DEBUG
+#define CALL_STACK_SIZE 256
 
 
-#include <stdio.h>
-#include <errno.h>
-#include <malloc.h>
-#include <string.h>
-#include <stdlib.h>
+
+typedef enum log_level log_lvl_t;
+typedef struct logger logger_t;
+typedef struct ring_buffer ring_buff_t;
+
 
 
 //  Enumeration of levels of logging
-typedef enum log_level
+enum log_level
 {
     DEBUG = 0,
     INFO,
@@ -29,45 +31,30 @@ typedef enum log_level
     ERROR,
     FATAL,
     COUNT_OF_LOGLEVELS
-} log_lvl_t;
+};
 
-
-//  String prefix of logging levels for log messages
-const char *LOG_LEVELS[COUNT_OF_LOGLEVELS] = {"DEBUG::",
-                                              "INFO::",
-                                              "WARNING::",
-                                              "ERROR::",
-                                              "FATAL::"};
-
-
-
-//  The ring buffer structure
-//  Contains the buffer of log messages,
-//  numbers of the head and tail
-//  Head is ...blablabla...
-typedef struct ring_buffer
-{
-    char *buffer[BUFF_SIZE];
-    unsigned short head;
-    unsigned short tail;
-} ring_buff_t;
 
 
 //  The logger structure
 //  Contains the logfile pointer, ring buffer pointer
 //  for log buffering and default log level
-typedef struct logger
+struct logger
 {
     FILE *file;
     ring_buff_t *buffer;
     log_lvl_t default_log_level;
-} logger_t;
+};
 
-//************************************************
-//**  GLOBAL VARIABLE !!! SINGLETON !!! LOGGER ***
-//**                                           ***
-         logger_t *LOGGER_SINGLETON = NULL;    //*
-//************************************************
+
+
+//  The ring buffer structure
+//
+struct ring_buffer
+{
+    char *buffer[BUFF_SIZE];
+    unsigned int head;
+    unsigned int tail;
+};
 
 
 
@@ -81,40 +68,8 @@ typedef struct logger
 //  - RETURNED VALUE
 //      if func calls first time => new logger pointer
 //      else => LOGGER_SINGLETONE pointer
-logger_t *logger_init(char *filename);
-
-
-
-//  This func deinitialize the logger
-//  and frees the memory
-//  - RETURNED VALUE
-//      no value
-void logger_deinit();
-
-
-
-//  This func sets the default log level
-//  - ARGUMENTS
-//      new_default_loglvl - new default log level for set
-//
-//  - RETURNED VALUE
-//      all is good => 0
-//      LOGGER_SINGLETON pointer is NULL => -1
-//      new_default_loglvl more than max log level => -2
-int set_default_log_level(log_lvl_t new_default_loglvl);
-
-
-
-//  This func sets the logfile
-//  - ARGUMENTS
-//      filename - the path of setting logfile
-//  - RETURNED VALUE
-//      all is good => 0
-//      LOGGER_SINGLETON pointer is NULL => -1
-//      filename pointer is NULL => -2
-//      can't close current logfile => -3
-//      can't open new logfile => -4
-int set_logfile(char *filename);
+//      something goes wrong => NULL
+logger_t *logger_init();
 
 
 
@@ -128,11 +83,12 @@ int set_logfile(char *filename);
 //
 //  - RETURNED VALUE
 //      all is good => 0
-//      LOGGER_SINGLETON pointer is NULL => -1
-//      message pointer is NULL => -2
-//      log_level more than max log level => -3
-//      log_level less than default log level => -4
-int log_write_in_logfile(char *message, log_lvl_t log_level);
+//      logger init has failed => EAGAIN
+//      message pointer is NULL => EINVAL
+//      log_level more than max log level => EINVAL
+//      log_level less than default log level => EINVAL
+//      log_level is FATAL => exit with EXIT_FAILURE code
+int log_write_in_logfile(log_lvl_t log_level, const char *__restrict message, ...);
 
 
 
@@ -145,44 +101,48 @@ int log_write_in_logfile(char *message, log_lvl_t log_level);
 //
 //  - RETURNED VALUE
 //      all is good => 0
-//      LOGGER_SINGLETON pointer is NULL => -1
-//      message pointer is NULL => -2
-//      log_level more than max log level => -3
-//      log_level less than default log level => -4
-int log_write(char *message, log_lvl_t log_level);
+//      logger init has failed => EAGAIN
+//      message pointer is NULL => EINVAL
+//      log_level more than max log level => EINVAL
+//      log_level less than default log level => EINVAL
+//      log_level is FATAL => exit with EXIT_FAILURE code
+int log_write(log_lvl_t log_level, const char *__restrict message, ...);
 
 
 
-//  This func initialize the buffer
-//  and fills it by nills
+
+//  This func deinitialize the logger
+//  and frees the memory
 //  - RETURNED VALUE
 //      all is good => 0
-//      LOGGER_SINGLETON is NULL => -1
-//      calloc can't allocate memory for buffer => -2
-int buff_init();
+//      can't flush buffer => ETXTBSY
+//      can't close the file => ETXTBSY
+int logger_deinit();
 
 
 
-//  This func checks filling of the buffer
-//  - RETURNED VALUE
-//      buffer is full => 1
-//      buffer is not full => 0
-//      LOGGER_SINGLETON is NULL => -1
-int buff_is_full();
-
-
-
-//  This func creates the log message by message and log level
-//  It frees the message pointer
-//  (!!!) IT FUNCTION DOESN'T CHECK THE ARGUMENTS (!!!)
-//  it uses only in places where arguments are good
+//  This func sets the default log level
 //  - ARGUMENTS
-//      message - message to wrap
-//      log_level - the log level of message
+//      new_default_loglvl - new default log level for set
 //
 //  - RETURNED VALUE
-//      all is good => wrapped message pointer
-char *create_message(char *message, log_lvl_t log_level);
+//      all is good => 0
+//      logger init has failed => EAGAIN
+//      new_default_loglvl more than max log level => EINVAL
+int log_set_default_loglvl(log_lvl_t new_default_loglvl);
+
+
+
+//  This func sets the logfile
+//  - ARGUMENTS
+//      filename - the path of setting logfile
+//  - RETURNED VALUE
+//      all is good => 0
+//      logger init has failed => EAGAIN
+//      filename pointer is NULL => EINVAL
+//      can't close current logfile => ETXTBSY
+//      can't open new logfile =>
+int log_set_logfile(const char *filename);
 
 
 
