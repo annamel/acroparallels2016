@@ -7,7 +7,7 @@
 #include <errno.h>
 
 #define GB 1024LL*1024LL*1024LL
-#define FILENAME "test_size_file"
+#define FILENAME "test_ht_file"
 #define MB 1024LL*1024LL
 
 int main(){
