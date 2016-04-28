@@ -20,23 +20,21 @@ CMappedFile::CMappedFile(const char* fileName) :
 		struct stat buf = {};
 		fstat(desc_, &buf);
 		size_ = buf.st_size;
-		root_.size_ = size_;
+		
+		root_ = CFileRegion(0, size_);
 		
 		if (size_ && size_ <= MAX_ENTIRELY_MAPPED_SIZE)
-		{
 			entireFile_ = map(0, size_, NULL);
-			assert(entireFile_);
-		}
 	}
 }
 
 CMappedFile::~CMappedFile()
 {
 	if (entireFile_)
-		entireFile_->unmap();
+		entireFile_->removeReference();
 		
 	if (cache_)
-		cache_->unmap();
+		cache_->removeReference();
 		
 	close(desc_);
 }
@@ -44,30 +42,28 @@ CMappedFile::~CMappedFile()
 CFileRegion* CMappedFile::map(off_t offset, off_t size, void** address)
 {
 	long pageSize = sysconf(_SC_PAGE_SIZE);
-	off_t properOffset = (offset / pageSize) * pageSize;
-	size_t properSize = ((size + (offset - properOffset) + pageSize - 1) / pageSize) * pageSize;
-	properSize = std::min(properSize, size_t(size_ - properOffset));
-	CFileRegion* newRegion = new CFileRegion(properOffset, properSize);
+	off_t mapOffset = (offset / pageSize) * pageSize;
+	size_t memoryRegionSize = ((size + (offset - mapOffset) + pageSize - 1) / pageSize) * pageSize;
+	size_t mapSize = std::min(memoryRegionSize, size_t(size_ - mapOffset));
+	
+	if (!mapSize)
+	{
+		errno = EINVAL;
+		return NULL;
+	}
+	
+	CFileRegion* newRegion = new CFileRegion(mapOffset, mapSize);
 	CFileRegion* region = root_.takeChild(newRegion);
-	assert(region->doesInclude(newRegion));
-	region->addReference();
-	assert(region->references_ > 0);
 	
 	if (region == newRegion)
-	{
-		region->address_ = (uint8_t*) mmap(NULL, region->size_, PROT_READ | PROT_WRITE, MAP_SHARED, desc_, region->offset_);
-		
-		if (!region->address_ || region->address_ == MAP_FAILED)
-		{
-			delete region;
-			return NULL;
-		}
-	}
+		region->map(desc_);
 	else
 		delete newRegion;
+		
+	region->addReference();
 	
 	if (address)
-		*address = region->address_ + (offset - region->offset_);
+		*address = region->getAddress(offset);
 		
 	return region;
 }
@@ -88,9 +84,9 @@ ssize_t CMappedFile::fileCopy_(off_t offset, size_t size, uint8_t* to, const uin
 		{
 			if (cache_)
 			{
-				cache_->unmap();
+				cache_->removeReference();
 				
-				if (!*cache_)
+				if (!cache_->isReferenced())
 					delete cache_;
 			}
 			
@@ -99,9 +95,8 @@ ssize_t CMappedFile::fileCopy_(off_t offset, size_t size, uint8_t* to, const uin
 		
 		assert(region);
 		
-		off_t offsetAtRegion = offset - region->offset_;
-		void* mappedAddress = region->address_ + offsetAtRegion;
-		size_t mappedSize = region->size_ - offsetAtRegion;
+		void* mappedAddress = region->getAddress(offset);
+		size_t mappedSize = region->getSizeAfter(offset);
 		mappedSize = std::min(mappedSize, size);
 		
 		if (to)
