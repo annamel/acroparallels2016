@@ -9,7 +9,6 @@ list (APPEND SOURCES
 	hashtable.c)
 
 set (CMAKE_C_FLAGS "-Ofast")
-set (CMAKE_SHARED_LINKER_FLAGS "-Ofast")
 set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY out)
 
 if (WITH_LOGGER)
