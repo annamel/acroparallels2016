@@ -22,6 +22,6 @@ struct chunk_manager {
 int chunk_manager_init (struct chunk_manager *cm, int fd, int mode);
 int chunk_manager_finalize (struct chunk_manager *cm);
 
-long int chunk_manager_offset2chunk (struct chunk_manager *cm, long int offset, long int length, struct chunk ** ret_ch, int *chunk_offset, int remap);
+long int chunk_manager_offset2chunk (struct chunk_manager *cm, off_t offset, size_t length, struct chunk ** ret_ch, off_t *chunk_offset, int remap);
 
 #endif

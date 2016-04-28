@@ -13,8 +13,8 @@
 struct chunk search_chunk = {0, NULL, 0, 0, 0};
 
 int chunk_cmp(const void *l, const void *r){
-	return (long long)(((struct chunk *)l) -> offset)
-	     - (long long)(((struct chunk *)r) -> offset);
+	return (off_t)(((struct chunk *)l) -> offset)
+	     - (off_t)(((struct chunk *)r) -> offset);
 }
 
 int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
@@ -42,8 +42,16 @@ int chunk_manager_finalize (struct chunk_manager *cm){
  	for (i = 0; i < POOL_SIZE; i++)
  		if (cm -> chunk_pool[i].state != -1)
 			chunk_finalize (cm -> chunk_pool + i);
+
+#ifdef MEMORY_DEBUG
+	cm -> fd = 0xDEAD;
+	cm -> prot = 0xDEAD;
+#endif
 	rbtree_free(cm -> rbtree);
-	return 0;
+#ifdef MEMORY_DEBUG
+	cm -> rbtree = (void *) 0xDEADBEEF;
+#endif
+  	return 0;
 }
 
 struct chunk *chunk_manager_get_av_chunk_index (struct chunk_manager *cm){
@@ -71,10 +79,10 @@ struct chunk *chunk_manager_get_av_chunk_index (struct chunk_manager *cm){
 	return NULL;
 }
 
-long int chunk_manager_offset2chunk (struct chunk_manager *cm, long int offset, long int length, struct chunk ** ret_ch, int *chunk_offset, int remap) {
+long int chunk_manager_offset2chunk (struct chunk_manager *cm, off_t offset, size_t length, struct chunk ** ret_ch, off_t *chunk_offset, int remap) {
 	LOG(INFO, "offset2chunk called\n");
-	long int poffset = offset & ~(sysconf(_SC_PAGE_SIZE) - 1);
-	long int plength = ((offset + length) & ~(sysconf(_SC_PAGE_SIZE) - 1)) +
+	off_t poffset = offset & ~(sysconf(_SC_PAGE_SIZE) - 1);
+	size_t plength = ((offset + length) & ~(sysconf(_SC_PAGE_SIZE) - 1)) +
 		sysconf(_SC_PAGE_SIZE) - poffset;
 
 	search_chunk.offset = poffset;
@@ -84,14 +92,13 @@ long int chunk_manager_offset2chunk (struct chunk_manager *cm, long int offset, 
 	if (cur_ch == NULL || cur_ch -> length < offset - cur_ch -> offset ||
 	   (remap && cur_ch -> length - offset + cur_ch -> offset < length)) {
 		LOG(DEBUG, "No chunk found - making new one of size %d\n", MAX(MIN_CHUNK_SIZE, plength));
-		//TODO: Logics on generating new chunk
 		struct chunk *new_chunk = chunk_manager_get_av_chunk_index(cm);
 		if (new_chunk == NULL)
 			return -1;
 
 		chunk_init (new_chunk, MAX(MIN_CHUNK_SIZE, plength), poffset, cm -> prot, cm -> fd);
 
-		long int new_chunk_length = new_chunk -> length;
+		size_t new_chunk_length = new_chunk -> length;
 	  	LOG(DEBUG, "Adding offset %d to rbtree\n", new_chunk -> offset);
 		rbtree_insert(cm -> rbtree, new_chunk);
 		*ret_ch = new_chunk;
