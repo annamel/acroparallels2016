@@ -10,6 +10,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+const size_t Page_size = sysconf(_SC_PAGE_SIZE);
+const size_t Chunk_out_step = 4096*Page_size;
 
 size_t hash_func(const size_t cmp_identity);
 static struct ht_node_ref_t *ht_node_construct(hash_list_t *hash_list);
@@ -57,11 +59,11 @@ mapped_file_t *mapped_file_construct(const char *filename, size_t std_chunk_size
         return NULL;
     }
     mapped_file->file_size = (size_t) sb.st_size;
-    size_t hash_table_size = 6*(size_t) sb.st_size / (size_t)sysconf(_SC_PAGE_SIZE);
+    size_t hash_table_size = 6*(size_t) sb.st_size / Page_size;
 
     std_chunk_size = (size_t)pa_offset(std_chunk_size);
     if (!std_chunk_size)
-        std_chunk_size = (size_t)sysconf(_SC_PAGE_SIZE);
+        std_chunk_size = Page_size;
     mapped_file->chunk_std_size = std_chunk_size;
     size_t chunk_pool_size = 4*(mapped_file->file_size / std_chunk_size);
 
@@ -151,7 +153,7 @@ void *chunk_mem_acquire(struct mapped_file_t *mapped_file, off_t offset, size_t 
         size = (size_t)mapped_file->file_size - offset;
         mem_size = size;
     } else {
-        mem_size = (size_t)pa_offset(size + (offset - chunk_pa_offset) + 4096*sysconf(_SC_PAGE_SIZE));
+        mem_size = (size_t)pa_offset(size + (offset - chunk_pa_offset) + Chunk_out_step);
         if ((ssize_t)(chunk_pa_offset + mem_size) > mapped_file->file_size) {
             mem_size = (size_t)mapped_file->file_size - chunk_pa_offset;
         }
@@ -193,7 +195,7 @@ void *chunk_mem_acquire(struct mapped_file_t *mapped_file, off_t offset, size_t 
         }
 
         assert(!chunk->ht_node);
-        size_t off_iterator = (size_t)(chunk_pa_offset + sysconf(_SC_PAGE_SIZE));
+        size_t off_iterator = (size_t)(chunk_pa_offset + Page_size);
         while (off_iterator < chunk_pa_offset + mem_size) {
             hash_list_t *chunk_hash_list_node = hash_node_construct(mapped_file->chunk_ptr_ht, off_iterator, chunk);
             assert(chunk_hash_list_node);
@@ -206,7 +208,7 @@ void *chunk_mem_acquire(struct mapped_file_t *mapped_file, off_t offset, size_t 
             ht_node->next = chunk->ht_node;
             chunk->ht_node = ht_node;
 
-            off_iterator += 4096*sysconf(_SC_PAGE_SIZE);
+            off_iterator += Chunk_out_step;
         }
     } else {
         assert(!chunk_is_empty(chunk));
@@ -312,7 +314,7 @@ static struct ht_node_ref_t *ht_node_construct(hash_list_t *hash_list) {
 }
 
 static off_t pa_offset(off_t offset) {
-    return (off_t) (offset & ~(sysconf(_SC_PAGE_SIZE) - 1));
+    return (off_t) (offset & ~(Page_size - 1));
 }
 
 static ssize_t chunk_pool_place_idx_find(struct mapped_file_t *mapped_file) {
@@ -401,16 +403,23 @@ static struct chunk_t *chunk_get(struct mapped_file_t *mapped_file, off_t offset
     assert(offset <= (off_t)mapped_file->file_size);
     assert(size > 0);
 
-    struct hash_list_t *chunk_hash_list = chunk_approp_hash_list(mapped_file->chunk_ptr_ht,
-                                                                 (size_t) offset, size);
-    if (chunk_hash_list && chunk_hash_list->data) {
-        chunk_t *chunk = (chunk_t *)chunk_hash_list->data;
-        assert(chunk->mapped_area);
-        assert(chunk->hash_list);
-        assert(chunk->mapped_area_size - (offset - chunk->pa_offset) >= (ssize_t)size);
+    struct hash_list_t *chunk_hash_list;
+    size_t offset_out_step = Chunk_out_step / 32;
 
-        LOG_DEBUG("chunk_get: appropriate chunk already exists\n", NULL);
-        return chunk;
+    for (size_t offset_out = 0; offset_out < Chunk_out_step; offset_out += offset_out_step) {
+        assert(offset + offset_out == (size_t)pa_offset(offset + offset_out));
+
+        chunk_hash_list = chunk_approp_hash_list(mapped_file->chunk_ptr_ht,
+                                                                     (size_t) offset + offset_out, size);
+        if (chunk_hash_list && chunk_hash_list->data) {
+            chunk_t *chunk = (chunk_t *) chunk_hash_list->data;
+            assert(chunk->mapped_area);
+            assert(chunk->hash_list);
+            assert(chunk->mapped_area_size - (offset - chunk->pa_offset) >= (ssize_t) size);
+
+            LOG_DEBUG("chunk_get: appropriate chunk already exists\n", NULL);
+            return chunk;
+        }
     }
 
     LOG_DEBUG("chunk_get: looking for free place in pool for chunk placement\n", NULL);
