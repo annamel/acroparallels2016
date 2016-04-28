@@ -9,9 +9,10 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <stdlib.h>
 
 const size_t Page_size = sysconf(_SC_PAGE_SIZE);
-const size_t Chunk_out_step = 4096*Page_size;
+const size_t Chunk_out_step = 2048*4096*Page_size;
 
 size_t hash_func(const size_t cmp_identity);
 static struct ht_node_ref_t *ht_node_construct(hash_list_t *hash_list);
