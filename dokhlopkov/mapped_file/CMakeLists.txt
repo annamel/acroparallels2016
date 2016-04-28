@@ -18,5 +18,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/out)
 #for linkage by global tester
 add_library(mappedfile STATIC ${SOURCES})
 
-add_executable(tester test/test_mf.c)
+add_executable(tester test/test_simple.c)
+#add_executable(tester test/test_performance.c)
 target_link_libraries(tester mappedfile)

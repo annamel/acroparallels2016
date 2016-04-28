@@ -102,7 +102,7 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo '    resarr[0]=' >> $test_file	
 				echo '    (>&4 echo "")' >> $test_file
 				echo "    (>&4 echo '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c)')" >> $test_file
-				echo "    $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt' 2>&4 1>&4" >> $test_file
+				echo "    timeout 10 $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt' 2>&4 1>&4" >> $test_file
 				echo '    (>&4 echo "")' >> $test_file
 				echo "    (>&3 echo -n '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c) ')" >> $test_file
 				echo '    for i in `seq 0 9`; do' >> $test_file
