@@ -149,6 +149,5 @@ done
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 rm -f $PWD/out.txt
 
-if [ $UNAME == "Darwin" ]; then
-	IFS=$SAVEIFS
-fi
+IFS=$SAVEIFS
+jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True $PWD/test_results.ipynb
