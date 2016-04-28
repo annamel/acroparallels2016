@@ -168,7 +168,7 @@ bool CFileRegion::isLess_(CFileRegion* a, CFileRegion* b)
 
 bool CFileRegion::doesInclude(off_t offset)
 {
-	return offset >= offset_ && offset < offset_ + size_;
+	return offset >= offset_ && offset < offset_ + off_t(size_);
 }
 
 void* CFileRegion::getAddress(off_t offset)

@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <limits>
 #include <cstring>
+#include <errno.h>
 
 CMappedFile::CMappedFile(const char* fileName) :
 	desc_(-1),
