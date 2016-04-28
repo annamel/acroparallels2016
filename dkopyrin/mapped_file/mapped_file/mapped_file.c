@@ -133,6 +133,8 @@ ssize_t mf_write(mf_handle_t mf, const void *buf, size_t size, off_t offset){
 		LOG(DEBUG, "Got chunk of size %d\n", av_chunk_size);
 	  	size_t write_size = MIN(av_chunk_size, size);
 		LOG(DEBUG, "Stretching file to %d\n", offset + write_size);
+		if (offset + write_size > _mf -> size)
+			_mf -> size = offset + write_size;
 		if (lseek(_mf -> fd, offset + write_size - 1, SEEK_SET) == -1) {
         		LOG(ERROR, "Failed file stretch - lseek\n");
 			return write_bytes;
