@@ -1,341 +1,332 @@
 #include "chunk_manager.h"
 
-
-#define DEFAULT_HASHTABLE_SIZE 256
-
-
-
-static size_t get_chunk_size(off_t multiplier);
-static int chunk_init(chunk_t *chunk, chpool_t *chpool, off_t index, off_t len);
-static int chunk_destruct(chunk_t *chunk);
-static int chunk_construct(chunk_t *chunk, chpool_t *chpool, off_t index, off_t len);
-static int chpool_init(chpool_t *chpool, size_t size, int fd, int prot);
-static int chpool_del(chunk_t *chunk);
-static int chpool_add(chunk_t *chunk);
+#include <errno.h>
+#include <sys/mman.h>
+#include <malloc.h>
+#include <unistd.h>
+#include <stdbool.h>
 
 
 
-static int chunk_init(chunk_t *chunk, chpool_t *chpool, off_t index, off_t len)
+#include "logger/logger.h"
+#include "dc_list/dc_list.h"
+#include "hash_table/hash_table.h"
+
+
+
+static int chp_add_loaf(chpool_t *chpool);
+static int chp_get_free_chptr(chpool_t *chpool, chunk_t **new_chunk);
+
+
+
+chunk_t *ch_init(off_t index, off_t len, chpool_t *chpool)
 {
-    chunk->index = index;
-    chunk->len = len;
-    chunk->next = NULL;
-    chunk->prev = NULL;
-    chunk->ref_cnt = 1;
-    chunk->chpool = chpool;
-    chunk->data = mmap(NULL, get_chunk_size(len), chpool->prot, MAP_SHARED,
-                       chpool->fd, get_chunk_size(1));
+    if(!chpool)
+    {
+        log_write(ERROR, "ch_init(index=%d, len=%d): invaid input",
+                  index, len);
+        return NULL;
+    }
+    log_write(DEBUG, "ch_init(index=%d, len=%d): started", index, len);
 
-    if(chunk->data == MAP_FAILED)
-        return errno;
+    chunk_t *new_chunk;
+    int error = chp_get_free_chptr(chpool, &new_chunk);
+    if(error)
+    {
+        log_write(ERROR, "ch_init(index=%d, len=%d: can't get free chunk, error=%d",
+                  index, len, error);
+        return NULL;
+    }
 
-    return 0;
+    new_chunk->data = mmap(NULL, get_chunk_size(len), chpool->prot,
+                           MAP_SHARED, chpool->fd, get_chunk_size(index));
+    if(new_chunk->data == MAP_FAILED)
+    {
+        log_write(ERROR, "ch_init(index=%d, len=%d): mmap failed, errno=%d",
+                  index, len, errno);
+        printf("errno=%d\n", errno);
+        return NULL;
+    }
+
+    new_chunk->rc = 1;
+    new_chunk->len = len;
+    new_chunk->index = index;
+    new_chunk->chpool = chpool;
+
+    error = ht_add_item(chpool->ht, (hkey_t)index, (hvalue_t)new_chunk);
+    if(error)
+    {
+        log_write(ERROR, "ch_init(index=%d, len=%d): can't add chunk to hash table, error=%d",
+                  index, len, error);
+        return NULL;
+    }
+
+    log_write(DEBUG, "ch_init(index=%d, len=%d): finished", index, len);
+
+    return new_chunk;
 }
 
 
 
-static int chunk_destruct(chunk_t *chunk)
+size_t get_chunk_size(off_t multiplier)
 {
-    if(munmap(chunk->data, chunk->len * get_chunk_size(1)) == -1)
-        return errno;
-
-    free(chunk);
-    chunk = NULL;
-
-    return 0;
+    return multiplier * sysconf(_SC_PAGESIZE);
 }
 
 
 
-static int chunk_construct(chunk_t *chunk, chpool_t *chpool,
-                           off_t index, off_t len)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//*****************************************************************************
+//*****************************************************************************
+//*****************************************************************************
+chpool_t *chp_init(int fd, int prot)
 {
-    chunk = (chunk_t *)calloc(1, sizeof(chunk_t));
-    if(chunk == NULL) return ENOMEM;
+    if(fd < 0 || (!(prot & PROT_READ) && !(prot & PROT_WRITE)) )
+    {
+        log_write(ERROR, "chp_init(fd=%d, prot=%d): invaid input",
+                  fd, prot);
+        return NULL;
+    }
+    log_write(DEBUG, "chp_init(fd=%d, prot=%d): started",
+              fd, prot);
 
-    int error = chunk_init(chunk, chpool, index, len);
-    if(error)
-        return error;
+    chpool_t *new_chpool = (chpool_t *)calloc(1, sizeof(chpool_t));
+    if(!new_chpool)
+    {
+        log_write(ERROR, "chp_init(fd=%d, prot=%d): calloc failed",
+                  fd, prot);
+        return NULL;
+    }
 
-    error = chpool_add(chunk);
-    if(error)
-        return error;
+    new_chpool->fd = fd;
+    new_chpool->prot = prot;
+    new_chpool->free_list = dcl_init();
+    if(!new_chpool->free_list)
+    {
+        log_write(ERROR, "chp_init(fd=%d, prot=%d): free list init failed",
+                  fd, prot);
+        return NULL;
+    }
 
-    return 0;
+    new_chpool->zero_list = dcl_init();
+    if(!new_chpool->zero_list)
+    {
+        log_write(ERROR, "chp_init(fd=%d, prot=%d): zero list init failed",
+                  fd, prot);
+        return NULL;
+    }
+    new_chpool->ht = ht_init(DEFAULT_HASHTABLE_SIZE, hash_fnv1a);
+    if(!new_chpool->ht)
+    {
+        log_write(ERROR, "chp_init(fd=%d, prot=%d): hash table init failed",
+                  fd, prot);
+        return NULL;
+    }
+
+    new_chpool->pool = (chunk_t **)calloc(1, sizeof(chunk_t *));
+    new_chpool->arrays_cnt = 1;
+    *(new_chpool->pool) = (chunk_t *)calloc(DEFAULT_ARRAY_SIZE, sizeof(chunk_t));
+    if(!new_chpool->pool || !*new_chpool->pool)
+    {
+        log_write(ERROR, "chp_init(fd=%d, prot=%d): pool init failed",
+                  fd, prot);
+        return NULL;
+    }
+
+    for(int i = 0; i < DEFAULT_ARRAY_SIZE; i++)
+        if(dcl_add_last(new_chpool->free_list, (lvalue_t)&((*new_chpool->pool)[i])))
+        {
+            log_write(ERROR, "chp_init(fd=%d, prot=%d): can't add free chunk to list",
+                      fd, prot);
+            return NULL;
+        }
+
+    log_write(DEBUG, "chp_init(fd=%d, prot=%d): finished",
+              fd, prot);
+
+    return new_chpool;
 }
 
 
 
-static int chunk_get(chunk_t *chunk, chpool_t *chpool,
-                     off_t index, off_t len)
+int chp_find(chpool_t *chpool, off_t index, off_t len, chunk_t **chunk)
 {
-    int error = find_value(chpool->ht, (const hash_key_t)index, (value_t *)chunk);
-    if(error)
-        return error;
+    if(!chpool)
+        return EINVAL;
 
-    if(chunk->len < len)
+    log_write(DEBUG, "chp_find(index=%d, len=%d): started", index, len);
+
+    hkey_t key = (hkey_t)index;
+
+    int idx = chpool->ht->hash_func(key, HASH_CONST_2) % chpool->ht->size;
+    item_t *item_ptr = chpool->ht->table[idx];
+    if(!item_ptr)
         return ENOKEY;
 
-    return 0;
+    while(item_ptr)
+    {
+        if(item_ptr->key <= key &&
+          ((chunk_t *)item_ptr->value)->len >= len + (key - item_ptr->key))
+        {
+            *chunk = (chunk_t *)item_ptr->value;
+            return 0;
+        }
+        else
+        {
+            item_ptr = item_ptr->next;
+            continue;
+        }
+    }
+
+    log_write(DEBUG, "chp_find(index=%d, len=%d): finished", index, len);
+
+    return ENOKEY;
 }
 
 
 
-int chunk_acquire(chunk_t *chunk, chpool_t *chpool,
-                  off_t offset, size_t size)
-{
-    if(!chpool || !chunk || !chpool->ht ||
-       !chpool->fd < 0 || chpool->nr_pages > chpool->size)
-        return EINVAL;
-
-    if(size == 0)
-    {
-        chunk = NULL;
-        return 0;
-    }
-
-    off_t index = offset / get_chunk_size(1);
-    off_t len = size / get_chunk_size(1) + 1;
-
-    int error = chunk_get(chunk, chpool, index, len);
-    if(error == ENOKEY)
-    {
-        error = chpool_del(chunk);
-        if(error && error != EBUSY)
-            return error;
-
-        chunk_construct(chunk, chpool, index, len);
-
-        return 0;
-    }
-    else
-        return 0;
-}
-
-
-
-int chunk_find(chunk_t *chunk, chpool_t * chpool,
-               size_t size, off_t offset)
-{
-    if(!chunk || !chpool || !chpool->ht ||
-        chpool->fd < 0 || chpool->nr_pages > chpool->size)
-        return EINVAL;
-
-    if(size == 0)
-    {
-        chunk = NULL;
-        return 0;
-    }
-
-    off_t index = offset / get_chunk_size(1);
-    off_t len = size / get_chunk_size(1) + 1;
-
-    return chunk_get(chunk, chpool, index, len);
-}
-
-
-int chunk_release(chunk_t *chunk)
+int chp_chunk_release(chunk_t *chunk)
 {
     if(!chunk)
         return EINVAL;
 
-    if(chunk->ref_cnt == 0)
+    log_write(DEBUG, "chp_chunk_release: started");
+
+    if(chunk->rc == 0)
+    {
+        log_write(WARNING, "chp_chunk_release: trying to release chunk with zero rc");
         return EAGAIN;
-
-    if(chunk->ref_cnt == 1)
-    {
-        if(chunk->prev)
-            chunk->prev->next = chunk->next;
-
-        if(chunk->next)
-            chunk->next->prev = chunk->prev;
-
-        chunk->next = chunk->chpool->chunk_list;
-        chunk->prev = NULL;
     }
 
-    return 0;
-}
+    if(--chunk->rc == 0)
+    {
+        int error = munmap(chunk->data, get_chunk_size(chunk->len));
+        if(error == -1)
+        {
+            log_write(WARNING, "chp_chunk_release: can't unmap memory");
+            return errno;
+        }
 
+        chunk->rc = 0;
+        chunk->len = 0;
+        chunk->index = 0;
+        chunk->data = NULL;
 
+        error = ht_del_item_by_kav(chunk->chpool->ht,
+                                   (hkey_t)chunk->index, (hvalue_t)chunk);
+        if(error)
+        {
+            log_write(WARNING, "chp_chunk_release: can't delete chunk from hash table, error=%d",
+                      error);
+            return error;
+        }
 
-int chunk_get_mem(chunk_t *chunk, off_t offset, void *buf)
-{
-    if(!chunk || !buf)
-        return EINVAL;
+        error = dcl_add_last(chunk->chpool->free_list, (lvalue_t)chunk);
+        if(error)
+        {
+            log_write(WARNING, "chp_chunk_release: can't add chunk to free list, error=%d",
+                      error);
+            return error;
+        }
+    }
 
-    off_t left = get_chunk_size(chunk->index);
-    off_t right = left + get_chunk_size(chunk->len);
-
-    if(offset < left || offset > right)
-        return EINVAL;
-
-    buf = chunk->data + (offset - left);
-
-    return 0;
-}
-
-
-
-static size_t get_chunk_size(off_t multiplier)
-{
-    return multiplier * sysconf(_SC_PAGESIZE);
-}
-//*******************************************************************
-//*******************************************************************
-//*******************************************************************
-
-static int chpool_init(chpool_t *chpool, size_t size, int fd, int prot)
-{
-    chpool->chunk_list = NULL;
-    chpool->fd = fd;
-    chpool->size = size;
-    chpool->nr_pages = 0;
-    chpool->prot = prot;
-
-    chpool->ht = hash_table_init(DEFAULT_HASHTABLE_SIZE, hash_fnv1a);
-    if(chpool->ht == NULL)
-        return ENOMEM;
-
-    chpool->mem_ht = hash_table_init(DEFAULT_HASHTABLE_SIZE, hash_fnv1a);
-    if(chpool->mem_ht == NULL)
-        return ENOMEM;
+    log_write(DEBUG, "chp_chunk_release: finished");
 
     return 0;
 }
 
 
 
-int chpool_construct(chpool_t *chpool, size_t mem_limit, int fd, int prot)
-{
-    size_t size = mem_limit ? mem_limit / get_chunk_size(1) : DEFAULT_CHPOOL_SIZE;
-
-    chpool = (chpool_t *)calloc(1, sizeof(chpool_t));
-
-    return chpool_init(chpool, size, fd, prot);
-}
-
-
-
-int chpool_destruct(chpool_t *chpool)
+static int chp_add_loaf(chpool_t *chpool)
 {
     if(!chpool)
         return EINVAL;
 
-    while(chpool->chunk_list)
-    {
-        chpool->chunk_list = chpool->chunk_list->next;
+    log_write(INFO, "chp_add_loaf: started");
 
-        int error = chunk_destruct(chpool->chunk_list->prev);
-        if(error)
-            return error;
+    chpool->pool = realloc(chpool->pool, chpool->arrays_cnt + 1);
+    if(!chpool->pool)
+    {
+        log_write(ERROR, "chp_add_loaf: can't reallocate cell for new loaf");
+        return ENOMEM;
     }
 
-    chpool->nr_pages = 0;
+    chpool->pool[chpool->arrays_cnt++] = (chunk_t *)calloc(DEFAULT_ARRAY_SIZE,
+                                                               sizeof(chunk_t));
+    if(!chpool->pool[chpool->arrays_cnt-1])
+    {
+        log_write(ERROR, "chp_add_loaf: can't allocate new loaf");
+        return ENOMEM;
+    }
 
-    int error = hash_table_deinit(chpool->ht);
-    if(error)
-        return error;
+    for(int i = 0; i < DEFAULT_ARRAY_SIZE; i++)
+        if(dcl_add_last(chpool->free_list, (lvalue_t)&((*chpool->pool)[i])))
+        {
+            log_write(ERROR, "chp_add_loaf: can't add free chunk to list");
+            return NULL;
+        }
 
-    error = hash_table_deinit(chpool->mem_ht);
-    if(error)
-        return error;
-
-    error = close(chpool->fd);
-    if(error == -1)
-        return errno;
-
-    free(chpool);
-
+    log_write(INFO, "chp_add_loaf: finished");
     return 0;
 }
 
 
 
-static int chpool_del(chunk_t *chunk)
-{
-    chpool_t *chpool = chunk->chpool;
-
-    if(chunk->prev)
-        chunk->prev->next = chunk->next;
-
-    if(chunk->next)
-        chunk->next->prev = chunk->prev;
-
-    for(unsigned int i = 0; i < chunk->len; i++)
-    {
-        int error = delete_item(chpool->ht, chunk->index + i);
-        if(error && error != ENOKEY)
-            return error;
-    }
-
-    chpool->nr_pages -= chunk->len;
-
-    int error = chunk_destruct(chunk);
-    if(error)
-        return error;
-
-    return 0;
-}
-
-
-static int chpool_add(chunk_t *chunk)
-{
-    chpool_t *chkpool = chunk->chpool;
-
-    int error = 0;
-    while(chkpool->nr_pages + chunk->len > chkpool->size && !(error = chpool_del(chkpool->chunk_list)));
-
-    if(error == EBUSY)
-        return ENOBUFS;
-
-    if(error)
-        return error;
-
-    chunk->next = chkpool->chunk_list;
-    chunk->prev = NULL;
-    chkpool->chunk_list = chunk;
-
-    for(unsigned int i = 0; i < chunk->len; i++)
-    {
-        error = add_item(chkpool->ht, chunk->index + i, (value_t)chunk);
-        if(error)
-            return error;
-    }
-
-    chkpool->nr_pages += chunk->len;
-
-    return 0;
-}
-
-
-
-
-int chpool_fd(chpool_t *chpool)
+static int chp_get_free_chptr(chpool_t *chpool, chunk_t **new_chunk)
 {
     if(!chpool)
         return EINVAL;
 
-    return chpool->fd;
-}
+    log_write(INFO, "chp_get_free_chptr: started");
 
+    if(!chpool->free_list->size)
+    {
+        log_write(INFO, "chp_get_free_chptr: free_list is empty");
 
+        if(!chpool->zero_list->size)
+        {
+            log_write(INFO, "chp_get_free_chptr: zero_list also is empty");
 
-int chpool_mem_add(void *ptr, chunk_t *chunk)
-{
-    if(!ptr || !chunk)
-        return EINVAL;
+            chp_add_loaf(chpool);
 
-    int error = add_item(chunk->chpool->mem_ht, (hash_key_t)ptr, (value_t)chunk);
-    if(error)
-        return error;
+            *new_chunk = chpool->free_list->head->value;
+            dcl_del_first(chpool->free_list);
+        }
+        else
+        {
+            *new_chunk = chpool->zero_list->head->value;
+            if(munmap((*new_chunk)->data, get_chunk_size((*new_chunk)->len)) == -1)
+            {
+                log_write(ERROR,"chp_get_free_chptr: can't unmap memory");
+                return NULL;
+            }
 
+            dcl_del_first(chpool->zero_list);
+        }
+    }
+    else
+    {
+        *new_chunk = chpool->free_list->head->value;
+        dcl_del_first(chpool->free_list);
+    }
+
+    log_write(INFO, "chp_get_free_chptr: finished");
     return 0;
 }
 
 
-
-int chpool_mem_get(chpool_t *chpool, void *ptr, chunk_t *chunk)
-{
-    return find_value(chpool->mem_ht, (hash_key_t)ptr, (value_t)chunk);
-}

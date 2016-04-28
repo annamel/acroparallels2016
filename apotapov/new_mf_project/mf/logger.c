@@ -1,5 +1,8 @@
 #include "logger.h"
+#include "common_types.h"
+
 #define SIZE 100
+
 void *buffer_for_stack [SIZE];
 
 logger_t* logger_init(char *filename) {
@@ -23,7 +26,6 @@ logger_t* logger_init(char *filename) {
     }
     created_logger -> type_of_log_by_default = Debug;
     return created_logger;
-
 }
 
 void logger_deinit() {
@@ -131,5 +133,7 @@ int write_log(log_type_t log_type, char *message) {
 int write_log_to_file(log_type_t log_type, char *message) {
     char *mes = formulate_message(log_type, message);
     fputs(mes, created_logger -> file_pointer);
+    free(mes);
     return 0;
 }
+

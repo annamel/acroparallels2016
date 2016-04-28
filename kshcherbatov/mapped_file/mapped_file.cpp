@@ -9,8 +9,6 @@
 
 
 const size_t Chunk_size = 2*4096;
-const size_t Hash_table_size = 1024;
-const size_t Chunk_pool_size = 2048;
 
 mf_handle_t mf_open(const char *pathname) {
     LOG_DEBUG("Called mf_open (%s)\n", pathname);
@@ -19,7 +17,7 @@ mf_handle_t mf_open(const char *pathname) {
         return NULL;
     }
 
-    mapped_file_t *mapped_file = mapped_file_construct(pathname, Chunk_size, Hash_table_size, Chunk_pool_size);
+    mapped_file_t *mapped_file = mapped_file_construct(pathname, Chunk_size);
     if (!mapped_file)
         return NULL;
 
@@ -34,10 +32,10 @@ mf_handle_t mf_open(const char *pathname) {
 
         if (file_size > 0) {
             if (file_size < info.freeram) {
-            	chunk_mem_acquire(mapped_file, 0, file_size, true, &read_size, &chunk);
+            	chunk_mem_acquire(mapped_file, 0, file_size, &read_size, &chunk);
             	chunk_mem_unacquire(chunk);
             } else {
-                chunk_mem_acquire(mapped_file, 0, info.freeram / 2, true, &read_size, &chunk);
+                chunk_mem_acquire(mapped_file, 0, info.freeram*3/4 , &read_size, &chunk);
                 chunk_mem_unacquire(chunk);
             }
         }
@@ -103,7 +101,7 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
     }
 
     size_t read_size;
-    return chunk_mem_acquire((mapped_file_t *)mf, offset, size, false, &read_size, (chunk_t **)mapmem_handle);
+    return chunk_mem_acquire((mapped_file_t *)mf, offset, size, &read_size, (chunk_t **)mapmem_handle);
 }
 
 int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle) {

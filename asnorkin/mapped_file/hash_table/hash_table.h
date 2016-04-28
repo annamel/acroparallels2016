@@ -1,57 +1,45 @@
 //*********************************************************
 //********                                       **********
-//********   Created by asnorkin on 22.03.2016.  **********
+//********      Created by Alexander Snorkin     **********
+//********              22.04.2016               **********
 //********                                       **********
 //*********************************************************
-#ifndef HASH_TABLE_HASH_TABLE_H
-#define HASH_TABLE_HASH_TABLE_H
+#ifndef HASH_TABLE_H
+#define HASH_TABLE_H
 
 
-#include <stdlib.h>
-#include <inttypes.h>
-#include <stdio.h>
-#include <errno.h>
-#include <sys/types.h>
+
+#include "hash_funcs.h"
 
 
-#ifdef _MSC_VER
-typedef unsigned int uint32_t;
-#else
-#include <stdint.h>
-#endif
 
+typedef struct item item_t;
+typedef struct hash_table htable_t;
 
-// default hash function values
-#define HASH_CONST_1 0x01000193 //   16777619
-#define HASH_CONST_2 0x811C9DC5 // 2166136261
-
-
-typedef void *value_t;
-typedef off_t hash_key_t;
-
-typedef hash_key_t hash_func_t(const hash_key_t,  uint32_t);
 
 
 //  Item of the hash table structure
 //  Contains the key for hash function,
 //  value and next item pointer
-typedef struct item_t
+struct item
 {
-    hash_key_t key;
-    value_t value;
-    struct item_t *next;
-} item_t;
+    hkey_t key;
+    hvalue_t value;
+    item_t *next;
+    item_t *prev;
+};
+
 
 
 //  The hash table structure
 //  Contains the size of the table, hash function
 //  pointer and the pointer on array of lists
-typedef struct hash_table_t
+struct hash_table
 {
     int size;
-    hash_func_t *hash_func;
+    hfunc_t *hash_func;
     item_t **table;
-} hash_table_t;
+};
 
 
 
@@ -62,10 +50,10 @@ typedef struct hash_table_t
 //      hash_func - hash function pointer
 //
 //  - RETURNED VALUE
-//      all is good => hash table pointer
-//      calloc works bad => NULL
-hash_table_t *hash_table_init(const int size,
-                              hash_func_t *hash_func);
+//      all is good => 0
+//      hash_func pointer is NULL => EINVAL
+//      can't allocate memory => ENOMEM
+htable_t *ht_init(const int size, hfunc_t *hash_func);
 
 
 
@@ -73,12 +61,12 @@ hash_table_t *hash_table_init(const int size,
 //  all items and the table
 //
 //  - ARGUMENTS
-//      hash_table - the hash table pointer
+//      ht - the hash table pointer
 //
 //  - RETURNED VALUE
 //      all is good => 0
 //      hash_table pointer is NULL => EINVAL
-int hash_table_deinit(hash_table_t *hash_table);
+int ht_deinit(htable_t *ht);
 
 
 
@@ -87,18 +75,81 @@ int hash_table_deinit(hash_table_t *hash_table);
 //  already exist the element
 //
 //  - ARGUMENTS
-//      hash_table - the hash table pointer
-//
+//      ht - the hash table pointer
 //
 //  - RETURNED VALUE
-//      all is good => pointer on added item
-//      this key already exist => pointer on existing
-//                                item with such key
-//      hash_table pointer is NULL => NULL
-//      calloc worked bad => NULL
-//      something else => NULL
-int add_item(hash_table_t *hash_table,
-                 hash_key_t new_key, value_t new_value);
+//      all is good => 0
+//      hash_table pointer is NULL => EINVAL
+//      this key already exist => EKEYREJECTED
+//      can't allocate the memory => ENOMEM
+//      something else => -1
+int ht_add_item(htable_t *ht, hkey_t key, hvalue_t value);
+
+
+
+//  This func finds the element by the key
+//
+//  - ARGUMENTS
+//      ht - the hash table pointer
+//      key - the key for find
+//      item - address of value of finded item will
+//             write in this poiter
+//
+//  - RETURNED VALUE
+//      all is good => 0
+//      item with that key doesn't exist => ENOKEY
+//      hash_table pointer is NULL => EINVAL
+//      can't allocate memory for item => ENOMEM;
+int ht_find_by_key(htable_t *ht, const hkey_t key, item_t **item);
+
+
+
+//  This func finds the element by the key and value
+//
+//  - ARGUMENTS
+//      ht - the hash table pointer
+//      key - the key for find
+//      value - the value for find
+//      item - address of value of finded item will
+//             write in this poiter
+//
+//  - RETURNED VALUE
+//      all is good => 0
+//      item with that key doesn't exist => ENOKEY
+//      hash_table pointer is NULL => EINVAL
+//      can't allocate memory for item => ENOMEM;
+int ht_find_by_kav(htable_t *ht, hkey_t key, hvalue_t *value, item_t **item);
+
+
+
+//  This func deleted item by the key if exist
+//
+//  - ARGUMENTS
+//      ht - the hash table pointer
+//      key - the key for delete
+//
+//  - RETURNED VALUE
+//      item succesful deleted => 0
+//      hash_table pointer is NULL => EINVAL
+//      item doesn't exist => ENOKEY
+//      list by key is empty => ENOKEY
+int ht_del_item_by_key(htable_t *ht, hkey_t key);
+
+
+
+//  This func deleted item by the key and value if exist
+//
+//  - ARGUMENTS
+//      ht - the hash table pointer
+//      key - the key for delete
+//      value - the value for delete
+//
+//  - RETURNED VALUE
+//      item succesful deleted => 0
+//      hash_table pointer is NULL => EINVAL
+//      item doesn't exist => ENOKEY
+//      list by key is empty => ENOKEY
+int ht_del_item_by_kav(htable_t *ht, hkey_t key, hvalue_t value);
 
 
 
@@ -106,25 +157,11 @@ int add_item(hash_table_t *hash_table,
 //  information about every list in the array
 //
 //  - ARGUMENTS
-//      hash_table - the hash table pointer
+//      ht - the hash table pointer
 //
 //  - RETURNED VALUE
 //      no value
-void print_table(hash_table_t *hash_table);
-
-
-
-//  This func prints the list by the index
-//  Sequence numeration starts from nil
-//
-//  - ARGUMENTS
-//      hash_table - the hash table pointer
-//      index - the index of list for print
-//
-//  - RETURNED VALUE
-//      no value
-void print_list_in_index(hash_table_t *hash_table,
-                         int index);
+void ht_print_table(htable_t *ht);
 
 
 
@@ -132,65 +169,30 @@ void print_list_in_index(hash_table_t *hash_table,
 //  particular array index
 //
 //  - ARGUMENTS
-//      hash_table - the hash table pointer
+//      ht - the hash table pointer
 //      index - the array index
 //
 //  - RETURNED VALUE
 //      all is good => number of items by that index
-//      hash_table pointer is NULL => -1
-//      index more than size of the table => -2
-int number_of_items_in_index(hash_table_t *hash_table,
-                             int index);
-
-
-
-//  This func finds the element by the key
-//
-//  - ARGUMENTS
-//      hash_table - the hash table pointer
-//      key - the key for find
-//      value - address of value of finded item will
-//              write in this poiter
-//
-//  - RETURNED VALUE
-//      all is good => finded item pointer
-//      error occured => errno code
-int find_value(hash_table_t *hash_table,
-                   const hash_key_t key, value_t *value);
-
-
-
-//  This func deleted item by the key if exist
-//
-//  - ARGUMENTS
-//      hash_table - the hash table pointer
-//      key - the key for delete
-//
-//  - RETURNED VALUE
-//      item succesful deleted => 0
 //      hash_table pointer is NULL => EINVAL
-//      item doesn't exist => ENOKEY
-//      list by key is empty => -ENOKEY
-int delete_item(hash_table_t *hash_table, hash_key_t key);
+//      index more than size of the table => EINVAL
+int ht_number_of_items_in_index(htable_t *ht, int index);
 
 
-//*********************************************************
-//**********                                     **********
-//**********           HASH FUNCTIONS            **********
-//**********                                     **********
-//*********************************************************
-//  This func generates uint32 hash key by uint32 key
+
+//  This func prints the list by the index
+//  Sequence numeration starts from nil
 //
 //  - ARGUMENTS
-//      key - unit32 key for generate the hash key
-//      hash - const for generating
+//      ht - the hash table pointer
+//      index - the index of list for print
 //
 //  - RETURNED VALUE
-//      all is good => hash key
-hash_key_t hash_fnv1a(const hash_key_t key, uint32_t hash);
+//      all is good => 0
+//      ht is NULL => EINVAL
+//      index is out of array => EINVAL
+//      something else => -1
+int ht_print_list_in_index(htable_t *ht, int index);
 
-//  This func calculates the uint32 hash key by one byte
-//  Assistance func for hash_fnv1a
-uint32_t fnv1a(unsigned char oneByte, uint32_t hash);
 
-#endif //HASH_TABLE_HASH_TABLE_H
+#endif // HASH_TABLE_H

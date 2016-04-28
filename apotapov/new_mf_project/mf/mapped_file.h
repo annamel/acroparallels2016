@@ -1,6 +1,3 @@
-#include "logger.h"
-#include "chunk_manager.h"
-#include "hash_table.h"
 #ifndef mapped_file
 #define mapped_file
 
@@ -9,6 +6,8 @@
 
 #include <stddef.h>
 #include <sys/types.h>
+#include "common_types.h"
+#include "logger.h"
 
 typedef void *mf_handle_t;
 #define MF_OPEN_FAILED NULL
@@ -54,3 +53,4 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle);
 off_t mf_file_size(mf_handle_t mf);
 
 #endif
+
