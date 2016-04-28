@@ -142,7 +142,7 @@ for root_test_dir in $ROOT_TEST_DIR  ; do
 	fi
 done
 for clean_file in $TEST_BUILD; do
-	echo $clean_file
+	#echo $clean_file
 	rm -f $clean_file
 done
 
