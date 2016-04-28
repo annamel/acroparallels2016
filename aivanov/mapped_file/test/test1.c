@@ -1,11 +1,10 @@
-#include <cstdio>
-#include <vector>
+#include <stdio.h>
 #include <stdint.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <cassert>
+#include <assert.h>
 #include <unistd.h>
-#include <cstring>
+#include <string.h>
 #include <mapped_file.h>
 #include "test.h"
 
@@ -38,16 +37,20 @@ int main()
 	mf_handle_t mf2 = mf_open("test2");	
 	CHECK(mf2);
 	
-	for (int i = 0; i < MAJOR_ITERATIONS; i++)
+	int i;
+	for (i = 0; i < MAJOR_ITERATIONS; i++)
 	{		
-		std::vector<mf_mapmem_handle_t> regions;
+		mf_mapmem_handle_t regions[MINOR_ITERATIONS];
 		
-		for (int j = 0; j < MINOR_ITERATIONS; j++)
+		int j;
+		for (j = 0; j < MINOR_ITERATIONS; j++)
 		{
 			ssize_t offset = lrand() % (TEST_SIZE - 1);
 			ssize_t size = 1 + lrand() % (TEST_SIZE - offset);
-			uint8_t* buf = new uint8_t[size];
-			for (int k = 0; k < size; k++)
+			uint8_t* buf = malloc(size);
+			
+			int k;
+			for (k = 0; k < size; k++)
 				buf[k] = (uint8_t) rand();
 			
 			CHECK(lseek(f0, offset, SEEK_SET) == offset);
@@ -56,19 +59,19 @@ int main()
 			mf_mapmem_handle_t handle = NULL;
 			void* data = mf_map(mf1, offset, size, &handle);
 			CHECK(data);
-			regions.push_back(handle);
+			regions[j] = handle;
 			memcpy(data, buf, size);
 			
 			CHECK(mf_write(mf2, buf, size, offset) == size);
 			
-			delete[] buf;
+			free(buf);
 		}
 		
 		CHECK(mf_file_size(mf1) == TEST_SIZE);
 		CHECK(mf_file_size(mf2) == TEST_SIZE);
 		
-		for (auto handle : regions)
-			CHECK(!mf_unmap(mf1, handle));
+		for (j = 0; j < MINOR_ITERATIONS; j++)
+			CHECK(!mf_unmap(mf1, regions[j]));
 	}
 	
 	CHECK(!close(f0));

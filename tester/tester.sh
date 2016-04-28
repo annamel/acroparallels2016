@@ -35,7 +35,11 @@ LIB_SOURCE_DIR=$PWD/../**
 if [ -z "$ROOT_LIB_DIR" ]; then
 	ROOT_LIB_DIR=$(echo $(ls -d -1 $LIB_SOURCE_DIR) | tr ' ' ';')
 else
-	ROOT_LIB_DIR=$(echo $ROOT_LIB_DIR | tr ' ' ';')
+	ROOT_LIB_DIR_tmp=$(echo $ROOT_LIB_DIR | tr ' ' ';')
+	ROOT_LIB_DIR=""
+	for d in $ROOT_LIB_DIR_tmp; do
+		ROOT_LIB_DIR=$ROOT_LIB_DIR\;$(readlink -f "$d")
+	done
 fi
 TEST_SOURCE_DIR=$PWD/../**
 if [ -z "$ROOT_TEST_DIR" ]; then
@@ -67,10 +71,10 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 			echo "	rm -rf $PWD/build_dir" >> $test_file
 			echo "	mkdir -p $PWD/build_dir" >> $test_file
 			echo "	pushd $PWD/build_dir" >> $test_file
-			echo "	cmake '$CALL_PWD/$make_dir'" >> $test_file
+			echo "	cmake '$make_dir'" >> $test_file
 			echo "	make" >> $test_file
-			echo "	mkdir -p '$CALL_PWD/$out_dir/'" >> $test_file
-			echo "	cp -f './$LIBOUT_SUFFIX'/* '$CALL_PWD/$out_dir/'" >> $test_file
+			echo "	mkdir -p '$out_dir/'" >> $test_file
+			echo "	cp -f './$LIBOUT_SUFFIX'/* '$out_dir/'" >> $test_file
 			echo "	rm -rf '$PWD/build_dir'" >> $test_file
 			echo "	popd" >> $test_file
 		else
@@ -81,6 +85,10 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 		echo "}" >> $test_file
 		echo "" >> $test_file
 		for root_test_dir in $ROOT_TEST_DIR ; do
+			test_dir="$root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/"
+			if [ -f $test_dir/prepare.py ]; then
+				python $test_dir/prepare.py
+			fi
 			for test in $root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/*.c ; do
 			if [ -f $test ]; then
 				func_name="it_check_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .c)"
@@ -90,37 +98,24 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				TEST_BUILD=$TEST_BUILD\;$test_out_name\;$test_object_name
 				echo "$func_name() {" >> $test_file
 				echo "    gcc $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' $LDFLAGS '$test'" >> $test_file
-				echo "    g++ $CFLAGS -g -o '$test_out_name' '$test_object_name' $LDFLAGS -L'$out_dir'" >> $test_file
+				echo "    g++ $CFLAGS -o '$test_out_name' '$test_object_name' $LDFLAGS -L'$out_dir'" >> $test_file
 				echo '    resarr[0]=' >> $test_file	
-				echo "    $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt'" >> $test_file
-				echo "    (>&3 echo '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c)')" >> $test_file
+				echo '    (>&4 echo "")' >> $test_file
+				echo "    (>&4 echo '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c)')" >> $test_file
+				echo "    $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt' 2>&4 1>&4" >> $test_file
+				echo '    (>&4 echo "")' >> $test_file
+				echo "    (>&3 echo -n '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c) ')" >> $test_file
 				echo '    for i in `seq 0 9`; do' >> $test_file
 				echo "        rm -rf ./times" >> $test_file
 				echo '        start=$(date +"%s.%N")' >> $test_file
-				echo "        $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt' 1>&3" >> $test_file
+				echo "        $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt'" >> $test_file
 				echo '        end=$(date +"%s.%N")' >> $test_file
 				echo '        resarr[$i]=$(bc <<< "$end-$start")' >> $test_file
 				echo "    done" >> $test_file
 				echo '    (>&3 echo ${resarr[*]})' >> $test_file
-				echo '    (>&3 echo "")' >> $test_file
-				echo "}" >> $test_file
-				echo "" >> $test_file
-			fi
-			done
-
-			for test in $root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/*.cpp ; do
-			if [ -f $test ]; then
-				func_name="it_check_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .cpp)"
-				test_out_name="$out_dir/$(basename $test .cpp)"
-				test_object_name="$test_out_name.o"
-				echo "$func_name() {" >> $test_file
-				echo "    g++ $CFLAGS -std=c++14 $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' $LDFLAGS '$test'" >> $test_file
-				echo "    g++ $CFLAGS -g -o '$test_out_name' '$test_object_name' $LDFLAGS  -L'$out_dir'" >> $test_file
-				echo "    set -x" >> $test_file
-				echo "    $PREC '$test_out_name' '$PWD/small.txt' '$PWD/out.txt'" >> $test_file
-				#echo "    $PREC '$test_out_name' '$PWD/medium.txt' '$PWD/out.txt'" >> $test_file
-				#echo "    $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt'" >> $test_file
-				echo "    set +x" >> $test_file
+				echo '    (>&4 echo ${resarr[*]})' >> $test_file
+				#echo '    (>&3 echo "")' >> $test_file
+				echo '    (>&4 echo "")' >> $test_file
 				echo "}" >> $test_file
 				echo "" >> $test_file
 			fi
@@ -138,6 +133,12 @@ for root_lib_dir in $ROOT_LIB_DIR  ; do
 		make clean > /dev/null 2> /dev/null
 		rm -rf ./$LIBOUT_SUFFIX/
 		popd > /dev/null
+	fi
+done
+for root_test_dir in $ROOT_TEST_DIR  ; do
+	test_dir="$root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/"
+	if [ -f $test_dir/clean.py ]; then
+		python $test_dir/clean.py
 	fi
 done
 for clean_file in $TEST_BUILD; do

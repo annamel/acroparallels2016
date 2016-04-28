@@ -118,7 +118,7 @@ int remove_element(hash_table_t* h_table, off_t index, off_t length) {
   unsigned int place = key_hash % (h_table -> size);
   list_element* ptr = (h_table -> table)[place];
   if(ptr == NULL) {
-    return 0;
+    return 1;
   } else {
     while(ptr) {
       if (((ptr -> data -> index) == index) && ((ptr -> data -> length) == length)) {
@@ -128,7 +128,7 @@ int remove_element(hash_table_t* h_table, off_t index, off_t length) {
             ptr -> next -> prev = NULL;
           }
           free(ptr);
-          return 1;
+          return 0;
         } else {
           if(ptr -> next != NULL) {
             ptr -> next -> prev = ptr -> prev;
@@ -137,14 +137,13 @@ int remove_element(hash_table_t* h_table, off_t index, off_t length) {
             ptr -> prev -> next = NULL;
           }
           free(ptr);
-          return 1;
+          return 0;
         }
       }
     ptr = ptr -> next;
     }
   }
-  printf("The element with such key is not found!\n");
-  return 0;
+  return 1;
 }
 
 int find_value(hash_table_t* h_table, off_t index, off_t length) {
@@ -158,7 +157,6 @@ int find_value(hash_table_t* h_table, off_t index, off_t length) {
     }
     ptr = ptr -> next;
   }
-  printf("The element with such key is not found!\n");
   return 0;
 }
 
@@ -172,7 +170,6 @@ chunk_t* take_value_ptr(hash_table_t* h_table, off_t index, off_t length) {
     }
     ptr = ptr -> next;
   }
-  printf("The element with such key is not found!\n");
   return NULL;
 }
 
@@ -186,7 +183,6 @@ chunk_t* find_by_index(hash_table_t* h_table, off_t index) {
     }
     ptr = ptr -> next;
   }
-  printf("The element with such key is not found!\n");
   return NULL;
 }
 

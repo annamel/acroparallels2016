@@ -136,3 +136,4 @@ int write_log_to_file(log_type_t log_type, char *message) {
     free(mes);
     return 0;
 }
+

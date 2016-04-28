@@ -42,8 +42,8 @@ int mf_close(mf_handle_t mf) {
         write_log_to_file(Error,"mf_close: deinitialization of chunk pool failed!\n");
 		return res_code;
 	}
+    write_log_to_file(Info,"mf_close: finished!\n\n\n");
     logger_deinit();
-    write_log_to_file(Info,"mf_close: finished!\n");
 	return 0;
 }
 
@@ -222,7 +222,8 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
 		}
         chunk_ptr = take_value_ptr(ch_pool -> h_table, index, length);
 	}
-    memcpy((void*)((chunk_ptr -> data) + offset - (chunk_ptr -> index) * get_chunk_size(1)), buf, count);
+    memcpy((void*)((char*)(chunk_ptr -> data) + offset - (chunk_ptr -> index) * get_chunk_size(1)), buf, count);
 	return count;
 }
+
 

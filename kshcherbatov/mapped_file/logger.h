@@ -14,8 +14,8 @@ enum LOGLEVEL_TYPES {
     LOGLEVEL_FATAL
 };
 
-
-/*#ifndef DEBUG
+/*
+#ifndef DEBUG
     #define DEBUG LOGLEVEL_UNUSED
 #endif
 */

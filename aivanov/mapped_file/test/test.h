@@ -1,6 +1,6 @@
 #include <sys/time.h>
-#include <cstdlib>
-#include <cstring>
+#include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 
 long long time_ms()
@@ -26,4 +26,4 @@ do														\
 	}													\
 } while (0)
 
-#define lrand() (size_t(rand()) * RAND_MAX * RAND_MAX + size_t(rand()) * RAND_MAX + size_t(rand()))
+#define lrand() (((size_t)rand()) * RAND_MAX * RAND_MAX + ((size_t) rand()) * RAND_MAX + ((size_t) rand()))
