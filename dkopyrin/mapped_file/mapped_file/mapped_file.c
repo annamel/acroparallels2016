@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+//#include <linux/inotify.h>
 
 #define COLOR(x) "\x1B[36m"x"\x1B[0m"
 #define LOGCOLOR(x) COLOR("%s: ")x, __func__
@@ -71,10 +72,11 @@ int mf_close(mf_handle_t mf){
 
 ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset){
 	struct _mf * _mf = (struct _mf *) mf;
+	//mf_file_size(mf);
 
 	LOG(INFO, "mf_read called to read %d bytes by offt %d\n", size, offset);
-	if (_mf -> size < offset)
-		return 0;
+	//if (_mf -> size < offset)
+	//	return 0;
 	size = MIN(size, _mf -> size - offset);
 
   	if (_mf -> size <= offset)
@@ -85,7 +87,7 @@ ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset){
 	if (ch){
 		size_t ch_size = ch -> length;
 		ch_offset = ch -> offset;
-		LOG(DEBUG, "Got prev chunk of size %d\n", ch_size);
+		LOG(DEBUG, "Got prev chunk of size %ld\n", ch_size);
 		if (ch_offset <= offset && offset < ch_offset + ch_size){
 			ch_offset = offset - ch_offset;
 			size_t av_chunk_size = ch_size - ch_offset;
@@ -119,6 +121,8 @@ ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset){
 }
 
 ssize_t mf_write(mf_handle_t mf, const void *buf, size_t size, off_t offset){
+	//mf_file_size(mf);
+
 	struct _mf * _mf = (struct _mf *) mf;
   	LOG(INFO, "mf_write called\n");
 	struct chunk *ch = NULL;
@@ -151,6 +155,8 @@ ssize_t mf_write(mf_handle_t mf, const void *buf, size_t size, off_t offset){
 }
 
 void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle){
+	//mf_file_size(mf);
+
 	LOG(INFO, "mf_map called with %d\n", sizeof(long int));
 
 	struct _mf * _mf = (struct _mf *) mf;
@@ -183,5 +189,10 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle){
 ssize_t mf_file_size(mf_handle_t mf){
 	LOG(INFO, "mf_file_size called\n");
 
-	return ((struct _mf *)mf) -> size;
+	struct stat st;
+	struct _mf *_mf = (struct _mf *) mf;
+	if (fstat(_mf -> fd, &st) == 0)
+		_mf -> size = st.st_size;
+
+	return _mf -> size;
 }
