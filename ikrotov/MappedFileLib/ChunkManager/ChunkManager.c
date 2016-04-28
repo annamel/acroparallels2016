@@ -19,7 +19,7 @@ chunk_t* chunk_init(off_t index, off_t len, chunk_pool_t* cpool){
     chunk_t* chunk;
     if(cpool->free_chunks->size == 0) {
         if(cpool->zero_chunks->size == 0) {
-            cpool->loafs = realloc(cpool->loafs, (cpool->loafs_count+1)*sizeof(chunk_t*));
+            cpool->loafs = (chunk_t**)realloc(cpool->loafs, (cpool->loafs_count+1)*sizeof(chunk_t*));
             if(!cpool->loafs) {
                 //log_write(ERROR, "chunk_init: cannot reallocate memory);
                 return NULL;
