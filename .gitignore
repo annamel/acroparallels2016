@@ -1,2 +1,3 @@
 *.o
-tester/test_result
+tester/test_result.txt
+tester/test_results.html

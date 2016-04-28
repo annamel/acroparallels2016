@@ -32,7 +32,7 @@
 
 # Exit if any following command exits with a non-zero status.
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-test_res_file="$PWD/test_result"
+test_res_file="$PWD/test_result.txt"
 rm -rf $test_res_file
 
 set -e
