@@ -17,7 +17,7 @@ $ ./tester.sh
 
  Test files are build automatically and sources are expected to be at `$USERNAME/mapped_file/test/`.
 
- Library and test directories can be specified by setting the __ROOT_LIB_DIR__ and __ROOT_TEST_DIR__ variables. By default this script will test all libraries and use all tests. Your library is expected to be built as libmappedfile.a at ./out
+ Library and test directories can be specified by setting the __ROOT_LIB_DIR__ and __ROOT_TEST_DIR__ variables. By default this script will test all libraries and use all tests. Your library is expected to be built as libmappedfile.a at ./out and conform /include/mapped_file.h
 
  Example:
  ```bash
