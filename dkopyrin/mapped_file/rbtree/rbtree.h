@@ -32,7 +32,7 @@ rbtree_t *rbtree_create(int (*Compare)(const void *, const void *),
 		void (*freeNode)(void *),
 		int replace_flag);
 
-int rbtree_insert(rbtree_t *tree, void *Data);
+rbnode_t* rbtree_insert(rbtree_t *tree, void *Data);
 void rbtree_delete(rbtree_t *tree, rbnode_t *Z);
 int rbtree_deletebydata(rbtree_t *tree, const void *data);
 rbnode_t *rbtree_find(rbtree_t *tree, const void *Data);

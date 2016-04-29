@@ -116,8 +116,8 @@ ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t off
 			break;
 		size -= read_size;
 	}
-	return read_bytes;
 	*prev_ch = ch;
+	return read_bytes;
 }
 
 ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset){

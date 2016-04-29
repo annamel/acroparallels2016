@@ -2,10 +2,12 @@
 #define __CHUNK_H_
 
 #include <stdlib.h>
+#include "../rbtree/rbtree.h"
 
 struct chunk {
 	int state;
 	void * addr;
+	rbnode_t *rbnode;
 	size_t length;
 	off_t offset;
 	int ref_cnt;

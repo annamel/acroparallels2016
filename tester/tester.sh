@@ -114,7 +114,6 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo "    done" >> $test_file
 				echo '    (>&3 echo ${resarr[*]})' >> $test_file
 				echo '    (>&4 echo ${resarr[*]})' >> $test_file
-				#echo '    (>&3 echo "")' >> $test_file
 				echo '    (>&4 echo "")' >> $test_file
 				echo "}" >> $test_file
 				echo "" >> $test_file

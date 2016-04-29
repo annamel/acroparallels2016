@@ -7,7 +7,7 @@
 #define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
 
 #define POOL_SIZE 1024
-#define MIN_CHUNK_SIZE 1024LL*4096LL
+#define MIN_CHUNK_SIZE 4LL*1024LL*1024LL
 #define CHUNK_MASK ~(MIN_CHUNK_SIZE-1)
 
 struct chunk_manager {

@@ -209,7 +209,7 @@ static void InsertFixup(rbtree_t *tree, rbnode_t *X)
 /*
  *	Insert an element into the tree.
  */
-int rbtree_insert(rbtree_t *tree, void *Data)
+rbnode_t* rbtree_insert(rbtree_t *tree, void *Data)
 {
 	rbnode_t *Current, *Parent, *X;
 
@@ -232,7 +232,7 @@ int rbtree_insert(rbtree_t *tree, void *Data)
 			 *	Don't replace the entry.
 			 */
 			if (tree->replace_flag == 0) {
-				return 0;
+				return Current;
 			}
 
 			/*
@@ -240,7 +240,7 @@ int rbtree_insert(rbtree_t *tree, void *Data)
 			 */
 			if (tree->freeNode) tree->freeNode(Current->Data);
 			Current->Data = Data;
-			return 1;
+			return Current;
 		}
 
 		Parent = Current;
@@ -272,7 +272,7 @@ int rbtree_insert(rbtree_t *tree, void *Data)
 
 	tree->num_elements++;
 
-	return 1;
+	return X;
 }
 
 static void DeleteFixup(rbtree_t *tree, rbnode_t *X, rbnode_t *Parent)

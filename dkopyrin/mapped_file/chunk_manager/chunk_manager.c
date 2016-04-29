@@ -19,6 +19,10 @@ int chunk_cmp(const void *l, const void *r){
 	     - (off_t)(((struct chunk *)r) -> offset);
 }
 
+void chunk_free_node(void *ptr){
+	((struct chunk *) ptr) -> rbnode = NULL;
+}
+
 int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
 	page_mask = ~(sysconf(_SC_PAGESIZE) - 1);
 	page_size = sysconf(_SC_PAGESIZE);
@@ -37,7 +41,7 @@ int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
 	LOG(INFO, "prot: %d, %d %d\n", prot, PROT_READ, PROT_WRITE);
 	cm -> prot = prot;
 	cm -> cur_chunk_index = 0;
-	cm -> rbtree = rbtree_create(chunk_cmp, NULL, 1);
+	cm -> rbtree = rbtree_create(chunk_cmp, chunk_free_node, 1);
 	return 0;
 }
 
@@ -71,10 +75,12 @@ struct chunk *chunk_manager_get_av_chunk_index (struct chunk_manager *cm){
 			LOG(DEBUG, "Unused chunk %d returned\n", (cm -> cur_chunk_index - 1) % POOL_SIZE);
 			return cur_ch;
 		}else{
-			LOG(DEBUG, "Refirbished chunk %d returned\n", (cm -> cur_chunk_index - 1) % POOL_SIZE);
-			rbtree_deletebydata(cm -> rbtree, cur_ch);
-			LOG(DEBUG, "Current size of rbtree is %d\n", rbtree_num_elements(cm -> rbtree));
-		  	if (cur_ch -> ref_cnt == 0){
+			if (cur_ch -> ref_cnt == 0){
+				LOG(DEBUG, "Refirbished chunk %d returned, cleaning\n", (cm -> cur_chunk_index - 1) % POOL_SIZE);
+				if (cur_ch -> rbnode)
+					rbtree_delete(cm -> rbtree, cur_ch -> rbnode);
+				LOG(DEBUG, "Current size of rbtree is %d\n", rbtree_num_elements(cm -> rbtree));
+
 				chunk_finalize(cur_ch);
 				return cur_ch;
 			}
@@ -103,11 +109,11 @@ long int chunk_manager_offset2chunk (struct chunk_manager *cm, off_t offset, siz
 		if (new_chunk == NULL)
 			return -1;
 
-		chunk_init (new_chunk, MAX(MIN_CHUNK_SIZE, plength), poffset, cm -> prot, cm -> fd);
+		chunk_init (new_chunk, plength, poffset, cm -> prot, cm -> fd);
 
 		size_t new_chunk_length = new_chunk -> length;
 	  	LOG(DEBUG, "Adding offset %d to rbtree\n", new_chunk -> offset);
-		rbtree_insert(cm -> rbtree, new_chunk);
+		new_chunk -> rbnode = rbtree_insert(cm -> rbtree, new_chunk);
 		*ret_ch = new_chunk;
 		*chunk_offset = offset - new_chunk -> offset;
 		return new_chunk_length - offset + new_chunk -> offset;
