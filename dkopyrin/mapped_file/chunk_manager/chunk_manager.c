@@ -11,6 +11,8 @@
 #define MIN(x,y) ((x < y) ? x: y)
 
 struct chunk search_chunk = {0, NULL, 0, 0, 0};
+size_t page_mask;
+size_t page_size;
 
 int chunk_cmp(const void *l, const void *r){
 	return (off_t)(((struct chunk *)l) -> offset)
@@ -18,6 +20,9 @@ int chunk_cmp(const void *l, const void *r){
 }
 
 int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
+	page_mask = ~(sysconf(_SC_PAGESIZE) - 1);
+	page_size = sysconf(_SC_PAGESIZE);
+
 	LOG(INFO, "chunk_manager_init called\n");
 	cm -> fd = fd;
 	int i;
@@ -81,9 +86,8 @@ struct chunk *chunk_manager_get_av_chunk_index (struct chunk_manager *cm){
 
 long int chunk_manager_offset2chunk (struct chunk_manager *cm, off_t offset, size_t length, struct chunk ** ret_ch, off_t *chunk_offset, int remap) {
 	LOG(INFO, "offset2chunk called\n");
-	off_t poffset = offset & ~(sysconf(_SC_PAGE_SIZE) - 1);
-	size_t plength = ((offset + length) & ~(sysconf(_SC_PAGE_SIZE) - 1)) +
-		sysconf(_SC_PAGE_SIZE) - poffset;
+	off_t poffset = offset & page_mask;
+	size_t plength = ((offset + length) & page_mask) + page_size - poffset;
 
 	search_chunk.offset = poffset;
 	struct chunk *cur_ch = (struct chunk *)rbtree_finddata(cm -> rbtree, &search_chunk);

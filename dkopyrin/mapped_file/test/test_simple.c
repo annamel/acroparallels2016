@@ -57,24 +57,4 @@ int main(int argc, char *argv[]){
 	close(file2);
 	free(buf1);
 	free(buf2);
-
-
-
-	if (argc < 3) {
-		printf("Write isage: %s filename_in filename_out\n", argv[0]);
-		return 0;
-	}
-	LOG(DEBUG, "---Write\n");
-	struct mf *f1 = mf_open(argv[1]);
-	struct mf *f2 = mf_open(argv[2]);
-
-  	void *buf = malloc(20000);
-
-	LOG(DEBUG, "---Write 1\n");
-	memset(buf, 0, 20000);
-	int rb = mf_read (f1, buf, 20000, 0);
-	mf_write(f2, buf, rb, 0);
-	mf_close(f1);
-	mf_close(f2);
-	free(buf);
 }

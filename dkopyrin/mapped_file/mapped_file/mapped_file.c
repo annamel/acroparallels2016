@@ -70,18 +70,19 @@ int mf_close(mf_handle_t mf){
 	return 0;
 }
 
-ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset){
-	struct _mf * _mf = (struct _mf *) mf;
-	//mf_file_size(mf);
 
-	LOG(INFO, "mf_read called to read %d bytes by offt %d\n", size, offset);
-	//if (_mf -> size < offset)
-	//	return 0;
-	size = MIN(size, _mf -> size - offset);
+void mf_read_itfunc(struct chunk *ch, size_t ch_size, off_t ch_offset, void *buf){
+	chunk_cpy_c2b(buf, ch, ch_size, ch_offset);
+}
 
-  	if (_mf -> size <= offset)
-		offset = _mf -> size;
-	struct chunk *ch = _mf -> prev_ch;
+void mf_write_itfunc(struct chunk *ch, size_t ch_size, off_t ch_offset, void *buf){
+	chunk_cpy_b2c(ch, buf, ch_size, ch_offset);
+}
+
+
+ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t offset,
+		    size_t size, void *buf, void (*itfunc)(struct chunk *, size_t, off_t, void *)){
+	struct chunk *ch = *prev_ch;
 	off_t ch_offset = 0;
 	ssize_t read_bytes = 0;
 	if (ch){
@@ -93,7 +94,7 @@ ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset){
 			size_t av_chunk_size = ch_size - ch_offset;
 			LOG(DEBUG, "Using chunk prev chunk of av_size %d\n", av_chunk_size);
 			size_t read_size = MIN(av_chunk_size, size);
-			chunk_cpy_c2b(buf, ch, read_size, ch_offset);
+			itfunc(ch, read_size, ch_offset, buf);
 			buf += read_size;
 			offset += read_size;
 			read_bytes += read_size;
@@ -103,10 +104,10 @@ ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset){
 	}
 
 	while (size > 0) {
-		size_t av_chunk_size = chunk_manager_offset2chunk(&_mf -> cm, offset, size, &ch, &ch_offset, 0);
+		size_t av_chunk_size = chunk_manager_offset2chunk(cm, offset, size, &ch, &ch_offset, 0);
 		LOG(DEBUG, "Got chunk of size %d\n", av_chunk_size);
 		size_t read_size = MIN(av_chunk_size, size);
-		chunk_cpy_c2b(buf, ch, read_size, ch_offset);
+	  	itfunc(ch, read_size, ch_offset, buf);
 		buf += read_size;
 		offset += read_size;
 		read_bytes += read_size;
@@ -115,9 +116,18 @@ ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset){
 			break;
 		size -= read_size;
 	}
-	_mf -> prev_ch = ch;
-	LOG(DEBUG, "End offset is %d\n", offset);
 	return read_bytes;
+	*prev_ch = ch;
+}
+
+ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset){
+	struct _mf * _mf = (struct _mf *) mf;
+	LOG(INFO, "mf_read called to read %d bytes by offt %d\n", size, offset);
+	size = MIN(size, _mf -> size - offset);
+
+  	if (_mf -> size <= offset)
+		offset = _mf -> size;
+	return mf_iterator(&_mf -> cm, &_mf -> prev_ch, offset, size, buf, mf_read_itfunc);
 }
 
 ssize_t mf_write(mf_handle_t mf, const void *buf, size_t size, off_t offset){
@@ -125,35 +135,7 @@ ssize_t mf_write(mf_handle_t mf, const void *buf, size_t size, off_t offset){
 
 	struct _mf * _mf = (struct _mf *) mf;
   	LOG(INFO, "mf_write called\n");
-	struct chunk *ch = NULL;
-	off_t ch_offset = 0;
-	ssize_t write_bytes = 0;
-	while (size > 0) {
-		size_t av_chunk_size = chunk_manager_offset2chunk(&_mf -> cm, offset, size, &ch, &ch_offset, 0);
-		LOG(DEBUG, "Got chunk of size %d\n", av_chunk_size);
-	  	size_t write_size = MIN(av_chunk_size, size);
-		LOG(DEBUG, "Stretching file to %d\n", offset + write_size);
-		if (offset + write_size > _mf -> size)
-			_mf -> size = offset + write_size;
-		if (lseek(_mf -> fd, offset + write_size - 1, SEEK_SET) == -1) {
-        		LOG(ERROR, "Failed file stretch - lseek\n");
-			return write_bytes;
-		}
-		if (write(_mf -> fd, "", 1) == -1){
-			LOG(ERROR, "Failed file stretch - write\n");
-        		return write_bytes;
-		}
-
-		chunk_cpy_b2c(ch, buf, write_size, ch_offset);
-		offset += write_size;
-		write_bytes += write_size;
-
-		if (size <= av_chunk_size)
-			break;
-		size -= write_bytes;
-	}
-	LOG(DEBUG, "End offset is %d\n", offset);
-	return write_bytes;
+	return mf_iterator(&_mf -> cm, &_mf -> prev_ch, offset, size, (void *)buf, mf_write_itfunc);
 }
 
 void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle){
@@ -191,10 +173,6 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle){
 ssize_t mf_file_size(mf_handle_t mf){
 	LOG(INFO, "mf_file_size called\n");
 
-	struct stat st;
-	struct _mf *_mf = (struct _mf *) mf;
-	if (fstat(_mf -> fd, &st) == 0)
-		_mf -> size = st.st_size;
-
+	struct _mf * _mf = (struct _mf *) mf;
 	return _mf -> size;
 }
