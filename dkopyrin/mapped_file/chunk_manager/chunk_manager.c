@@ -86,15 +86,18 @@ struct chunk *chunk_manager_get_av_chunk_index (struct chunk_manager *cm){
 
 long int chunk_manager_offset2chunk (struct chunk_manager *cm, off_t offset, size_t length, struct chunk ** ret_ch, off_t *chunk_offset, int remap) {
 	LOG(INFO, "offset2chunk called\n");
-	off_t poffset = offset & page_mask;
-	size_t plength = ((offset + length) & page_mask) + page_size - poffset;
+	off_t poffset = offset & CHUNK_MASK;
+	size_t plength = ((offset + length) & CHUNK_MASK) + MIN_CHUNK_SIZE - poffset;
 
 	search_chunk.offset = poffset;
 	struct chunk *cur_ch = (struct chunk *)rbtree_finddata(cm -> rbtree, &search_chunk);
 
+	//off_t relative_offset = offset - cur_ch -> offset;
+	//ssize_t relative_length = length - cur_ch -> offset;
 	if (cur_ch != NULL) LOG(DEBUG, "Closest chunk is offset %d, size %d\n", cur_ch -> offset, cur_ch -> length);
-	if (cur_ch == NULL || cur_ch -> length < offset - cur_ch -> offset ||
-	   (remap && cur_ch -> length - offset + cur_ch -> offset < length)) {
+	if (cur_ch == NULL ||
+	    cur_ch -> length < offset - cur_ch -> offset ||
+	    cur_ch -> length < length - cur_ch -> offset ) {
 		LOG(DEBUG, "No chunk found - making new one of size %d\n", MAX(MIN_CHUNK_SIZE, plength));
 		struct chunk *new_chunk = chunk_manager_get_av_chunk_index(cm);
 		if (new_chunk == NULL)

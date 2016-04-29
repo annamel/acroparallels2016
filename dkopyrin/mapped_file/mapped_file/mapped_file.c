@@ -104,7 +104,7 @@ ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t off
 	}
 
 	while (size > 0) {
-		size_t av_chunk_size = chunk_manager_offset2chunk(cm, offset, size, &ch, &ch_offset, 0);
+		size_t av_chunk_size = chunk_manager_offset2chunk(cm, offset, size, &ch, &ch_offset, 1);
 		LOG(DEBUG, "Got chunk of size %d\n", av_chunk_size);
 		size_t read_size = MIN(av_chunk_size, size);
 	  	itfunc(ch, read_size, ch_offset, buf);
