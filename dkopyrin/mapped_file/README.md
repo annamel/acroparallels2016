@@ -37,14 +37,21 @@ Clearly rbtree gives the smallest chunk on the top rather then the one that is n
 That is why rbtree might fail in this case but as map is lazy we still might use this
 approach if chunk beginning and chunk endings are aligned by fixed minimum chunk size.
 
-More finicky way to solve this problem is to use interval trees that are able to give
+More finicky way to solve this problem is to use __interval trees__ that are able to give
 interval without errors at logarithmic time as well as the simple way but does not have the problem
 stated above. This library use simple approach as it is significantly faster
-(constant of time usage and memory usage is nearly 3 times bigger).
+(constant of time usage and memory usage of interval tree is nearly 3 times higher).
 
 # Improve insert speed on eviction
 
 As this library use simple approach it is easy to improve insert speed if we know
 offset of chunk in rbtree but its size is too small. Both of this criteria are
 correct for __chunk_manager_gen_chunk__ function so we just save found chunk and its node
-in rbtree and update its value with new bigger chunk (see __test_stairs.c__).
+in rbtree and update its value with new bigger chunk (see __test_stairs.c__) that takes O(1)
+instead of O(log n)
+
+# Improve lookup speed by caching
+
+If one use any profiling tool on __test_ladder.c__(generating contigous intersecting maps) one will 
+see that hotspot is rbtree lookup. As scenario of contigous read is common storing last
+used chunk might save from rbtree lookup that takes O(1) unlike lookup O(log n) 
