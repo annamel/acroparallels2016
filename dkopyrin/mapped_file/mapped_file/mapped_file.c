@@ -47,7 +47,7 @@ mf_handle_t mf_open(const char *pathname){
 	if (sysinfo(&info) == 0) {
 		off_t tmp;
 		struct chunk *ch = NULL;
-		chunk_manager_offset2chunk(&mf -> cm, 0, info.freeram / 2, &ch, &tmp, 0);
+		chunk_manager_gen_chunk(&mf -> cm, 0, info.freeram / 2, &ch, &tmp);
 		mf -> prev_ch = ch;
 	}
 	return (mf_handle_t) mf;
@@ -80,13 +80,13 @@ void mf_write_itfunc(struct chunk *ch, size_t ch_size, off_t ch_offset, void *bu
 
 
 ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t offset,
-	             size_t size, void *buf, void (*itfunc)(struct chunk *, size_t, off_t, void *)){
-	struct chunk *ch = NULL;
-	off_t ch_offset = 0;
+                    size_t size, void *buf, void (*itfunc)(struct chunk *, size_t, off_t, void *)){
+	struct chunk *ch = *prev_ch;
 	ssize_t read_bytes = 0;
+
 	if (ch){
 		size_t ch_size = ch -> length;
-		ch_offset = ch -> offset;
+		off_t ch_offset = ch -> offset;
 		LOG(DEBUG, "Got prev chunk of size %ld\n", ch_size);
 		if (ch_offset <= offset && offset < ch_offset + ch_size){
 			ch_offset = offset - ch_offset;
@@ -101,20 +101,17 @@ ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t off
 			size -= read_size;
 		}
 	}
+	if (size <= 0)
+		return read_bytes;
 
-	while (size > 0) {
-		size_t av_chunk_size = chunk_manager_offset2chunk(cm, offset, size, &ch, &ch_offset, 1);
-		LOG(DEBUG, "Got chunk of size %d\n", av_chunk_size);
-		size_t read_size = MIN(av_chunk_size, size);
-	  	itfunc(ch, read_size, ch_offset, buf);
-		buf += read_size;
-		offset += read_size;
-		read_bytes += read_size;
+	off_t ch_offset = 0;
+	size_t av_chunk_size = chunk_manager_gen_chunk(cm, offset, size, &ch, &ch_offset);
+	LOG(DEBUG, "Got chunk of size %d\n", av_chunk_size);
+	size_t read_size = MIN(av_chunk_size, size);
+	itfunc(ch, read_size, ch_offset, buf);
+	read_bytes += read_size;
 
-		if (size <= read_size)
-			break;
-		size -= read_size;
-	}
+	size -= read_size;
 	*prev_ch = ch;
 	return read_bytes;
 }
@@ -148,7 +145,7 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
   	if (ch && ch -> offset <= offset && offset < ch -> offset + ch -> length){
 		ch_offset = offset - ch -> offset;
 	}else{
-		size_t av_chunk_size = chunk_manager_offset2chunk(&_mf -> cm, offset, size, &ch, &ch_offset, 1);
+		size_t av_chunk_size = chunk_manager_gen_chunk(&_mf -> cm, offset, size, &ch, &ch_offset);
 		if (av_chunk_size == -1)
 			return NULL;
 	}

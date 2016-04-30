@@ -13,7 +13,7 @@ struct chunk {
 	int ref_cnt;
 };
 
-int chunk_init (struct chunk *ch, size_t length, off_t offset, int prot, int fd);
+int chunk_init (struct chunk *ch, size_t length, off_t offset, int fd);
 int chunk_init_unused (struct chunk *ch);
 int chunk_finalize (struct chunk *ch);
 

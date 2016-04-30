@@ -17,12 +17,12 @@ int chunk_init_unused (struct chunk *ch) {
 	return 0;
 }
 
-int chunk_init (struct chunk *ch, size_t length, off_t offset, int prot, int fd){
+int chunk_init (struct chunk *ch, size_t length, off_t offset, int fd){
 	LOG(INFO, "Chunk init called\n");
 	assert(ch);
 #ifdef MEMORY_DEBUG
 	LOG(DEBUG, "Creating wrap\n", strerror(errno));
-	void *wrap = mmap(NULL, length + 2 * sysconf(_SC_PAGESIZE), prot,
+	void *wrap = mmap(NULL, length + 2 * sysconf(_SC_PAGESIZE), PROT_READ | PROT_WRITE,
 			  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 	if (wrap == MAP_FAILED) {
 		LOG(ERROR, "Can't mmap wrap, %s\n", strerror(errno));
@@ -36,7 +36,7 @@ int chunk_init (struct chunk *ch, size_t length, off_t offset, int prot, int fd)
 		return -1;
 	}
 #else
-	ch -> addr = mmap(NULL, length, prot, MAP_SHARED, fd, offset);
+	ch -> addr = mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
 	if (ch -> addr == MAP_FAILED) {
 		LOG(ERROR, "Can't mmap file in chunk, %s\n", strerror(errno));
 		return -1;
