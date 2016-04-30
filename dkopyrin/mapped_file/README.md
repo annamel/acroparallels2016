@@ -28,8 +28,11 @@ However such simple approach might give wrong results. Let's head to __test_pyra
 
 In this test "pyramid" construction is built of chunks:
        CCCCC
+
    CCCCCCCCCCCCC           |
+
  CCCCCCCCCCCCCCCCCCCCCCCC  V
+
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
 Clearly rbtree gives the smallest chunk on the top rather then the one that is needed.
