@@ -52,6 +52,7 @@ int chunk_manager_finalize (struct chunk_manager *cm){
 
 struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 	LOG(INFO, "chunk_manager_get_av_chunk_from_pool called\n");
+	assert(cm);
 	int end_index = (cm -> cur_chunk_index - 1) & (POOL_SIZE - 1);
 	//FIFO algorithm
 	for (cm -> cur_chunk_index = 0; cm -> cur_chunk_index < end_index; cm -> cur_chunk_index++){
@@ -77,6 +78,9 @@ struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 
 long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t length, struct chunk ** ret_ch, off_t *chunk_offset) {
 	LOG(INFO, "offset2chunk called\n");
+	assert(cm);
+	assert(ret_ch);
+	assert(chunk_offset);
 	//All chunks are aligned by CHUNK_MASK to improve search perfomance
 	off_t poffset = offset & CHUNK_MASK;
 	size_t plength = ((offset + length) & CHUNK_MASK) + MIN_CHUNK_SIZE - poffset;

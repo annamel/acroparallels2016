@@ -55,6 +55,7 @@ int chunk_init (struct chunk *ch, size_t length, off_t offset, int fd){
 
 int chunk_finalize (struct chunk *ch) {
 	LOG(INFO, "Chunk finalize called\n");
+	assert(ch);
 
 #ifdef MEMORY_DEBUG
 	if (munmap(ch -> addr  - sysconf(_SC_PAGESIZE), ch -> length  + 2*sysconf(_SC_PAGESIZE))) {
@@ -77,5 +78,5 @@ void *chunk_cpy_c2b(void *buf, struct chunk *ch, size_t num, off_t offset){
 }
 void *chunk_cpy_b2c(struct chunk *ch, const void *buf, size_t num, off_t offset){
 	LOG(DEBUG, "b2c by offset %d %d bytes\n", offset, num);
-  	return memcpy(ch -> addr + offset, buf, num);
+	return memcpy(ch -> addr + offset, buf, num);
 }

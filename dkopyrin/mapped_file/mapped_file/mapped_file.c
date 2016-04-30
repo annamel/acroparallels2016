@@ -84,12 +84,18 @@ ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t off
 	struct chunk *ch = *prev_ch;
 	ssize_t read_bytes = 0;
 
+	//This if tries to use chunk from previous iters: prev_ch
 	if (ch){
 		size_t ch_size = ch -> length;
 		off_t ch_offset = ch -> offset;
 		LOG(DEBUG, "Got prev chunk of size %ld\n", ch_size);
+		//Check if prev chunk is good for this task: offset lays in chunk
 		if (ch_offset <= offset && offset < ch_offset + ch_size){
 			ch_offset = offset - ch_offset;
+			/* If we use chunk not from beginning but from relative offset
+			 * then we only can read av_chunk_size. We believe, that
+			 * itfunc actually read from chunk
+			 */
 			size_t av_chunk_size = ch_size - ch_offset;
 			LOG(DEBUG, "Using chunk prev chunk of av_size %d\n", av_chunk_size);
 			size_t read_size = MIN(av_chunk_size, size);
@@ -104,6 +110,7 @@ ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t off
 	if (size <= 0)
 		return read_bytes;
 
+	//Nearly the same approach is used here for getting new chunk
 	off_t ch_offset = 0;
 	size_t av_chunk_size = chunk_manager_gen_chunk(cm, offset, size, &ch, &ch_offset);
 	LOG(DEBUG, "Got chunk of size %d\n", av_chunk_size);
@@ -111,52 +118,61 @@ ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t off
 	itfunc(ch, read_size, ch_offset, buf);
 	read_bytes += read_size;
 
-	size -= read_size;
+	//After iterations set new prev chunk
 	*prev_ch = ch;
 	return read_bytes;
 }
 
 ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset){
-	struct _mf * _mf = (struct _mf *) mf;
 	LOG(INFO, "mf_read called to read %d bytes by offt %d\n", size, offset);
-	size = MIN(size, _mf -> size - offset);
+	assert(mf); assert(buf);
+	struct _mf * _mf = (struct _mf *) mf;
 
+	size = MIN(size, _mf -> size - offset);
   	if (_mf -> size <= offset)
-		offset = _mf -> size;
+		return 0;
 	return mf_iterator(&_mf -> cm, &_mf -> prev_ch, offset, size, buf, mf_read_itfunc);
 }
 
 ssize_t mf_write(mf_handle_t mf, const void *buf, size_t size, off_t offset){
+	LOG(INFO, "mf_write called\n");
+	assert(mf); assert(buf);
 	struct _mf * _mf = (struct _mf *) mf;
-  	LOG(INFO, "mf_write called\n");
 	return mf_iterator(&_mf -> cm, &_mf -> prev_ch, offset, size, (void *)buf, mf_write_itfunc);
 }
 
 void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle){
 	LOG(INFO, "mf_map called with %d\n", sizeof(long int));
+	assert(mf); assert(mapmem_handle);
 
 	struct _mf * _mf = (struct _mf *) mf;
 	if (offset + size > _mf -> size){
 		errno = EINVAL;
 		return NULL;
 	}
+	//Map works nearly the same as r/w: firstly we try prev_ch
   	struct chunk *ch = _mf -> prev_ch;
 	off_t ch_offset = 0;
   	if (ch && ch -> offset <= offset && offset < ch -> offset + ch -> length){
+		//Chunk is OK, we have to set relative chunk offset
 		ch_offset = offset - ch -> offset;
 	}else{
+		//Elsewhere we generate a new one
 		size_t av_chunk_size = chunk_manager_gen_chunk(&_mf -> cm, offset, size, &ch, &ch_offset);
 		if (av_chunk_size == -1)
 			return NULL;
 	}
 
 	ch -> ref_cnt++;
+	// We use chunk as mapmem handle because we only need to decrease ref_cnt
+	// when unmap is called
 	*mapmem_handle = ch;
 	return ch -> addr + ch_offset;
 }
 
 int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle){
 	LOG(INFO, "mf_unmap called\n");
+	assert(mf); assert(mapmem_handle);
 
 	((struct chunk *)mapmem_handle) -> ref_cnt--;
 	return 0;
@@ -164,7 +180,9 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle){
 
 ssize_t mf_file_size(mf_handle_t mf){
 	LOG(INFO, "mf_file_size called\n");
+	assert(mf);
 
 	struct _mf * _mf = (struct _mf *) mf;
+	//We believe that filesize is not changed during program flow
 	return _mf -> size;
 }
