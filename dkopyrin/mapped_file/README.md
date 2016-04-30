@@ -35,7 +35,7 @@ In this test "pyramid" construction is built of chunks:
 
 Clearly rbtree gives the smallest chunk on the top rather then the one that is needed.
 That is why rbtree might fail in this case but as map is lazy we still might use this
-approach if chunk beginning and chunk endings are aligned by chunk size.
+approach if chunk beginning and chunk endings are aligned by fixed minimum chunk size.
 
 More finicky way to solve this problem is to use interval trees that are able to give
 interval without errors at logarithmic time as well as the simple way but does not have the problem
