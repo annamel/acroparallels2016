@@ -27,12 +27,10 @@ start endpoint of each interval and finding the closest startpoint to given poin
 However such simple approach might give wrong results. Let's head to __test_pyramid.c__
 
 In this test "pyramid" construction is built of chunks:
-               CCCCC
- 
+
+               CCCCC 
             CCCCCCCCCCCCC           |
-
           CCCCCCCCCCCCCCCCCCCCCCCC  V
-
         CCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
 Clearly rbtree gives the smallest chunk on the top rather then the one that is needed.
