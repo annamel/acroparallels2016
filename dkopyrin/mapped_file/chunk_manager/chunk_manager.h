@@ -13,7 +13,7 @@ struct chunk_manager {
 	int fd;
 	struct chunk chunk_pool[POOL_SIZE];
 	struct rbtree_t *rbtree;
-	int cur_chunk_index: LOG_POOL_SIZE;
+	unsigned cur_chunk_index: LOG_POOL_SIZE;
 };
 
 int chunk_manager_init (struct chunk_manager *cm, int fd, int mode);

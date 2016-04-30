@@ -54,9 +54,10 @@ int chunk_manager_finalize (struct chunk_manager *cm){
 struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 	LOG(INFO, "chunk_manager_get_av_chunk_from_pool called\n");
 	assert(cm);
-	int end_index = (cm -> cur_chunk_index - 1) & (POOL_SIZE - 1);
-	//FIFO algorithm
-	for (cm -> cur_chunk_index = 0; cm -> cur_chunk_index < end_index; cm -> cur_chunk_index++){
+	unsigned end_index = (cm -> cur_chunk_index - 1) & (POOL_SIZE - 1);
+       LOG(INFO, "end is %d, cur is %d\n", end_index, cm -> cur_chunk_index);
+       //FIFO algorithm
+	for (; cm -> cur_chunk_index != end_index; cm -> cur_chunk_index++){
 		struct chunk *cur_ch = cm -> chunk_pool + cm -> cur_chunk_index;
 		//By default ref_cnt == -1 is unused chunk
 		LOG(DEBUG, "Trying %d chunk\n", cm -> cur_chunk_index);
