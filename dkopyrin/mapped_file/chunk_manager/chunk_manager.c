@@ -113,8 +113,12 @@ long int chunk_manager_offset2chunk (struct chunk_manager *cm, off_t offset, siz
 
 		size_t new_chunk_length = new_chunk -> length;
 	  	LOG(DEBUG, "Adding offset %d to rbtree\n", new_chunk -> offset);
-		//TODO: you should not always do insert for O(log n). Sometimes it is possible to do it in O(1)
-		new_chunk -> rbnode = rbtree_insert(cm -> rbtree, new_chunk);
+		if (cur_ch && cur_ch -> offset == new_chunk -> offset && cur_ch -> rbnode){
+			cur_ch -> rbnode -> Data = new_chunk;
+			cur_ch -> rbnode = NULL;
+		}else{
+			new_chunk -> rbnode = rbtree_insert(cm -> rbtree, new_chunk);
+		}
 		*ret_ch = new_chunk;
 		*chunk_offset = offset - new_chunk -> offset;
 		return new_chunk_length - offset + new_chunk -> offset;
