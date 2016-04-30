@@ -54,3 +54,7 @@ instead of O(log n)
 If one use any profiling tool on __test_ladder.c__(generating continuous intersecting maps) one will 
 see that hotspot is rbtree lookup. As scenario of continuous read is common storing last
 used chunk might save from rbtree lookup that takes O(1) unlike lookup O(log n).
+
+# References
+
+rbtree - Copyright 2004 The FreeRADIUS server project
