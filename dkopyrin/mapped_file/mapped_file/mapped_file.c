@@ -13,8 +13,8 @@
 
 struct _mf {
 	int fd;
-	struct chunk_manager cm;
 	size_t size;
+	struct chunk_manager cm;
 	struct chunk *prev_ch;
 };
 

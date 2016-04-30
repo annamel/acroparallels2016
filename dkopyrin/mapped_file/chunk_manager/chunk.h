@@ -5,7 +5,6 @@
 #include "../rbtree/rbtree.h"
 
 struct chunk {
-	int state;
 	void * addr;
 	rbnode_t *rbnode;
 	size_t length;

@@ -15,8 +15,10 @@ SAVEIFS=$IFS
 IFS=$(echo -en ";\n\b")
 LDFLAGS=$LDFLAGS\ "-lmappedfile -lm -lrt -lpthread"
 UNAME=$(uname)
+CFLAGS=$CFLAGS\ "-std=gnu11"
 if [ $UNAME == "Darwin" ]; then
 	CFLAGS=$CFLAGS\ -DNORT
+	CXXFLAGS=$CXXFLAGS\ -DNORT
 else
 	LDFLAGS=$LDFLAGS\ -lrt
 fi
@@ -105,7 +107,7 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				TEST_BUILD=$TEST_BUILD\;$test_out_name\;$test_object_name
 				echo "$func_name() {" >> $test_file
 				echo "    $CC $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' $LDFLAGS '$test'" >> $test_file
-				echo "    $CXX $CFLAGS -o '$test_out_name' '$test_object_name' $LDFLAGS -L'$out_dir'" >> $test_file
+				echo "    $CXX $CXXFLAGS -o '$test_out_name' '$test_object_name' $LDFLAGS -L'$out_dir'" >> $test_file
 				echo '    resarr=(-1.0 -1.0 -1.0 -1.0 -1.0 -1.0 -1.0 -1.0 -1.0 -1.0)' >> $test_file
 				echo '    (>&4 echo "")' >> $test_file
 				echo "    (>&4 echo '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c)')" >> $test_file

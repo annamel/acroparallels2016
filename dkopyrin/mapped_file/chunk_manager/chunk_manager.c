@@ -6,6 +6,7 @@
 #include "chunk_manager.h"
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <assert.h>
 
 struct chunk search_chunk = {0, NULL, 0, 0, 0};
 
@@ -20,6 +21,7 @@ void chunk_free_node(void *ptr){
 
 int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
 	LOG(INFO, "chunk_manager_init called\n");
+	assert(cm);
 	cm -> fd = fd;
 	int i;
 	for (i = 0; i < POOL_SIZE; i++){
@@ -33,9 +35,10 @@ int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
 
 int chunk_manager_finalize (struct chunk_manager *cm){
 	LOG(INFO, "chunk_manager_finalize called\n");
+	assert(cm);
 	int i;
  	for (i = 0; i < POOL_SIZE; i++)
- 		if (cm -> chunk_pool[i].state != -1)
+ 		if (cm -> chunk_pool[i].ref_cnt != -1)
 			chunk_finalize (cm -> chunk_pool + i);
 
 	rbtree_free(cm -> rbtree);
@@ -53,7 +56,8 @@ struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 	//FIFO algorithm
 	for (cm -> cur_chunk_index = 0; cm -> cur_chunk_index < end_index; cm -> cur_chunk_index++){
 		struct chunk *cur_ch = cm -> chunk_pool + cm -> cur_chunk_index;
-		if (cur_ch -> state == -1){
+		//By default ref_cnt == -1 is unused chunk
+		if (cur_ch -> ref_cnt == -1){
 			LOG(DEBUG, "Unused chunk %d returned\n", (cm -> cur_chunk_index - 1) % POOL_SIZE);
 			return cur_ch;
 		}else if (cur_ch -> ref_cnt == 0){
