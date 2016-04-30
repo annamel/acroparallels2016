@@ -30,6 +30,8 @@ int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
 
 	cm -> cur_chunk_index = 0;
 	cm -> rbtree = rbtree_create(chunk_cmp, chunk_free_node, 1);
+	if (!cm -> rbtree)
+		return 1;
 	return 0;
 }
 
@@ -44,7 +46,6 @@ int chunk_manager_finalize (struct chunk_manager *cm){
 	rbtree_free(cm -> rbtree);
 #ifdef MEMORY_DEBUG
 	cm -> fd = 0xDEAD;
-	cm -> prot = 0xDEAD;
 	cm -> rbtree = (void *) 0xDEADBEEF;
 #endif
   	return 0;
@@ -58,11 +59,12 @@ struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 	for (cm -> cur_chunk_index = 0; cm -> cur_chunk_index < end_index; cm -> cur_chunk_index++){
 		struct chunk *cur_ch = cm -> chunk_pool + cm -> cur_chunk_index;
 		//By default ref_cnt == -1 is unused chunk
+		LOG(DEBUG, "Trying %d chunk\n", cm -> cur_chunk_index);
 		if (cur_ch -> ref_cnt == -1){
-			LOG(DEBUG, "Unused chunk %d returned\n", (cm -> cur_chunk_index - 1) % POOL_SIZE);
+			LOG(DEBUG, "Unused chunk %d returned\n", cm -> cur_chunk_index);
 			return cur_ch;
 		}else if (cur_ch -> ref_cnt == 0){
-			LOG(DEBUG, "Refirbished chunk %d returned, cleaning\n", (cm -> cur_chunk_index - 1) % POOL_SIZE);
+			LOG(DEBUG, "Refirbished chunk %d returned, cleaning\n", cm -> cur_chunk_index);
 			if (cur_ch -> rbnode){
 				LOG(DEBUG, "Removing from rbtree\n");
 				rbtree_delete(cm -> rbtree, cur_ch -> rbnode);

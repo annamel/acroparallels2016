@@ -7,19 +7,14 @@
 #include <errno.h>
 
 #define GB 1024LL*1024LL*1024LL
-#define FILENAME "test_ladder_file"
+#define FILENAME "test_file_dkopyrin"
 #define MB 1024LL*1024LL
 
 #define FILESIZE 8*GB
 #define SAMPLESIZE 100*MB
 
 int main(){
-	int fd = open(FILENAME, O_RDWR | O_CREAT, 0777);
-	ftruncate(fd, FILESIZE);
-	close(fd);
-
 	mf_handle_t file = mf_open(FILENAME);
-	mf_mapmem_handle_t handle;
 
 	long it = 0;
 	long err_count = 0;
@@ -44,7 +39,5 @@ int main(){
 	free(buf);
 
 	mf_close(file);
-
-	remove(FILENAME);
 	return 0;
 }

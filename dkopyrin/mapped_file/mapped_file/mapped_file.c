@@ -38,12 +38,17 @@ mf_handle_t mf_open(const char *pathname){
 	if (size == -1)
 		return NULL;
 	struct _mf *mf = (struct _mf *) malloc(sizeof(struct _mf));
+	if (mf == NULL)
+		return NULL;
 	mf -> fd = fd;
 	mf -> size = size;
 	mf -> prev_ch = NULL;
-	chunk_manager_init(&mf -> cm, fd, O_RDWR | O_CREAT);
+	if(chunk_manager_init(&mf -> cm, fd, O_RDWR | O_CREAT)){
+		free(mf);
+		return NULL;
+	}
 
-	struct sysinfo info; //I know :)
+	struct sysinfo info;
 	if (sysinfo(&info) == 0) {
 		off_t tmp;
 		struct chunk *ch = NULL;
@@ -113,6 +118,8 @@ ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t off
 	//Nearly the same approach is used here for getting new chunk
 	off_t ch_offset = 0;
 	size_t av_chunk_size = chunk_manager_gen_chunk(cm, offset, size, &ch, &ch_offset);
+	if (!ch)
+		return read_bytes;
 	LOG(DEBUG, "Got chunk of size %d\n", av_chunk_size);
 	size_t read_size = MIN(av_chunk_size, size);
 	itfunc(ch, read_size, ch_offset, buf);
@@ -142,11 +149,12 @@ ssize_t mf_write(mf_handle_t mf, const void *buf, size_t size, off_t offset){
 }
 
 void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle){
-	LOG(INFO, "mf_map called with %d\n", sizeof(long int));
+	LOG(INFO, "mf_map called\n");
 	assert(mf); assert(mapmem_handle);
 
 	struct _mf * _mf = (struct _mf *) mf;
 	if (offset + size > _mf -> size){
+		LOG(DEBUG, "Bad inval\n");
 		errno = EINVAL;
 		return NULL;
 	}
@@ -155,9 +163,11 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 	off_t ch_offset = 0;
   	if (ch && ch -> offset <= offset && offset < ch -> offset + ch -> length){
 		//Chunk is OK, we have to set relative chunk offset
+		LOG(DEBUG, "Get chunk from cache\n");
 		ch_offset = offset - ch -> offset;
 	}else{
 		//Elsewhere we generate a new one
+		LOG(DEBUG, "Gen new chunk\n");
 		size_t av_chunk_size = chunk_manager_gen_chunk(&_mf -> cm, offset, size, &ch, &ch_offset);
 		if (av_chunk_size == -1)
 			return NULL;

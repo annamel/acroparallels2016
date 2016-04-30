@@ -33,7 +33,7 @@ int chunk_init (struct chunk *ch, size_t length, off_t offset, int fd){
 		return -1;
 	}
 	memset(wrap, 0x66, length + 2 * sysconf(_SC_PAGESIZE));
-	ch -> addr = mmap(wrap + sysconf(_SC_PAGESIZE), length, prot,
+	ch -> addr = mmap(wrap + sysconf(_SC_PAGESIZE), length, PROT_READ | PROT_WRITE,
 			  MAP_SHARED | MAP_FIXED, fd, offset);
 	if (ch -> addr == MAP_FAILED) {
 		LOG(ERROR, "Can't mmap file in chunk with wrap, %s\n", strerror(errno));
