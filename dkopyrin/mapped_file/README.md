@@ -5,19 +5,18 @@ This is implementation of API provided at __include/mapped_file.h__ by Denis Kop
 # Hashtable
 
 Aside most common implementation using hashtable that maps offset into chunk this
-very library use rbtree. If hashtable is used to map offset, then making new chunk
+very library use rbtree. If hashtable is used for offset mapping, then making new chunk
 costs O(chunk length) that might be very expensive (see __test_ht.c__). More optimized
 way to lookup for offset is using self-balancing tree or using hashtable in another way.
 
 # Main lookup function in library
-This library provides two main functions:
+Internal workflow of library is based on two main functions:
 
 __chunk_manager_get_av_chunk_from_pool__ - using FIFO algorithm allows to give
-available chunks in chunk pool at nearly O(1) in best case and O(n) in worst case.
+chunks with ref_counter=0 or unused chunks in chunk pool at nearly O(1) in best case and O(n) in worst case.
 
 __chunk_manager_gen_chunk__ - do the actual lookup in rbtree and use __chunk_manager_get_av_chunk_from_pool__
-to generate chunk if lookup failed. The main structure that is used is rbtree that
-maps chunk startpoints to chunks (see next abstract)
+to generate chunk if lookup failed.
 
 # Lookup in rbtrees
 
@@ -44,14 +43,14 @@ stated above. This library use simple approach as it is significantly faster
 
 # Improve insert speed on eviction
 
-As this library use simple approach it is easy to improve insert speed if we know
-offset of chunk in rbtree but its size is too small. Both of this criteria are
-correct for __chunk_manager_gen_chunk__ function so we just save found chunk and its node
+As this library use simple approach it is easy to improve insert speed if we know that 
+offset of evicted chunk in rbtree is the same as offset of new one and size of new chunk is bigger. 
+Both of this criteria are correct for __chunk_manager_gen_chunk__ function so we just save found chunk and its node
 in rbtree and update its value with new bigger chunk (see __test_stairs.c__) that takes O(1)
 instead of O(log n)
 
 # Improve lookup speed by caching
 
-If one use any profiling tool on __test_ladder.c__(generating contigous intersecting maps) one will 
-see that hotspot is rbtree lookup. As scenario of contigous read is common storing last
-used chunk might save from rbtree lookup that takes O(1) unlike lookup O(log n) 
+If one use any profiling tool on __test_ladder.c__(generating continuous intersecting maps) one will 
+see that hotspot is rbtree lookup. As scenario of continuous read is common storing last
+used chunk might save from rbtree lookup that takes O(1) unlike lookup O(log n).
