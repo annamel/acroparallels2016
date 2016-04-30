@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "hash_table.h"
+#include "hashtable.h"
 
 #define COLOR(x) "\x1B[35m"x"\x1B[0m"
 #define LOGCOLOR(x) COLOR("%s: ")x, __func__
 #include "../logger/log.h"
-const hashtable_value_t hashtable_value_nil = {.ptr = NULL, .state = -1};
+const hashtable_value_t hashtable_value_nil = NULL;
 
 struct hashtable *hashtable_init(struct hashtable *hashtable, int size) {
 	LOG(INFO, "hashtable_init called\n");
@@ -24,6 +24,7 @@ struct hashtable *hashtable_init(struct hashtable *hashtable, int size) {
 	}
 
 	hashtable->size = size;
+	hashtable->mask = (size - 1);
 
 	return hashtable;
 }
@@ -46,13 +47,28 @@ void hashtable_finalize(struct hashtable *ht) {
 
 int hashtable_hash(struct hashtable *hashtable, hashtable_key_t a) {
 	LOG(INFO, "hashtable_hash called\n");
-	a += ~(a<<15);
-	a ^=  (a>>10);
-	a +=  (a<<3);
-	a ^=  (a>>6);
-	a += ~(a<<11);
-	a ^=  (a>>16);
-	return a % hashtable->size;
+	long key1 = a.size;
+	key1 = (~key1) + (key1 << 21); // key = (key << 21) - key - 1;
+       key1 = key1 ^ (key1 >> 24);
+       key1 = (key1 + (key1 << 3)) + (key1 << 8); // key * 265
+       key1 = key1 ^ (key1 >> 14);
+       key1 = (key1 + (key1 << 2)) + (key1 << 4); // key * 21
+       key1 = key1 ^ (key1 >> 28);
+       key1 = key1 + (key1 << 31);
+	long key2 = a.offset;
+	key2 = (~key2) + (key2 << 21); // key = (key << 21) - key - 1;
+	key2 = key2 ^ (key2 >> 24);
+	key2 = (key2 + (key2 << 3)) + (key2 << 8); // key * 265
+	key2 = key2 ^ (key2 >> 14);
+	key2 = (key2 + (key2 << 2)) + (key2 << 4); // key * 21
+	key2 = key2 ^ (key2 >> 28);
+	key2 = key2 + (key2 << 31);
+
+	return (key1 ^ key2) & hashtable -> mask;
+}
+
+int hashtable_cmp(hashtable_key_t key1, hashtable_key_t key2){
+	return key1.size == key2.size && key1.offset == key2.offset;
 }
 
 /* Create a key-value pair. */
@@ -84,7 +100,7 @@ void hashtable_set(struct hashtable *hashtable, hashtable_key_t key, hashtable_v
   	LOG(DEBUG, "Adding value with key %d to bin %d, value=%d\n", key, bin, value);
 	for (next = hashtable->table[bin]; next; last = next, next = next -> next) {
 		//Key found, replacing
-		if (key == next -> key) {
+		if (hashtable_cmp(key, next -> key)) {
 			LOG(DEBUG, "Key found\n");
 			next -> value = value;
 			return;
@@ -113,11 +129,34 @@ hashtable_value_t hashtable_get(struct hashtable *hashtable, hashtable_key_t key
 	LOG(DEBUG, "Searching value with key %d in bin %d\n", key, bin);
 	for (next = hashtable->table[bin]; next; next = next -> next) {
 		//Key found, replacing
-		if (key == next -> key) {
+		if (hashtable_cmp(key, next -> key)) {
 			LOG(DEBUG, "Value found by key %d: %d\n", key, next->value);
 			return next -> value;
 		}
 	}
 	LOG(DEBUG, "No value found\n");
 	return hashtable_value_nil;
+}
+
+int hashtable_delete(struct hashtable *hashtable, hashtable_key_t key){
+	LOG(INFO, "hashtable_delete called\n");
+	int bin = 0;
+	struct entry *newpair = NULL;
+	struct entry *next = NULL;
+	struct entry *last = NULL;
+
+	bin = hashtable_hash(hashtable, key);
+
+  	LOG(DEBUG, "Finding value with key %d at bin %d\n", key, bin);
+	for (next = hashtable->table[bin]; next; last = next, next = next -> next) {
+		//Key found, killing
+		if (hashtable_cmp(key, next -> key)) {
+			LOG(DEBUG, "Key found, killing\n");
+			last -> next = next -> next;
+			free(next);
+			return 0;
+		}
+	}
+
+	return 1;
 }

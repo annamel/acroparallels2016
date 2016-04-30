@@ -3,7 +3,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-//#include <linux/inotify.h>
 
 #define COLOR(x) "\x1B[36m"x"\x1B[0m"
 #define LOGCOLOR(x) COLOR("%s: ")x, __func__
@@ -81,8 +80,8 @@ void mf_write_itfunc(struct chunk *ch, size_t ch_size, off_t ch_offset, void *bu
 
 
 ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t offset,
-		    size_t size, void *buf, void (*itfunc)(struct chunk *, size_t, off_t, void *)){
-	struct chunk *ch = *prev_ch;
+	             size_t size, void *buf, void (*itfunc)(struct chunk *, size_t, off_t, void *)){
+	struct chunk *ch = NULL;
 	off_t ch_offset = 0;
 	ssize_t read_bytes = 0;
 	if (ch){
@@ -131,16 +130,12 @@ ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset){
 }
 
 ssize_t mf_write(mf_handle_t mf, const void *buf, size_t size, off_t offset){
-	//mf_file_size(mf);
-
 	struct _mf * _mf = (struct _mf *) mf;
   	LOG(INFO, "mf_write called\n");
 	return mf_iterator(&_mf -> cm, &_mf -> prev_ch, offset, size, (void *)buf, mf_write_itfunc);
 }
 
 void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle){
-	//mf_file_size(mf);
-
 	LOG(INFO, "mf_map called with %d\n", sizeof(long int));
 
 	struct _mf * _mf = (struct _mf *) mf;

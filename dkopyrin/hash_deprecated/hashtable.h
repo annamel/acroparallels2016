@@ -3,12 +3,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-typedef uint32_t hashtable_key_t;
 typedef struct {
-	void *ptr;
 	size_t size;
-	int state;
-} hashtable_value_t;
+	off_t offset;
+} hashtable_key_t;
+typedef void * hashtable_value_t;
 
 struct entry {
 	hashtable_key_t key;
@@ -19,14 +18,16 @@ struct entry {
 struct hashtable {
 	int size;
 	struct entry **table;
+	size_t mask;
 };
 
 int hashtable_hash (struct hashtable *hashtable, hashtable_key_t key);
 struct entry *hashtable_newpair (hashtable_key_t key, hashtable_value_t value);
 void hashtable_set (struct hashtable *hashtable, hashtable_key_t key, hashtable_value_t value);
 hashtable_value_t hashtable_get (struct hashtable *hashtable, hashtable_key_t key);
+int hashtable_delete(struct hashtable *hashtable, hashtable_key_t key);
 
-struct hashtable *hashtable_init (struct hashtable *mf, int size);
-void hashtable_finalize (struct hashtable *mf);
+struct hashtable *hashtable_init (struct hashtable *hashtable, int size);
+void hashtable_finalize (struct hashtable *hashtable);
 
 #endif

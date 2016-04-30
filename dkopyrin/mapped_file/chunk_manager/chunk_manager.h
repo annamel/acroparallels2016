@@ -15,7 +15,6 @@ struct chunk_manager {
 	int prot;
  	struct chunk chunk_pool[POOL_SIZE];
 	struct rbtree_t *rbtree;
-
 	int cur_chunk_index;
 };
 

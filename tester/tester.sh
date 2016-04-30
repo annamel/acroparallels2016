@@ -13,7 +13,7 @@
 
 SAVEIFS=$IFS
 IFS=$(echo -en ";\n\b")
-LDFLAGS=$LDFLAGS\ "-lmappedfile -lm -lrt -lpthread"
+LDFLAGS=$LDFLAGS\ "-lmappedfile -lrt -lpthread"
 UNAME=$(uname)
 if [ $UNAME == "Darwin" ]; then
 	CFLAGS=$CFLAGS\ -DNORT
@@ -47,9 +47,16 @@ if [ -z "$ROOT_TEST_DIR" ]; then
 else
 	ROOT_TEST_DIR=$(echo $ROOT_TEST_DIR | tr ' ' ';')
 fi
-if [ -z "PREC" ]; then
+if [ -z "$PREC" ]; then
 	PREC=""
 fi
+if [ -z "$CC" ]; then
+	CC=gcc
+fi
+if [ -z "$CXX" ]; then
+	CXX=g++
+fi
+
 INCLUDE_DIR="$PWD/../include"
 
 
@@ -97,8 +104,8 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 
 				TEST_BUILD=$TEST_BUILD\;$test_out_name\;$test_object_name
 				echo "$func_name() {" >> $test_file
-				echo "    gcc $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' $LDFLAGS '$test'" >> $test_file
-				echo "    g++ $CFLAGS -o '$test_out_name' '$test_object_name' $LDFLAGS -L'$out_dir'" >> $test_file
+				echo "    $CC $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' $LDFLAGS '$test'" >> $test_file
+				echo "    $CXX $CFLAGS -o '$test_out_name' '$test_object_name' $LDFLAGS -L'$out_dir'" >> $test_file
 				echo '    resarr[0]=' >> $test_file	
 				echo '    (>&4 echo "")' >> $test_file
 				echo "    (>&4 echo '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c)')" >> $test_file
