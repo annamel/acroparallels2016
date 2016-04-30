@@ -62,6 +62,7 @@ struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 		LOG(DEBUG, "Trying %d chunk\n", cm -> cur_chunk_index);
 		if (cur_ch -> ref_cnt == -1){
 			LOG(DEBUG, "Unused chunk %d returned\n", cm -> cur_chunk_index);
+                     cm -> cur_chunk_index++;
 			return cur_ch;
 		}else if (cur_ch -> ref_cnt == 0){
 			LOG(DEBUG, "Refirbished chunk %d returned, cleaning\n", cm -> cur_chunk_index);
@@ -72,6 +73,7 @@ struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 			LOG(DEBUG, "Current size of rbtree is %d\n", rbtree_num_elements(cm -> rbtree));
 
 			chunk_finalize(cur_ch);
+                     cm -> cur_chunk_index++;
 			return cur_ch;
 		}//else we can't use this chunk: ref_cnt != 0
 	}
