@@ -59,6 +59,13 @@ if [ -z "$CXX" ]; then
 	CXX=g++
 fi
 
+which cmake3 > /dev/null
+if [ $? -eq 0 ]; then
+       CMAKE=cmake3
+else
+       CMAKE=cmake
+fi
+
 INCLUDE_DIR="$PWD/../include"
 
 
@@ -80,7 +87,7 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 			echo "	rm -rf $PWD/build_dir" >> $test_file
 			echo "	mkdir -p $PWD/build_dir" >> $test_file
 			echo "	pushd $PWD/build_dir" >> $test_file
-			echo "	cmake '$make_dir'" >> $test_file
+			echo "	$CMAKE '$make_dir'" >> $test_file
 			echo "	make" >> $test_file
 			echo "	mkdir -p '$out_dir/'" >> $test_file
 			echo "	cp -f './$LIBOUT_SUFFIX'/* '$out_dir/'" >> $test_file
