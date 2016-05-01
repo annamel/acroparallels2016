@@ -32,8 +32,10 @@ int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
 	}
 
 	cm -> cur_chunk_index = 0;
-       nbd_thread_init();
        cm -> skiplist = sl_alloc(&sdt);
+       if (pthread_mutex_init(&cm -> pool_lock, NULL)){
+              return 1;
+       }
 	if (!cm -> skiplist)
 		return 1;
 
@@ -50,6 +52,7 @@ int chunk_manager_finalize (struct chunk_manager *cm){
 
        LOG(INFO, "sl fini\n");
 	sl_free(cm -> skiplist);
+       pthread_mutex_destroy(&cm -> pool_lock);
 #ifdef MEMORY_DEBUG
 	cm -> fd = 0xDEAD;
 	cm -> skiplist = (void *) 0xDEADBEEF;
@@ -60,16 +63,19 @@ int chunk_manager_finalize (struct chunk_manager *cm){
 struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 	LOG(INFO, "chunk_manager_get_av_chunk_from_pool called\n");
 	assert(cm);
+       pthread_mutex_lock(&cm -> pool_lock);
 	int end_index = (cm -> cur_chunk_index - 1) & (POOL_SIZE - 1);
        LOG(DEBUG, "End index is %d, start is %d\n", end_index, cm -> cur_chunk_index);
        //FIFO algorithm
 	for (; cm -> cur_chunk_index != end_index; cm -> cur_chunk_index++){
 		struct chunk *cur_ch = cm -> chunk_pool + cm -> cur_chunk_index;
 		//By default ref_cnt == -1 is unused chunk
-		LOG(DEBUG, "Trying %d chunk\n", cm -> cur_chunk_index);
+		LOG(DEBUG, "Trying %d chunk, ref_cnt=%d\n", cm -> cur_chunk_index, cur_ch -> ref_cnt);
 		if (cur_ch -> ref_cnt == -1){
 			LOG(DEBUG, "Unused chunk %d returned\n", cm -> cur_chunk_index);
                      cm -> cur_chunk_index++;
+                     cur_ch -> ref_cnt = 1;
+                     pthread_mutex_unlock(&cm -> pool_lock);
 			return cur_ch;
 		}else if (cur_ch -> ref_cnt == 0){
 			LOG(DEBUG, "Refirbished chunk %d returned, cleaning\n", cm -> cur_chunk_index);
@@ -77,9 +83,12 @@ struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 
 			chunk_finalize(cur_ch);
                      cm -> cur_chunk_index++;
+                     cur_ch -> ref_cnt = 1;
+                     pthread_mutex_unlock(&cm -> pool_lock);
 			return cur_ch;
 		}//else we can't use this chunk: ref_cnt != 0
 	}
+       pthread_mutex_unlock(&cm -> pool_lock);
 	return NULL;
 }
 
@@ -117,19 +126,15 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
 
 		LOG(DEBUG, "Adding offset %d to skiplist w/ chunk %p\n", new_chunk -> offset, new_chunk);
               //This function actually do add to skiplist
-		map_val_t ret = sl_cas(cm -> skiplist, poffset, CAS_EXPECT_DOES_NOT_EXIST, (unsigned long) new_chunk);
-              if (ret == DOES_NOT_EXIST) {
-                     LOG(DEBUG, "Added new, %d\n", ret);
-              }else{
-                     LOG(DEBUG, "Replaced, %d\n", ret);
-              }
-
+		sl_cas(cm -> skiplist, poffset, CAS_EXPECT_DOES_NOT_EXIST, (unsigned long) new_chunk);
 
 		*ret_ch = new_chunk;
 		*chunk_offset = offset - new_chunk -> offset;
 		return new_chunk -> length - offset + new_chunk -> offset;
 	}else{
 		LOG(DEBUG, "Skiplist lookup success!\n");
+              //TODO: Might fail
+              cur_ch -> ref_cnt++;
 		*chunk_offset = offset - cur_ch -> offset;
 		*ret_ch = cur_ch;
 		return cur_ch -> length - offset + cur_ch -> offset;

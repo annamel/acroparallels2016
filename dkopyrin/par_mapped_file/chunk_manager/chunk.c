@@ -47,7 +47,7 @@ int chunk_init (struct chunk *ch, size_t length, off_t offset, int fd){
 	}
 #endif
 
-	ch -> ref_cnt = 0;
+	//ch -> ref_cnt = 0;
 	ch -> length = length;
 	ch -> offset = offset;
 	return 0;

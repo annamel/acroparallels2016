@@ -1,4 +1,4 @@
-/* 
+/*
  * Written by Josh Dybnis and released to the public domain, as explained at
  * http://creativecommons.org/licenses/publicdomain
  *
@@ -20,7 +20,7 @@
 #define MAX_POINTER_BITS 48
 #define PAGE_SCALE       21 // 2MB pages
 #else
-#define MAX_SCALE        31 
+#define MAX_SCALE        31
 #define MIN_SCALE         2 // smallest allocated block is 4 bytes
 #define MAX_POINTER_BITS 32
 #define PAGE_SCALE       12 // 4KB pages
@@ -32,7 +32,7 @@ typedef struct block {
     struct block *next;
 } block_t;
 
-// TODO: Break the page header into two parts. The first part is located in the header region. The 
+// TODO: Break the page header into two parts. The first part is located in the header region. The
 //       second part is located on the page and is only used when there are free items.
 typedef struct header {
 #ifdef  RECYCLE_PAGES
@@ -130,7 +130,7 @@ static void *get_new_region (int block_scale) {
 void mem_init (void) {
     assert(headers_ == NULL);
     // Allocate space for the page headers. This could be a big chunk of memory on 64 bit systems,
-    // but it just takes up virtual address space. Physical space used by the headers is still 
+    // but it just takes up virtual address space. Physical space used by the headers is still
     // proportional to the amount of memory the user mallocs.
     headers_ = mmap(NULL, HEADERS_SIZE, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
     TRACE("m1", "mem_init: header page %p", headers_, 0);
@@ -200,9 +200,9 @@ void nbd_free (void *x) {
         // push <b> onto it's owner's queue
         int b_owner = h->owner;
         TRACE("m1", "nbd_free: owner %llu", b_owner, 0);
-        
+
         // The assignment statements are volatile to prevent the compiler from reordering them.
-        VOLATILE_DEREF(b).next = NULL; 
+        VOLATILE_DEREF(b).next = NULL;
         VOLATILE_DEREF(tl->blocks_to[b_owner]).next = b;
 
         tl->blocks_to[b_owner] = b;
@@ -250,12 +250,12 @@ static inline block_t *pop_free_list (tl_t *tl, int scale) {
 }
 
 // Allocate a block of memory at least size <n>. Blocks are binned in powers-of-two. Round up <n> to
-// the nearest power of two. 
+// the nearest power of two.
 //
 // First check the current thread's free list for an available block. If there are no blocks on the
-// free list, pull items off of the current thread's incoming block queues and push them onto the 
+// free list, pull items off of the current thread's incoming block queues and push them onto the
 // free list. If we didn't get an appropriate size block off of the block queues then allocate a new
-// page, break it up into blocks and push them onto the free list. 
+// page, break it up into blocks and push them onto the free list.
 void *nbd_malloc (size_t n) {
     // the scale is the log base 2 of <n>, rounded up
     int b_scale = (sizeof(void *) * __CHAR_BIT__) - __builtin_clzl((n) - 1);
@@ -283,7 +283,7 @@ void *nbd_malloc (size_t n) {
     }
 
 #ifdef  RECYCLE_PAGES
-    // The current active page is completely allocated. Make the oldest partially allocated page 
+    // The current active page is completely allocated. Make the oldest partially allocated page
     // the new active page.
     size_class_t *sc = &tl->size_class[b_scale];
     if (sc->oldest_partial != NULL) {

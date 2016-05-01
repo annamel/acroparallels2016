@@ -424,9 +424,9 @@ map_val_t sl_cas (skiplist_t *sl, map_key_t key, map_val_t expectation, map_val_
         TRACE("s3", "sl_cas: failed to change pred's link: expected %p found %p", next, other);
 
         // Lost a race to another thread modifying the skiplist. Free the new item we allocated and retry.
-        if (sl->key_type != NULL) {
-            nbd_free((void *)new_key);
-        }
+        //if (sl->key_type != NULL) {
+          //  nbd_free((void *)new_key);
+        //}
         nbd_free(new_item);
         return sl_cas(sl, key, expectation, new_val); // tail call
     }

@@ -85,21 +85,21 @@ void mf_write_itfunc(struct chunk *ch, size_t ch_size, off_t ch_offset, void *bu
 
 ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t offset,
                     size_t size, void *buf, void (*itfunc)(struct chunk *, size_t, off_t, void *)){
-	struct chunk *ch = *prev_ch;
+	struct chunk *ch = NULL;
 	ssize_t read_bytes = 0;
 
 	//This if tries to use chunk from previous iters: prev_ch
-	if (ch){
+	/*if (ch){
 		size_t ch_size = ch -> length;
 		off_t ch_offset = ch -> offset;
 		LOG(DEBUG, "Got prev chunk of size %ld\n", ch_size);
 		//Check if prev chunk is good for this task: offset lays in chunk
 		if (ch_offset <= offset && offset < ch_offset + ch_size){
 			ch_offset = offset - ch_offset;
-			/* If we use chunk not from beginning but from relative offset
-			 * then we only can read av_chunk_size. We believe, that
-			 * itfunc actually read from chunk
-			 */
+			 If we use chunk not from beginning but from relative offset
+			  then we only can read av_chunk_size. We believe, that
+			  itfunc actually read from chunk
+
 			size_t av_chunk_size = ch_size - ch_offset;
 			LOG(DEBUG, "Using chunk prev chunk of av_size %d\n", av_chunk_size);
 			size_t read_size = MIN(av_chunk_size, size);
@@ -112,7 +112,7 @@ ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t off
 		}
 	}
 	if (size <= 0)
-		return read_bytes;
+		return read_bytes;*/
 
 	//Nearly the same approach is used here for getting new chunk
 	off_t ch_offset = 0;
@@ -125,7 +125,8 @@ ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t off
 	read_bytes += read_size;
 
 	//After iterations set new prev chunk
-	*prev_ch = ch;
+	//*prev_ch = ch;
+       ch -> ref_cnt--;
 	return read_bytes;
 }
 
@@ -172,7 +173,7 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 			return NULL;
 	}
 
-	ch -> ref_cnt++;
+	//ch -> ref_cnt++; - it is done by gen_chunk already
 	// We use chunk as mapmem handle because we only need to decrease ref_cnt
 	// when unmap is called
 	*mapmem_handle = ch;

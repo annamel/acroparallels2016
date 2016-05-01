@@ -4,6 +4,8 @@
 #include "chunk.h"
 #include "../nbds/include/skiplist.h"
 
+#include <pthread.h>
+
 #define POOL_SIZE 1024
 #define LOG_POOL_SIZE 10
 #define MIN_CHUNK_SIZE 128LL*1024LL
@@ -12,8 +14,9 @@
 struct chunk_manager {
 	int fd;
 	struct chunk chunk_pool[POOL_SIZE];
-	unsigned cur_chunk_index: LOG_POOL_SIZE;
+       pthread_mutex_t pool_lock;
        skiplist_t *skiplist;
+       unsigned cur_chunk_index: LOG_POOL_SIZE;
 };
 
 int chunk_manager_init (struct chunk_manager *cm, int fd, int mode);

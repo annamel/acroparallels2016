@@ -1,4 +1,4 @@
-/* 
+/*
  * Written by Josh Dybnis and released to the public domain, as explained at
  * http://creativecommons.org/licenses/publicdomain
  *
@@ -59,9 +59,9 @@ void ll_free (list_t *ll) {
     node_t *item = STRIP_MARK(ll->head->next);
     while (item != NULL) {
         node_t *next = STRIP_MARK(item->next);
-        if (ll->key_type != NULL) {
+        /*if (ll->key_type != NULL) {
             nbd_free((void *)item->key);
-        }
+        }*/
         nbd_free(item);
         item = next;
     }
@@ -81,7 +81,7 @@ size_t ll_count (list_t *ll) {
 
 #ifdef LIST_USE_HAZARD_POINTER
 static void nbd_free_node (node_t *x) {
-    nbd_free((void *)x->key);
+    //nbd_free((void *)x->key);
     nbd_free(x);
 }
 #endif
@@ -169,7 +169,7 @@ static int find_pred (node_t **pred_ptr, node_t **item_ptr, list_t *ll, map_key_
             if (d == 0) {
                 TRACE("l2", "find_pred: found matching item %p in list, pred is %p", item, pred);
                 return TRUE;
-            } 
+            }
             TRACE("l2", "find_pred: found proper place for key %p in list, pred is %p", key, pred);
             return FALSE;
         }
@@ -219,7 +219,7 @@ map_val_t ll_cas (list_t *ll, map_key_t key, map_val_t expectation, map_val_t ne
         int found = find_pred(&pred, &old_item, ll, key, TRUE);
         if (!found) {
 
-            // There was not an item in the list that matches the key. 
+            // There was not an item in the list that matches the key.
             if (EXPECT_FALSE(expectation != CAS_EXPECT_DOES_NOT_EXIST && expectation != CAS_EXPECT_WHATEVER)) {
                 TRACE("l1", "ll_cas: the expectation was not met, the list was not changed", 0, 0);
                 return DOES_NOT_EXIST; // failure
@@ -238,9 +238,9 @@ map_val_t ll_cas (list_t *ll, map_key_t key, map_val_t expectation, map_val_t ne
 
             // Lost a race. Failed to insert the new item into the list.
             TRACE("l1", "ll_cas: lost a race. CAS failed. expected pred's link to be %p but found %p", next, other);
-            if (ll->key_type != NULL) {
-                nbd_free((void *)new_key);
-            }
+            //if (ll->key_type != NULL) {
+              //  nbd_free((void *)new_key);
+            //}
             nbd_free(new_item);
             continue; // retry
         }
@@ -262,7 +262,7 @@ map_val_t ll_cas (list_t *ll, map_key_t key, map_val_t expectation, map_val_t ne
 
             // Use a CAS and not a SWAP. If the node is in the process of being removed and we used a SWAP, we could
             // replace DOES_NOT_EXIST with our value. Then another thread that is updating the value could think it
-            // succeeded and return our value even though we indicated that the node has been removed. If the CAS 
+            // succeeded and return our value even though we indicated that the node has been removed. If the CAS
             // fails it means another thread either removed the node or updated its value.
             map_val_t ret_val = SYNC_CAS(&old_item->val, old_item_val, new_val);
             if (ret_val == old_item_val) {
@@ -300,20 +300,20 @@ map_val_t ll_remove (list_t *ll, map_key_t key) {
     TRACE("l2", "ll_remove: logically removed item %p", item, 0);
     ASSERT(HAS_MARK(VOLATILE_DEREF(item).next));
 
-    // Atomically swap out the item's value in case another thread is updating the item while we are 
-    // removing it. This establishes which operation occurs first logically, the update or the remove. 
-    map_val_t val = SYNC_SWAP(&item->val, DOES_NOT_EXIST); 
+    // Atomically swap out the item's value in case another thread is updating the item while we are
+    // removing it. This establishes which operation occurs first logically, the update or the remove.
+    map_val_t val = SYNC_SWAP(&item->val, DOES_NOT_EXIST);
     TRACE("l2", "ll_remove: replaced item's val %p with DOES_NOT_EXIT", val, 0);
 
     // Unlink <item> from <ll>. If we lose a race to another thread just back off. It is safe to leave the
     // item logically removed for a later call (or some other thread) to physically unlink. By marking the
-    // item earlier, we logically removed it. 
+    // item earlier, we logically removed it.
     TRACE("l2", "ll_remove: unlink the item by linking its pred %p to its successor %p", pred, next);
     markable_t other;
     if ((other = SYNC_CAS(&pred->next, (markable_t)item, next)) != (markable_t)item) {
         TRACE("l1", "ll_remove: unlink failed; pred's link changed from %p to %p", item, other);
         return val;
-    } 
+    }
 
     // The thread that completes the unlink should free the memory.
 #ifdef LIST_USE_HAZARD_POINTER
@@ -370,13 +370,13 @@ map_val_t ll_iter_next (ll_iter_t *iter, map_key_t *key_ptr) {
 
     // advance iterator to next item; skip items that have been removed
     markable_t item;
-#ifdef LIST_USE_HAZARD_POINTER 
+#ifdef LIST_USE_HAZARD_POINTER
     haz_t *hp0 = haz_get_static(0);
 #endif
     do {
-#ifndef LIST_USE_HAZARD_POINTER 
+#ifndef LIST_USE_HAZARD_POINTER
         item = iter->pred->next;
-#else //LIST_USE_HAZARD_POINTER 
+#else //LIST_USE_HAZARD_POINTER
         do {
             item = iter->pred->next;
             haz_set(hp0, STRIP_MARK(item));
