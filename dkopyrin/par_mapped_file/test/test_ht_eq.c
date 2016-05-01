@@ -13,7 +13,7 @@
 
 void *test_ht(void *file){
        long it = 0;
-	for (it = 0; it < GB; it += rand() % MB){
+	for (it = 0; it < GB; it += 666){
 		mf_mapmem_handle_t loc_handle;
 		void *loc_ptr = mf_map(file, it, MB, &loc_handle);
 		if (loc_ptr == NULL && errno != EINVAL){
@@ -59,7 +59,7 @@ int main(int argc, char *argv[]){
                      return (int)i;
        }
 
-       mf_unmap(file, handle);
+       //mf_unmap(file, handle);
        mf_close(file);
        free(rets); free(threads);
 	return 0;

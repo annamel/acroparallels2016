@@ -51,8 +51,8 @@ mf_handle_t mf_open(const char *pathname){
        if (sysinfo(&info) == 0) {
        	off_t tmp;
        	struct chunk *ch = NULL;
-       	chunk_manager_gen_chunk(&mf -> cm, 0, info.freeram / 100, &ch, &tmp);
-       	mf -> prev_ch = ch;
+       	chunk_manager_gen_chunk(&mf -> cm, 0, info.freeram / 2, &ch, &tmp);
+       	//mf -> prev_ch = ch;
        }
 	return (mf_handle_t) mf;
 }
@@ -149,7 +149,7 @@ ssize_t mf_write(mf_handle_t mf, const void *buf, size_t size, off_t offset){
 }
 
 void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle){
-	//LOG(INFO, "mf_map called\n");
+	LOG(INFO, "mf_map called\n");
 	assert(mf); assert(mapmem_handle);
 
 	struct _mf * _mf = (struct _mf *) mf;
@@ -159,19 +159,19 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 		return NULL;
 	}
 	//Map works nearly the same as r/w: firstly we try prev_ch
-  	struct chunk *ch = _mf -> prev_ch;
+  	struct chunk *ch = NULL;
 	off_t ch_offset = 0;
-  	if (ch && ch -> offset <= offset && offset < ch -> offset + ch -> length){
+  	/*if (ch && ch -> offset <= offset && offset < ch -> offset + ch -> length){
 		//Chunk is OK, we have to set relative chunk offset
 		//LOG(DEBUG, "Get chunk from cache\n");
 		ch_offset = offset - ch -> offset;
-	}else{
+	}else{*/
 		//Elsewhere we generate a new one
-		LOG(DEBUG, "Gen new chunk\n");
+		//LOG(DEBUG, "Gen new chunk\n");
 		size_t av_chunk_size = chunk_manager_gen_chunk(&_mf -> cm, offset, size, &ch, &ch_offset);
 		if (av_chunk_size == -1)
 			return NULL;
-	}
+	//}
 
 	//ch -> ref_cnt++; - it is done by gen_chunk already
 	// We use chunk as mapmem handle because we only need to decrease ref_cnt
@@ -181,7 +181,7 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 }
 
 int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle){
-	//LOG(INFO, "mf_unmap called\n");
+	LOG(INFO, "mf_unmap called\n");
 	assert(mf); assert(mapmem_handle);
 
 	((struct chunk *)mapmem_handle) -> ref_cnt--;

@@ -9,15 +9,25 @@
 
 #define GB 1024LL*1024LL*1024LL
 #define FILENAME "test_file_dkopyrin"
-#define FILESIZE 8*GB
+#define FILESIZE 7*GB
 #define MB 1024LL*1024LL
 
-#define SAMPLESIZE 100*MB
+#define SAMPLESIZE 128*MB
 
-void *test_ht(void *file){
+mf_handle_t file;
+long int num_threads;
+char * buf;
+
+void *test_ladder(void *num){
+	long int thread_num = (long int) num;
 	long it = 0;
 	long err_count = 0;
-	for (it = 0; it < FILESIZE; it += rand() % MB){
+
+	long unit_map = FILESIZE / num_threads;
+	long start = unit_map * thread_num;
+	long end = unit_map * thread_num + unit_map;
+
+	for (it = start; it < end; it += 222){
 		mf_mapmem_handle_t loc_handle;
 		void *loc_ptr = mf_map(file, it, MB, &loc_handle);
 		if (loc_ptr == NULL){
@@ -30,14 +40,12 @@ void *test_ht(void *file){
 	}
 	printf("Errors: %ld\n", err_count);
 
-	char *buf = malloc(SAMPLESIZE);
-	if (buf == NULL)
-		return (void *)2;
-	long ret = mf_read(file, buf, SAMPLESIZE, FILESIZE - SAMPLESIZE - 1);
-	if (ret != SAMPLESIZE)
-		return (void *)3;
-	free(buf);
+	long unit = SAMPLESIZE / num_threads;
+	long buf_offset = unit * thread_num;
 
+	long ret = mf_read(file, buf+buf_offset, unit, FILESIZE-SAMPLESIZE+buf_offset);
+	if (ret != unit)
+		return (void *)3;
 	return 0;
 }
 
@@ -46,20 +54,23 @@ int main(int argc, char *argv[]){
               printf("Usage: %s num_threads\n", argv[0]);
               return -1;
        }
-       int num_threads = atoi(argv[1]);
+       num_threads = atoi(argv[1]);
        if (num_threads <= 0){
               printf("Bad num of threads\n");
               return -2;
        }
 
-       mf_handle_t file = mf_open(FILENAME);
+       file = mf_open(FILENAME);
 
        pthread_t *threads = (pthread_t *) malloc(num_threads * sizeof(pthread_t));
        void ** rets = malloc(num_threads * sizeof(void *));
+	buf = malloc(SAMPLESIZE);
+	if (buf == NULL)
+		return 2;
 
        int i;
        for (i = 0; i < num_threads; i++){
-              if(pthread_create(threads+i, NULL, test_ht, file)){
+              if(pthread_create(threads+i, NULL, test_ladder, (void *)(long int)i)){
                      printf("Thread make fail");
                      exit(-3);
               }
@@ -72,7 +83,7 @@ int main(int argc, char *argv[]){
                      return (int)i;
        }
 
-	free(rets); free(threads);
+	free(rets); free(threads); free(buf);
        mf_close(file);
 	return 0;
 }
