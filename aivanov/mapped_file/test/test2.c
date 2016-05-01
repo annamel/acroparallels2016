@@ -1,13 +1,12 @@
-#include <cstdio>
+#include <stdio.h>
 #include <mapped_file.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <vector>	
 #include "test.h"
 
 #define TEST_SIZE 100000000
 #define MAX_TOTAL_SIZE (100LL << 40)
-
+#define DEFAULT_REGIONS_NUM 1024
 
 int main()
 {
@@ -27,7 +26,10 @@ int main()
 	size_t total_size = 0;
 	
 	ssize_t offset = 0;
-	std::vector<mf_mapmem_handle_t> regions;
+	int allocated_regions_num = 0;
+	int regions_num = DEFAULT_REGIONS_NUM;
+	mf_mapmem_handle_t* regions = malloc(sizeof (mf_mapmem_handle_t) * regions_num);
+	CHECK(regions);
 	
 	while (total_size < MAX_TOTAL_SIZE)
 	{
@@ -40,12 +42,20 @@ int main()
 		if (!data)
 			break;
 
-		regions.push_back(handle);
+		if (allocated_regions_num == regions_num)
+		{
+			regions_num *= 2;
+			regions = realloc(regions, sizeof (mf_mapmem_handle_t) * regions_num);
+			CHECK(regions);
+		}
+
+		regions[allocated_regions_num++] = handle;
 		total_size += size;
 	}
 	
-	for (auto handle : regions)
-		CHECK(!mf_unmap(mf, handle));
+	int i;
+	for (i = 0; i < allocated_regions_num; i++)
+		CHECK(!mf_unmap(mf, regions[i]));
 	
 	CHECK(!mf_close(mf));
 	
@@ -54,9 +64,9 @@ int main()
 	unlink("test");
 	
 	if (total_size >= MAX_TOTAL_SIZE)
-		printf("Total memory mapped > %.1lf GB\n", double(MAX_TOTAL_SIZE) / (1 << 30));
+		printf("Total memory mapped > %.1lf GB\n", ((double) MAX_TOTAL_SIZE) / (1 << 30));
 	else
-		printf("Total memory mapped: %.1lf GB\n", double(total_size) / (1 << 30));
+		printf("Total memory mapped: %.1lf GB\n", ((double) total_size) / (1 << 30));
 		
 	return 0;
 }

@@ -20,7 +20,7 @@ mf_handle_t mf_open(const char* pathname) {
 		goto done;
 	}
 
-	int fd = open(pathname, O_RDWR, 0666);
+	int fd = open(pathname, O_RDWR | O_CREAT, 0666);
 	if(fd == -1) {
 		err = errno;
 		goto done;
@@ -182,13 +182,12 @@ done:
 
 void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle) {
 	int err = 0;
+	void *ptr = NULL;
 
 	if( mf == MF_OPEN_FAILED || mapmem_handle == NULL || offset < 0 || offset + size > mf_file_size(mf) ) {
 		err = EINVAL;
 		goto done;
 	}
-
-	void *ptr = NULL;
 
 	if( size == 0 ) {
 		goto done;
@@ -203,6 +202,8 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 	}
 
 	err = chunk_get_mem(*chunk_ptr, offset, &ptr);
+
+	log_write(LOG_DEBUG, "mf_map: ptr = %p, size = %zx\n", ptr, size);
 
 done:
 	if( err ) {

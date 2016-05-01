@@ -18,9 +18,9 @@ add_subdirectory(log)
 add_library(mappedfile STATIC FileRegion.cpp MappedFile.cpp mapped_file.cpp log/log.c log/logger.c)
 target_link_libraries(mappedfile pthread rt)
 
-add_executable(test1 test/test1.cpp log)
+add_executable(test1 test/test1.c log)
 target_link_libraries(test1 mappedfile pthread rt)
 
-add_executable(test2 test/test2.cpp log)
+add_executable(test2 test/test2.c log)
 target_link_libraries(test2 mappedfile pthread rt)
 

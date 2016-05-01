@@ -5,7 +5,11 @@ INSTALLDIRS := $(DIRS:%=install-%)
 CLEANDIRS := $(DIRS:%=clean-%)
 TESTDIRS := $(DIRS:%=test-%)
 
-CFLAGS += -O3#-g -DDEBUG_LOG -DDEBUG_STDERRLOG
+ifdef DEBUG
+CFLAGS += -g -DDEBUG_LOG -DDEBUG_STDERRLOG -DMEMORY_DEBUG
+else
+CFLAGS += -Ofast -s -DNDEBUG
+endif
 export CFLAGS MAKE_DIR
 
 all: make_dir_init $(BUILDDIRS)
