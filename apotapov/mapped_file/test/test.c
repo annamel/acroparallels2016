@@ -152,7 +152,7 @@ int performance_test(const char* filename) {
 }
 
 
-int main(int argc, char*) {
+int main(int argc, char* argv[]) {
 
     print_res(test_open_close(argv[1]), "test_open_close: ");
     printf("\n\n");
