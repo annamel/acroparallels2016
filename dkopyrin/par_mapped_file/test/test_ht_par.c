@@ -9,36 +9,25 @@
 
 #define GB 1024LL*1024LL*1024LL
 #define FILENAME "test_file_dkopyrin"
-#define FILESIZE 8*GB
+#define FILESIZE 6*GB
 #define MB 1024LL*1024LL
 
-#define SAMPLESIZE 100*MB
+mf_handle_t file;
 
-void *test_ht(void *file){
-	long it = 0;
-	long err_count = 0;
-	for (it = 0; it < FILESIZE; it += rand() % MB){
+void *test_ht(void *num){
+       long int thread_num = (long int) num + 1;
+       long it = 0;
+	for (it = 0; it < FILESIZE; it += thread_num * (rand() % MB)){
 		mf_mapmem_handle_t loc_handle;
 		void *loc_ptr = mf_map(file, it, MB, &loc_handle);
-		if (loc_ptr == NULL){
-			err_count++;
-			if (errno != EINVAL)
-				return (void *)1;
-		}else{
+		if (loc_ptr == NULL && errno != EINVAL){
+			return (void *)1;
+		}
+              if (loc_ptr)
 		     mf_unmap(file, loc_handle);
-              }
 	}
-	printf("Errors: %ld\n", err_count);
 
-	char *buf = malloc(SAMPLESIZE);
-	if (buf == NULL)
-		return (void *)2;
-	long ret = mf_read(file, buf, SAMPLESIZE, FILESIZE - SAMPLESIZE - 1);
-	if (ret != SAMPLESIZE)
-		return (void *)3;
-	free(buf);
-
-	return 0;
+       return 0;
 }
 
 int main(int argc, char *argv[]){
@@ -52,14 +41,16 @@ int main(int argc, char *argv[]){
               return -2;
        }
 
-       mf_handle_t file = mf_open(FILENAME);
+       file = mf_open(FILENAME);
+	mf_mapmem_handle_t handle;
+       mf_map(file, 0, FILESIZE, &handle);
 
        pthread_t *threads = (pthread_t *) malloc(num_threads * sizeof(pthread_t));
        void ** rets = malloc(num_threads * sizeof(void *));
 
        int i;
        for (i = 0; i < num_threads; i++){
-              if(pthread_create(threads+i, NULL, test_ht, file)){
+              if(pthread_create(threads+i, NULL, test_ht, (void *)(long int)num_threads)){
                      printf("Thread make fail");
                      exit(-3);
               }
@@ -72,7 +63,8 @@ int main(int argc, char *argv[]){
                      return (int)i;
        }
 
-	free(rets); free(threads);
+       mf_unmap(file, handle);
        mf_close(file);
+       free(rets); free(threads);
 	return 0;
 }

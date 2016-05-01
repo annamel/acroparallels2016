@@ -61,5 +61,6 @@ int main(int argc, char *argv[]){
 
        mf_unmap(file, handle);
        mf_close(file);
+       free(rets); free(threads);
 	return 0;
 }
