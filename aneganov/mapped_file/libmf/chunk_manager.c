@@ -32,8 +32,8 @@ struct ChunkPool {
 	hashtable_t *ht;
 }; /* chpool_t */
 
-static size_t get_chunk_size(off_t multiplier) {
-	return multiplier * sysconf(_SC_PAGESIZE);
+static inline size_t get_chunk_size(off_t len) {
+	return len * sysconf(_SC_PAGESIZE);
 }
 
 static int chunk_init(off_t idx, off_t len, chpool_t *cpool, chunk_t *chunk) {
@@ -154,6 +154,15 @@ error:
 	return err;
 }
 
+static inline off_t get_chunk_idx(off_t offset) {
+	return offset / get_chunk_size(1);
+}
+
+static inline off_t get_chunk_len(off_t offset, size_t size) {
+	size_t pg_sz = get_chunk_size(1);
+	return (size + (offset % pg_sz))/pg_sz + 1;
+}
+
 int chunk_acquire(chpool_t *cpool,  off_t offset, size_t size, chunk_t **chunk_ptr) {
 	if(!cpool || !chunk_ptr) return EINVAL;
 
@@ -164,8 +173,8 @@ int chunk_acquire(chpool_t *cpool,  off_t offset, size_t size, chunk_t **chunk_p
 		return 0;
 	}
 
-	off_t idx = offset / get_chunk_size(1);
-	off_t len = size/get_chunk_size(1) + 1;
+	off_t idx = get_chunk_idx(offset);
+	off_t len = get_chunk_len(offset, size);
 
 	int err = chunk_get(cpool, idx, len, chunk_ptr);
 	log_write(LOG_DEBUG, "chunk_acquire: chunk_get(idx=%jd, len=%jd): %s\n", idx, len, strerror(err));
@@ -209,8 +218,8 @@ int chunk_find(chpool_t *cpool, off_t offset, size_t size, chunk_t **chunk) {
 		return 0;
 	}
 
-	off_t idx = offset / get_chunk_size(1);
-	off_t len = size / get_chunk_size(1) + 1;
+	off_t idx = get_chunk_idx(offset);
+	off_t len = get_chunk_len(offset, size);
 
 	int err = chunk_get(cpool, idx, len, chunk);
 	if(err) return err;
@@ -263,7 +272,7 @@ int chpool_construct(int fd, int prot, chpool_t **cpool_ptr) {
 	chpool_t *cpool = *cpool_ptr;
 
 	cpool->head = NULL;
-	cpool->threshold = info.freeram / get_chunk_size(1) / 2;;
+	cpool->threshold = info.freeram / get_chunk_size(1) / 2;
 	cpool->nr_pages = 0;
 	cpool->fd = fd;
 	cpool->prot = prot;
@@ -312,7 +321,7 @@ int chunk_get_mem(chunk_t *chunk, off_t offset, void **buf) {
 	off_t left = get_chunk_size(chunk->idx);
 	off_t right = left + get_chunk_size(chunk->len);
 	
-	if(offset < left || offset > right)
+	if(offset < left || offset >= right)
 		return EINVAL;
 
 	off_t choff = offset - left;
