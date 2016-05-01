@@ -34,7 +34,7 @@ static int bin_search(elem_t *data, size_t data_len, hkey_t key, int (*cmp_fn)(h
         return ERROR;
 
     size_t left = 0;
-    size_t right = data_len; 
+    size_t right = data_len;
 
     if (data_len == 0) {
         *pos = 0;
@@ -126,7 +126,7 @@ int hashtable_add(hashtable_t * ht, hkey_t key, hval_t val) {
     size_t pos = 0;
     int found = bin_search(data, data_len, key, ht->cmp_fn, &pos);
     BUG_ON(found == ERROR);
-    
+
     if(found == FOUND)
         goto end;
 
@@ -139,7 +139,7 @@ int hashtable_add(hashtable_t * ht, hkey_t key, hval_t val) {
     data_len = ++ht->payload[idx].data_len;
 
     if(pos < data_len - 1)
-        memmove( (void*)data + (pos+1)*sizeof(elem_t), (void*)data + pos*sizeof(elem_t), (data_len-pos-1)*sizeof(elem_t) );
+        memmove( (char*)data + (pos+1)*sizeof(elem_t), (char*)data + pos*sizeof(elem_t), (data_len-pos-1)*sizeof(elem_t) );
 
     data[pos].key = key;
 
@@ -203,7 +203,7 @@ int hashtable_del(hashtable_t *ht, hkey_t key) {
         return ENOKEY;
     }
 
-    memmove( (void*)data + pos*sizeof(elem_t), (void*)data + (pos+1)*sizeof(elem_t), (data_len-pos-1)*sizeof(elem_t) );
+    memmove( (char*)data + pos*sizeof(elem_t), (char*)data + (pos+1)*sizeof(elem_t), (data_len-pos-1)*sizeof(elem_t) );
 
     ht->payload[idx].data_len--;
 
