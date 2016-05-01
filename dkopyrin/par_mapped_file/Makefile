@@ -8,7 +8,11 @@ TESTDIRS := $(DIRS:%=test-%)
 ifdef DEBUG
 CFLAGS += -g -lpthread -DDEBUG_LOG -DDEBUG_STDERRLOG #-DMEMORY_DEBUG
 else
-CFLAGS += -Ofast -s -DNDEBUG -lpthread
+ifdef WEAK_DEBUG
+CFLAGS += -g -lpthread
+else
+CFLAGS += -Ofast -DNDEBUG -s -lpthread
+endif
 endif
 export CFLAGS MAKE_DIR
 

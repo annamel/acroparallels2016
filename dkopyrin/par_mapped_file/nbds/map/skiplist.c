@@ -326,7 +326,10 @@ map_val_t sl_lookup (skiplist_t *sl, map_key_t key) {
     TRACE("s1", "sl_lookup: searching for key %p in skiplist %p", key, sl);
     node_t *item = find_preds_we(NULL, NULL, 0, sl, key, DONT_UNLINK);
 
-    return item -> val;
+    if (item != NULL)
+       return item -> val;
+    else
+       return NULL;
     // If we found an <item> matching the <key> return its value.
     /*if (item != NULL) {
         map_val_t val = item->val;
