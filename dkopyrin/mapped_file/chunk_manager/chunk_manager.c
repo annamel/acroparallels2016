@@ -99,11 +99,12 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
 	//TODO: implement interval tree or structure that allows to find biggest chunk
 
 	//off_t relative_offset = offset - cur_ch -> offset;
-	//ssize_t relative_length = length - cur_ch -> offset;
-	if (cur_ch != NULL) LOG(DEBUG, "Closest chunk is offset %d, size %d\n", cur_ch -> offset, cur_ch -> length);
+	//ssize_t relative_length = length;
+       LOG(DEBUG, "Found nice chunk %p\n", cur_ch);
+       if (cur_ch != NULL) LOG(DEBUG, "Closest chunk is offset %d, size %d\n", cur_ch -> offset, cur_ch -> length);
 	if (cur_ch == NULL ||
-	    cur_ch -> length < offset - cur_ch -> offset ||
-	    cur_ch -> length < length - cur_ch -> offset ) {
+	    cur_ch -> length < poffset - cur_ch -> offset ||
+	    cur_ch -> length < plength ) {
 		LOG(DEBUG, "No chunk found - making new one of size %d\n", plength);
 		struct chunk *new_chunk = chunk_manager_get_av_chunk_from_pool(cm);
 		if (new_chunk == NULL)
