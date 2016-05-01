@@ -6,7 +6,7 @@
 
 #define POOL_SIZE 1024
 #define LOG_POOL_SIZE 10
-#define MIN_CHUNK_SIZE 128LL*1024LL*1024LL
+#define MIN_CHUNK_SIZE 128LL*1024LL
 #define CHUNK_MASK ~(MIN_CHUNK_SIZE-1)
 
 struct chunk_manager {

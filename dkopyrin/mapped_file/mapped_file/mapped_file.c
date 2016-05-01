@@ -163,11 +163,11 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 	off_t ch_offset = 0;
   	if (ch && ch -> offset <= offset && offset < ch -> offset + ch -> length){
 		//Chunk is OK, we have to set relative chunk offset
-		//LOG(DEBUG, "Get chunk from cache\n");
+		LOG(DEBUG, "Get chunk from cache\n");
 		ch_offset = offset - ch -> offset;
 	}else{
 		//Elsewhere we generate a new one
-		//LOG(DEBUG, "Gen new chunk\n");
+		LOG(DEBUG, "Gen new chunk\n");
 		size_t av_chunk_size = chunk_manager_gen_chunk(&_mf -> cm, offset, size, &ch, &ch_offset);
 		if (av_chunk_size == -1)
 			return NULL;

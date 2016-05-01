@@ -429,10 +429,12 @@ rbnode_t *rbtree_find(rbtree_t *tree, const void *Data)
 	 *******************************/
 
 	rbnode_t *Current = tree->Root;
+       rbnode_t *Prev = NIL;
 
 	while (Current != NIL) {
 		int result = tree->Compare(Data, Current->Data);
 
+              Prev = Current;
 		if (result == 0) {
 			return Current;
 		} else {
@@ -440,7 +442,7 @@ rbnode_t *rbtree_find(rbtree_t *tree, const void *Data)
 				Current->Left : Current->Right;
 		}
 	}
-	return Current;
+	return Prev;
 }
 
 /*
