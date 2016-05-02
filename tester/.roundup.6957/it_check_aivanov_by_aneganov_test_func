@@ -1,0 +1,152 @@
++ it_check_aivanov_by_aneganov_test_func
++ icc -std=gnu11 -I/home/denisk/Documents/acroparallels2016/tester/../include -c -o /home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test_func.o /home/denisk/Documents/acroparallels2016/tester/../aneganov/mapped_file/test/test_func.c -lmappedfile -lm -lrt -lpthread -lrt
+/home/denisk/Documents/acroparallels2016/tester/../aneganov/mapped_file/test/test_func.c(65): warning #144: a value of type "void (*)()" cannot be used to initialize an entity of type "__sighandler_t"
+  	struct sigaction act = {.sa_handler = bus_handler, .sa_flags = 0};
+  	                                      ^
+
++ icc -o /home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test_func /home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test_func.o -L/home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out -lmappedfile -lm -lrt -lpthread -lrt
+++ seq 0 9
++ for i in '`seq 0 9`'
++ resarr[$i]=-1
++ for i in '`seq 0 9`'
++ resarr[$i]=-1
++ for i in '`seq 0 9`'
++ resarr[$i]=-1
++ for i in '`seq 0 9`'
++ resarr[$i]=-1
++ for i in '`seq 0 9`'
++ resarr[$i]=-1
++ for i in '`seq 0 9`'
++ resarr[$i]=-1
++ for i in '`seq 0 9`'
++ resarr[$i]=-1
++ for i in '`seq 0 9`'
++ resarr[$i]=-1
++ for i in '`seq 0 9`'
++ resarr[$i]=-1
++ for i in '`seq 0 9`'
++ resarr[$i]=-1
++ echo ''
++ echo 'aivanov aneganov test_func'
++ set +e
++ timeout 10 /home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test_func /home/denisk/Documents/acroparallels2016/tester/gpl.txt /home/denisk/Documents/acroparallels2016/tester/out.txt
++ ret=0
++ '[' 0 -eq 124 ']'
++ '[' 0 -ne 0 ']'
++ set -e
++ echo ''
++ echo -n 'aivanov aneganov test_func '
+++ seq 0 9
++ for i in '`seq 0 9`'
++ rm -rf ./times
+++ date +%s.%N
++ start=1462187516.524191894
++ /home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test_func /home/denisk/Documents/acroparallels2016/tester/gpl.txt /home/denisk/Documents/acroparallels2016/tester/out.txt
+++ date +%s.%N
++ end=1462187516.527758818
+++ bc
+++ echo 1462187516.527758818-1462187516.524191894
+++ sed 's/^\./0./'
++ resarr[$i]=0.003566924
++ for i in '`seq 0 9`'
++ rm -rf ./times
+++ date +%s.%N
++ start=1462187516.538262486
++ /home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test_func /home/denisk/Documents/acroparallels2016/tester/gpl.txt /home/denisk/Documents/acroparallels2016/tester/out.txt
+++ date +%s.%N
++ end=1462187516.542712479
+++ echo 1462187516.542712479-1462187516.538262486
+++ bc
+++ sed 's/^\./0./'
++ resarr[$i]=0.004449993
++ for i in '`seq 0 9`'
++ rm -rf ./times
+++ date +%s.%N
++ start=1462187516.545494710
++ /home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test_func /home/denisk/Documents/acroparallels2016/tester/gpl.txt /home/denisk/Documents/acroparallels2016/tester/out.txt
+++ date +%s.%N
++ end=1462187516.547261816
+++ echo 1462187516.547261816-1462187516.545494710
+++ bc
+++ sed 's/^\./0./'
++ resarr[$i]=0.001767106
++ for i in '`seq 0 9`'
++ rm -rf ./times
+++ date +%s.%N
++ start=1462187516.552517265
++ /home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test_func /home/denisk/Documents/acroparallels2016/tester/gpl.txt /home/denisk/Documents/acroparallels2016/tester/out.txt
+++ date +%s.%N
++ end=1462187516.556076329
+++ echo 1462187516.556076329-1462187516.552517265
+++ bc
+++ sed 's/^\./0./'
++ resarr[$i]=0.003559064
++ for i in '`seq 0 9`'
++ rm -rf ./times
+++ date +%s.%N
++ start=1462187516.561360209
++ /home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test_func /home/denisk/Documents/acroparallels2016/tester/gpl.txt /home/denisk/Documents/acroparallels2016/tester/out.txt
+++ date +%s.%N
++ end=1462187516.568512946
+++ echo 1462187516.568512946-1462187516.561360209
+++ bc
+++ sed 's/^\./0./'
++ resarr[$i]=0.007152737
++ for i in '`seq 0 9`'
++ rm -rf ./times
+++ date +%s.%N
++ start=1462187516.580292890
++ /home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test_func /home/denisk/Documents/acroparallels2016/tester/gpl.txt /home/denisk/Documents/acroparallels2016/tester/out.txt
+++ date +%s.%N
++ end=1462187516.584494528
+++ echo 1462187516.584494528-1462187516.580292890
+++ bc
+++ sed 's/^\./0./'
++ resarr[$i]=0.004201638
++ for i in '`seq 0 9`'
++ rm -rf ./times
+++ date +%s.%N
++ start=1462187516.588534665
++ /home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test_func /home/denisk/Documents/acroparallels2016/tester/gpl.txt /home/denisk/Documents/acroparallels2016/tester/out.txt
+++ date +%s.%N
++ end=1462187516.590384274
+++ echo 1462187516.590384274-1462187516.588534665
+++ bc
+++ sed 's/^\./0./'
++ resarr[$i]=0.001849609
++ for i in '`seq 0 9`'
++ rm -rf ./times
+++ date +%s.%N
++ start=1462187516.592888274
++ /home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test_func /home/denisk/Documents/acroparallels2016/tester/gpl.txt /home/denisk/Documents/acroparallels2016/tester/out.txt
+++ date +%s.%N
++ end=1462187516.594680080
+++ echo 1462187516.594680080-1462187516.592888274
+++ bc
+++ sed 's/^\./0./'
++ resarr[$i]=0.001791806
++ for i in '`seq 0 9`'
++ rm -rf ./times
+++ date +%s.%N
++ start=1462187516.597054144
++ /home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test_func /home/denisk/Documents/acroparallels2016/tester/gpl.txt /home/denisk/Documents/acroparallels2016/tester/out.txt
+++ date +%s.%N
++ end=1462187516.598924303
+++ echo 1462187516.598924303-1462187516.597054144
+++ bc
+++ sed 's/^\./0./'
++ resarr[$i]=0.001870159
++ for i in '`seq 0 9`'
++ rm -rf ./times
+++ date +%s.%N
++ start=1462187516.602294270
++ /home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test_func /home/denisk/Documents/acroparallels2016/tester/gpl.txt /home/denisk/Documents/acroparallels2016/tester/out.txt
+++ date +%s.%N
++ end=1462187516.606388565
+++ echo 1462187516.606388565-1462187516.602294270
+++ bc
+++ sed 's/^\./0./'
++ resarr[$i]=0.004094295
++ echo 0.003566924 0.004449993 0.001767106 0.003559064 0.007152737 0.004201638 0.001849609 0.001791806 0.001870159 0.004094295
++ echo 0.003566924 0.004449993 0.001767106 0.003559064 0.007152737 0.004201638 0.001849609 0.001791806 0.001870159 0.004094295
++ echo ''

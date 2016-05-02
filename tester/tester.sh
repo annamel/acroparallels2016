@@ -22,9 +22,9 @@ if [ $UNAME == "Darwin" ]; then
 else
 	LDFLAGS=$LDFLAGS\ -lrt
 fi
-if [ $CC == "icc" ]; then
-	LDFLAGS=$LDFLAGS\ "-lirc"
-fi
+#if [ $CC == "icc" ]; then
+#	LDFLAGS=$LDFLAGS\ "-lirc"
+#fi
 
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 CALL_PWD="$(pwd)"

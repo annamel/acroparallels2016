@@ -1,0 +1,11 @@
++ it_check_aivanov_by_apotapov_test
++ icc -std=gnu11 -I/home/denisk/Documents/acroparallels2016/tester/../include -c -o /home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test.o /home/denisk/Documents/acroparallels2016/tester/../apotapov/mapped_file/test/test.c -lmappedfile -lm -lrt -lpthread -lrt
++ icc -o /home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test /home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test.o -L/home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out -lmappedfile -lm -lrt -lpthread -lrt
+/home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test.o: In function `main':
+test.c:(.text+0x470): undefined reference to `get_chunk_size'
+test.c:(.text+0x47d): undefined reference to `get_chunk_size'
+/home/denisk/Documents/acroparallels2016/tester/../aivanov/mapped_file/out/test.o: In function `performance_test':
+test.c:(.text+0x9f0): undefined reference to `get_chunk_size'
+test.c:(.text+0x9fd): undefined reference to `get_chunk_size'
+++ rc=1
+++ set +x
