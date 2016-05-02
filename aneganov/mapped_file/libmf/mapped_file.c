@@ -140,7 +140,7 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
 		goto done;
 	}
 
-	struct mf_iter it = {.cpool = NULL, .chunk = NULL, .offset = 0, .ptr = NULL, .size = 0, .step_size = 0};
+	struct mf_iter it = {0};
 	err = mf_iter_init(cpool, offset, count, &it);
 	if( unlikely(err) ) {
 		goto done;
