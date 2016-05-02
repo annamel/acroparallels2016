@@ -189,5 +189,5 @@ PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 rm -f $PWD/out.txt
 
 IFS=$SAVEIFS
-jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True $PWD/test_results.ipynb
+jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True $PWD/test_results.ipynb --template=$PWD/template.tplx
 python -mwebbrowser file://$PWD/test_results.html
