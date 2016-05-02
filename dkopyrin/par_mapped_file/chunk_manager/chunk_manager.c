@@ -1,5 +1,4 @@
-#include "../chunk_queue/chunk.h"
-#include "../chunk_queue/chunk_queue.h"
+#include "chunk.h"
 
 #define COLOR(x) "\x1B[33m"x"\x1B[0m"
 #define LOGCOLOR(x) COLOR("%s: ")x, __func__
@@ -28,8 +27,11 @@ int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
        assert(cm);
        cm -> fd = fd;
 
-	chunk_queue_init(&cm -> queue);
-	//cm -> cur_chunk_index = 0;
+	int i;
+	for (i = 0; i < POOL_SIZE; i++){
+		chunk_init_unused(cm -> chunk_pool + i);
+	}
+	cm -> cur_chunk_index = 0;
        cm -> skiplist = sl_alloc(&sdt);
        if (pthread_mutex_init(&cm -> pool_lock, NULL)){
               return 1;
@@ -43,10 +45,13 @@ int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
 int chunk_manager_finalize (struct chunk_manager *cm){
 	LOG(INFO, "chunk_manager_finalize called\n");
 	assert(cm);
+	int i;
+	for (i = 0; i < POOL_SIZE; i++)
+ 		if (cm -> chunk_pool[i].ref_cnt != -1)
+			chunk_finalize (cm -> chunk_pool + i);
 
 	sl_free(cm -> skiplist);
-	chunk_queue_finalize(&cm -> queue);
-       pthread_mutex_destroy(&cm -> pool_lock);
+	pthread_mutex_destroy(&cm -> pool_lock);
 #ifdef MEMORY_DEBUG
 	cm -> fd = 0xDEAD;
 	cm -> skiplist = (void *) 0xDEADBEEF;

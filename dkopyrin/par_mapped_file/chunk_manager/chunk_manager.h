@@ -1,19 +1,21 @@
 #ifndef __CHUNK_MANAGER_H_
 #define __CHUNK_MANAGER_H_
 
-#include "../chunk_queue/chunk_queue.h"
+#include "chunk.h"
 #include "../nbds/include/skiplist.h"
 
 #include <pthread.h>
 
 #define MIN_CHUNK_SIZE 128LL*1024LL*1024LL
 #define CHUNK_MASK ~(MIN_CHUNK_SIZE-1)
+#define POOL_SIZE 1024
+#define LOG_POOL_SIZE 10
 
 struct chunk_manager {
 	int fd;
-	struct chunk_queue queue;
 	pthread_mutex_t pool_lock;
        skiplist_t *skiplist;
+	struct chunk chunk_pool[POOL_SIZE];
        unsigned cur_chunk_index: LOG_POOL_SIZE;
 };
 

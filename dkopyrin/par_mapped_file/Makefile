@@ -1,5 +1,5 @@
 MAKE_DIR := $(PWD)/out
-DIRS := logger nbds chunk_queue chunk_manager mapped_file test
+DIRS := logger nbds chunk_manager mapped_file test
 BUILDDIRS := $(DIRS:%=build-%)
 INSTALLDIRS := $(DIRS:%=install-%)
 CLEANDIRS := $(DIRS:%=clean-%)
