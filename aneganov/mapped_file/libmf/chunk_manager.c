@@ -183,21 +183,23 @@ int chunk_acquire(chpool_t *cpool,  off_t offset, size_t size, chunk_t **chunk_p
 			return 0;
 			break;
 		case ENOKEY:
-			if( *chunk_ptr == NULL || !(err = chpool_del(chunk)) )
-				return chunk_construct(cpool, idx, len, chunk_ptr);
-			if(err != EBUSY) return err;
-			void *newpayload = mremap(chunk->payload, chunk->len * cpool->pg_sz, (idx + len - chunk->idx) * cpool->pg_sz, 0);
-			if(newpayload != MAP_FAILED) {
-				chunk->payload = newpayload;
-				chunk->ref_cnt++;
-				return 0;
+			{
+				if( *chunk_ptr == NULL || !(err = chpool_del(chunk)) )
+					return chunk_construct(cpool, idx, len, chunk_ptr);
+				if(err != EBUSY) return err;
+				void *newpayload = mremap(chunk->payload, chunk->len * cpool->pg_sz, (idx + len - chunk->idx) * cpool->pg_sz, 0);
+				if(newpayload != MAP_FAILED) {
+					chunk->payload = newpayload;
+					chunk->ref_cnt++;
+					return 0;
+				}
+				else {
+					if(errno != ENOMEM) return errno;
+					log_write(LOG_DEBUG, "mremap failed\n");
+					return chunk_construct(cpool, idx, len, chunk_ptr);
+				}
+				break;
 			}
-			else {
-				if(errno != ENOMEM) return errno;
-				log_write(LOG_DEBUG, "mremap failed\n");
-				return chunk_construct(cpool, idx, len, chunk_ptr);
-			}
-			break;
 		default:
 			return err;
 			break;
@@ -322,7 +324,7 @@ int chunk_get_mem(chunk_t *chunk, off_t offset, void **buf) {
 		return EINVAL;
 
 	off_t choff = offset - left;
-	*buf = chunk->payload + choff;
+	*buf = (char *)chunk->payload + choff;
 
 	log_write(LOG_DEBUG, "chunk_get_mem: chunk->payload == %p, *buf = %p\n", chunk->payload, *buf);
 
