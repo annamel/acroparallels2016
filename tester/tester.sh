@@ -22,6 +22,9 @@ if [ $UNAME == "Darwin" ]; then
 else
 	LDFLAGS=$LDFLAGS\ -lrt
 fi
+if [ $CC == "icc" ]; then
+	LDFLAGS=$LDFLAGS\ "-lirc"
+fi
 
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 CALL_PWD="$(pwd)"
@@ -49,7 +52,7 @@ if [ -z "$ROOT_TEST_DIR" ]; then
 else
 	ROOT_TEST_DIR=$(echo $ROOT_TEST_DIR | tr ' ' ';')
 fi
-if [ -z "PREC" ]; then
+if [ -z "$PREC" ]; then
 	PREC=""
 fi
 if [ -z "$CC" ]; then
@@ -57,6 +60,13 @@ if [ -z "$CC" ]; then
 fi
 if [ -z "$CXX" ]; then
 	CXX=g++
+fi
+
+source $PWD/tester_config
+if [ -z "$LOOPS" ]; then
+	LOOPS=9
+else
+	LOOPS=$(($LOOPS-1))
 fi
 
 which cmake3 > /dev/null
@@ -115,20 +125,26 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo "$func_name() {" >> $test_file
 				echo "    $CC $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' '$test' $LDFLAGS" >> $test_file
 				echo "    $CXX $CXXFLAGS -o '$test_out_name' '$test_object_name' -L'$out_dir' $LDFLAGS" >> $test_file
-				echo '    resarr=(-1 -1 -1 -1 -1 -1 -1 -1 -1 -1)' >> $test_file
+				echo '    for i in `seq 0 '"$LOOPS"'`; do' >> $test_file
+				echo '        resarr[$i]=-1' >> $test_file
+				echo "    done" >> $test_file
 				echo '    (>&4 echo "")' >> $test_file
 				echo "    (>&4 echo '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c)')" >> $test_file
 				echo "    set +e" >> $test_file
 				echo "    timeout 10 $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt' 2>&4 1>&4" >> $test_file
-				echo '    if [ $? -eq 124 ]; then' >> $test_file
+				echo '    ret=$?' >> $test_file
+				echo '    if [ $ret -eq 124 ]; then' >> $test_file
 				echo "       (>&3 echo -n '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c) ')" >> $test_file
 				echo '       (>&3 echo ${resarr[*]})' >> $test_file
 				echo "       exit 124" >> $test_file
 				echo "    fi" >> $test_file
+				echo '    if [ $ret -ne 0 ]; then' >> $test_file
+				echo '       exit $ret' >> $test_file
+				echo "    fi" >> $test_file
 				echo "    set -e" >> $test_file
 				echo '    (>&4 echo "")' >> $test_file
 				echo "    (>&3 echo -n '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c) ')" >> $test_file
-				echo '    for i in `seq 0 9`; do' >> $test_file
+				echo '    for i in `seq 0 '"$LOOPS"'`; do' >> $test_file
 				echo "        rm -rf ./times" >> $test_file
 				echo '        start=$(date +"%s.%N")' >> $test_file
 				echo "        $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt'" >> $test_file
