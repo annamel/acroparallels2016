@@ -24,7 +24,7 @@ static void print_usage(const char * const program_name, FILE * const stream, co
     exit(exit_code);
 }
 
-void bus_handler() {
+void bus_handler(int signum __attribute__ ((unused))) {
 	log_write(LOG_ERR, "SIGBUS received: attempted access to a portion of the buffer that does not correspond to the file\n");
 	exit(EXIT_FAILURE);
 }

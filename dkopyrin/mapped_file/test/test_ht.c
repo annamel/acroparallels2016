@@ -20,10 +20,12 @@ int main(){
 	for (it = 0; it < GB; it += rand() % MB){
 		mf_mapmem_handle_t loc_handle;
 		void *loc_ptr = mf_map(file, it, MB, &loc_handle);
-		if (loc_ptr == NULL && errno != EINVAL){
-			return 1;
-		}
-		mf_unmap(file, loc_handle);
+		if (loc_ptr == NULL){
+                     if(errno != EINVAL)
+			    return 1;
+		}else{
+		     mf_unmap(file, loc_handle);
+              }
 	}
 
 	mf_unmap(file, handle);

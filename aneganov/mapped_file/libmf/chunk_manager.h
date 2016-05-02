@@ -15,4 +15,6 @@ __must_check int chpool_construct(int fd, int prot, chpool_t **cpool);
 __must_check int chpool_destruct(chpool_t *cpool);
 __must_check int chpool_fd(chpool_t *cpool);
 
+size_t chpool_page_size(chpool_t *cpool);
+
 #endif

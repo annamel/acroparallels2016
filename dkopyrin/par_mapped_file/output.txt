@@ -1,0 +1,15 @@
+[I] [36mmf_open: [0mmf_open called
+[I] [33mchunk_manager_init: [0mchunk_manager_init called
+[I] [33mchunk_manager_gen_chunk: [0moffset2chunk called
+[D] [33mchunk_manager_gen_chunk: [0mFound nice chunk (nil)
+[D] [33mchunk_manager_gen_chunk: [0mNo chunk found - making new one of size 47185920
+[I] [33mchunk_manager_get_av_chunk_from_pool: [0mchunk_manager_get_av_chunk_from_pool called
+[D] [33mchunk_manager_get_av_chunk_from_pool: [0mEnd index is 1023, start is 0
+[D] [33mchunk_manager_get_av_chunk_from_pool: [0mTrying 0 chunk
+[D] [33mchunk_manager_get_av_chunk_from_pool: [0mUnused chunk 0 returned
+[I] [34mchunk_init: [0mChunk init called
+[D] [33mchunk_manager_gen_chunk: [0mAdding offset 0 to rbtree w/ chunk 0x143f028
+[I] [36mmf_close: [0mmf_close called
+[I] [33mchunk_manager_finalize: [0mchunk_manager_finalize called
+[I] [34mchunk_finalize: [0mChunk finalize called
+test_ht: runtime/mem.c:150: nbd_free: Assertion `!"x"' failed.

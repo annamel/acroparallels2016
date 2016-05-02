@@ -82,7 +82,7 @@ struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 }
 
 long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t length, struct chunk ** ret_ch, off_t *chunk_offset) {
-	LOG(INFO, "offset2chunk called\n");
+	LOG(INFO, "chunk_manager_gen_chunk called\n");
 	assert(cm);
 	assert(ret_ch);
 	assert(chunk_offset);
@@ -101,7 +101,7 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
 	//off_t relative_offset = offset - cur_ch -> offset;
 	//ssize_t relative_length = length;
        LOG(DEBUG, "Found nice chunk %p\n", cur_ch);
-       if (cur_ch != NULL) LOG(DEBUG, "Closest chunk is offset %d, size %d\n", cur_ch -> offset, cur_ch -> length);
+       if (cur_ch != NULL) LOG(DEBUG, "Closest chunk is offset %lld, size %lld\n", cur_ch -> offset, cur_ch -> length);
 	if (cur_ch == NULL ||
 	    cur_ch -> length < poffset - cur_ch -> offset ||
 	    cur_ch -> length < plength ) {
@@ -114,12 +114,13 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
 	  	/* We can make adding to rbtree O(1) if we use offset that we already
 		 * found to make less tree traversals
 		 */
-		LOG(DEBUG, "Adding offset %d to rbtree\n", new_chunk -> offset);
+		LOG(DEBUG, "Adding offset %lld to rbtree\n", new_chunk -> offset);
 		if (cur_ch && cur_ch -> offset == new_chunk -> offset && cur_ch -> rbnode){
 			cur_ch -> rbnode -> Data = new_chunk;
 			cur_ch -> rbnode = NULL;
 		}else{
 			new_chunk -> rbnode = rbtree_insert(cm -> rbtree, new_chunk);
+
 		}
 		*ret_ch = new_chunk;
 		*chunk_offset = offset - new_chunk -> offset;

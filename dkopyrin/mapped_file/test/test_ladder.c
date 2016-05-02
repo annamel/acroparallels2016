@@ -25,8 +25,9 @@ int main(){
 			err_count++;
 			if (errno != EINVAL)
 				return 1;
-		}
-		mf_unmap(file, loc_handle);
+		}else{
+		     mf_unmap(file, loc_handle);
+              }
 	}
 	printf("Errors: %ld\n", err_count);
 

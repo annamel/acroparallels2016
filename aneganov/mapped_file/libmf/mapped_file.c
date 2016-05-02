@@ -90,13 +90,13 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {
 		log_write(LOG_DEBUG, "mf_read: it.step_size = %zd\n", it.step_size);
 		if(it.ptr) {
 			log_write(LOG_DEBUG, "mf_read: copying from the chunk\n");
-			memcpy(buf + read_bytes, it.ptr, it.step_size);
+			memcpy((char *)buf + read_bytes, it.ptr, it.step_size);
 			read_bytes += it.step_size;
 		}
 		else {
 			log_write(LOG_DEBUG, "mf_read: reading data explicitly\n");
 
-			ssize_t pread_ret = pread(chpool_fd(cpool), buf + read_bytes, it.step_size, it.offset);
+			ssize_t pread_ret = pread(chpool_fd(cpool), (char *)buf + read_bytes, it.step_size, it.offset);
 			if(pread_ret == -1) {
 				err = errno;
 				goto done;
@@ -140,7 +140,7 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
 		goto done;
 	}
 
-	struct mf_iter it = {.cpool = NULL, .chunk = NULL, .offset = 0, .ptr = NULL, .size = 0, .step_size = 0};
+	struct mf_iter it = {0};
 	err = mf_iter_init(cpool, offset, count, &it);
 	if( unlikely(err) ) {
 		goto done;
@@ -151,13 +151,13 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
 	while( !mf_iter_empty(&it) ) {
 		if(it.ptr) {
 			log_write(LOG_DEBUG, "mf_write: copying to the chunk\n");
-			memcpy(it.ptr, buf + written_bytes, it.step_size);
+			memcpy(it.ptr, (char *)buf + written_bytes, it.step_size);
 			written_bytes += it.step_size;
 		}
 		else {
 			log_write(LOG_DEBUG, "mf_write: writing data explicitly\n");
 
-			ssize_t pwrite_ret = pwrite(chpool_fd(cpool), buf + written_bytes, it.step_size, it.offset);
+			ssize_t pwrite_ret = pwrite(chpool_fd(cpool), (char *)buf + written_bytes, it.step_size, it.offset);
 			if(pwrite_ret == -1) {
 				err = errno;
 				goto done;
