@@ -3,6 +3,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #define COLOR(x) "\x1B[36m"x"\x1B[0m"
 #define LOGCOLOR(x) COLOR("%s: ")x, __func__
@@ -48,11 +50,14 @@ mf_handle_t mf_open(const char *pathname){
 		return NULL;
 	}
 
-	struct sysinfo info;
-	if (sysinfo(&info) == 0) {
+	struct rlimit rl;
+	if (!getrlimit(RLIMIT_AS, &rl)) {
 		off_t tmp;
 		struct chunk *ch = NULL;
-		chunk_manager_gen_chunk(&mf -> cm, 0, info.freeram / 2, &ch, &tmp);
+		if (rl.rlim_cur == RLIM_INFINITY)
+			chunk_manager_gen_chunk(&mf -> cm, 0, mf -> size, &ch, &tmp);
+		else
+			chunk_manager_gen_chunk(&mf -> cm, 0, MIN(rl.rlim_cur, mf -> size), &ch, &tmp);
 		mf -> prev_ch = ch;
 	}
 	return (mf_handle_t) mf;
