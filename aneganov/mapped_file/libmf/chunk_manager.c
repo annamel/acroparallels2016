@@ -260,7 +260,7 @@ int chpool_construct(int fd, int prot, chpool_t **cpool_ptr) {
 		return err;
 	}
 
-	struct sysinfo info = {0};
+	struct sysinfo info = {0, {0}, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {}}; /* Such a initialization is for valgrind & clang */
 	sysinfo(&info);
 
 	chpool_t *cpool = *cpool_ptr;
