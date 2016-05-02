@@ -2,171 +2,183 @@
 // Created by kir on 25.02.16.
 //
 
-//#define DEBUG 4
+// data structure concept from "The C Programming Language" by Brian W. Kernighan, DennisM. Ritchie.
 
 #include "hash_table.h"
-#include "logger.h"
 
-struct hash_t *hash_construct(size_t hash_size, hash_func_t *hash_func) {
-    LOG_DEBUG("Called hash_construct(hash_size = %d, hash_func = [%p])\n", hash_size, hash_func);
-
+void hash_init(struct hash_t *hash, size_t hash_size,
+               hash_func_t *hash_func, cmp_func_t *cmp_func, destruct_internals_func_t *destruct_func) {
+    assert(hash);
     assert(hash_func);
+    assert(cmp_func);
     assert(hash_size > 0);
-
-    struct hash_t *hash = (struct hash_t *)calloc(1, sizeof(struct hash_t));
-    if (!hash) {
-        LOG_ERROR("hash_construct: failed allocate memory for hash.\n", NULL);
-        return NULL;
-    }
-
-    hash->table = (struct hash_list_t **)calloc(hash_size, sizeof(struct hash_list_t *));
-    if (!hash->table) {
-        LOG_ERROR("hash_construct: failed allocate memory for hash list.\n", NULL);
-        free((void *)hash);
-        return NULL;
-    }
 
     hash->table_size = hash_size;
     hash->hash_func = hash_func;
+    hash->cmp_func = cmp_func;
+    hash->destruct_internals_func = destruct_func;
 
-    LOG_DEBUG("hash_construct: hash constructed and inited, return hash = [%p].\n", hash);
-    return hash;
+    hash->table = (struct hash_list_t **)calloc(hash_size, sizeof(struct hash_list_t*));
+    assert(hash->table);
 }
 
-void hash_destruct(struct hash_t *hash) {
-    LOG_DEBUG("Called hash_destruct( hash = [%p] ).\n", hash);
+void hash_fini(struct hash_t *hash) {
     assert(hash);
     assert(hash_is_ok(hash));
 
-    for (unsigned i = 0; i < hash->table_size; i++) {
+    destruct_internals_func_t *destruct_internals_func = hash->destruct_internals_func;
+
+    for (size_t i = 0; i < hash->table_size; i++) {
         struct hash_list_t *hash_elem_ptr = hash->table[i];
 
-        while (hash_elem_ptr != NULL) {
+        while (hash_elem_ptr) {
             struct hash_list_t *next_elem_ptr = hash_elem_ptr->next;
+
+            assert(hash_list_is_ok(hash_elem_ptr));
+
+            if (destruct_internals_func)
+                destruct_internals_func(hash_elem_ptr);
+
+#ifndef NDEBUG
+            hash_elem_ptr->key = (size_t)NULL;
+            hash_elem_ptr->data = NULL;
+            hash_elem_ptr->next = NULL;
+#endif //NDEBUG
+
             free((void *)hash_elem_ptr);
+
             hash_elem_ptr = next_elem_ptr;
         }
     }
 
     free((void *)hash->table);
-    free((void *)hash);
 
-    LOG_DEBUG("hash_destruct: destruction finished.\n", NULL);
+#ifndef NDEBUG
+    hash->table = NULL;
+    hash->hash_func = NULL;
+    hash->cmp_func = NULL;
+    hash->destruct_internals_func = NULL;
+    hash->table_size = -1;
+#endif //NDEBUG
 }
 
-struct hash_list_t *hash_find(const struct hash_t *hash, const size_t cmp_identity) {
-    LOG_DEBUG("Called hash_find( hash = [%p], cmp_identity = [%p] ).\n", hash, cmp_identity);
+void *hash_find(const struct hash_t *hash, const size_t key) {
     assert(hash);
     assert(hash_is_ok(hash));
 
-    struct hash_list_t *hash_elem_ptr = hash->table[hash->hash_func(cmp_identity) % hash->table_size];
+    size_t hash_table_idx = hash->hash_func(key) % hash->table_size;
+    struct hash_list_t *hash_elem_ptr = hash->table[hash_table_idx];
+
+    cmp_func_t *cmp_func = hash->cmp_func;
+
     for (; hash_elem_ptr; hash_elem_ptr = hash_elem_ptr->next) {
-        if ((ssize_t)cmp_identity == hash_elem_ptr->cmp_identity) {
-            LOG_DEBUG("hash_find: value IS exists [%p].\n", hash_elem_ptr);
-            return hash_elem_ptr;
+        assert(hash_list_is_ok(hash_elem_ptr));
+
+        if (cmp_func((size_t)hash_elem_ptr->key, key)) {
+            return hash_elem_ptr->data;
         }
     }
 
-    LOG_DEBUG("hash_find: value is NOT exists..\n", NULL);
     return NULL;
 }
 
-struct hash_list_t *hash_node_construct(const struct hash_t *hash, const size_t cmp_identity, void *data) {
-    LOG_DEBUG("Called hash_node_construct( hash = [%p], cmp_identity = [%p], data = [%p] ).\n",
-              hash, cmp_identity, data);
+struct hash_list_t *hash_add_data(const struct hash_t *hash, const size_t key, void *data) {
     assert(hash);
     assert(hash_is_ok(hash));
 
-    struct hash_list_t *hash_node = (struct hash_list_t *)malloc(sizeof(struct hash_list_t));
-    if (!hash_node) {
-        LOG_ERROR("hash_node_construct: failed allocate memory for storing data!.\n", NULL);
-        return NULL;
+    cmp_func_t *cmp_func = hash->cmp_func;
+    hash_list_t **table = hash->table;
+
+    size_t hash_table_idx = hash->hash_func(key) % hash->table_size;
+    struct hash_list_t *hash_elem_ptr = table[hash_table_idx];
+
+    if (!hash_elem_ptr) {
+        table[hash_table_idx] = (hash_list_t *)malloc(sizeof(hash_list_t));
+        assert(table[hash_table_idx]);
+
+        hash_elem_ptr = table[hash_table_idx];
+    } else {
+        for (; hash_elem_ptr->next; hash_elem_ptr = hash_elem_ptr->next) {
+            if (cmp_func((size_t)hash_elem_ptr->key, key))
+                return hash_elem_ptr;
+        }
+
+        if (cmp_func((size_t)hash_elem_ptr->key, key))
+            return hash_elem_ptr;
+
+        hash_elem_ptr->next = (hash_list_t *)malloc(sizeof(hash_list_t));
+        assert(hash_elem_ptr->next);
+        hash_elem_ptr = hash_elem_ptr->next;
     }
 
-    hash_node->cmp_identity = cmp_identity;
-    hash_node->data = data;
+    hash_elem_ptr->key = key;
+    hash_elem_ptr->data = data;
+    hash_elem_ptr->next = NULL;
 
-    hash_node->next = NULL;
-    hash_node->prev = NULL;
-
-    return hash_node;
-}
-
-struct hash_list_t *hash_add_data(const struct hash_t *hash, const size_t cmp_identity, void *data) {
-    LOG_DEBUG("Called hash_add_data( hash = [%p], cmp_identity = [%p], data = [%p] ).\n",
-              hash, cmp_identity, data);
-    assert(hash);
-    assert(hash_is_ok(hash));
-
-    struct hash_list_t *hash_elem_ptr = NULL;
-
-    if (!(hash_elem_ptr = hash_find(hash, cmp_identity))) {
-        LOG_DEBUG("hash_add_data: create new node in hash table.\n", NULL);
-
-        hash_elem_ptr = hash_node_construct(hash, cmp_identity, data);
-        if (!hash_elem_ptr)
-            return NULL;
-
-        size_t hash_key = hash->hash_func(cmp_identity) % hash->table_size;
-
-        hash_elem_ptr->next = hash->table[hash_key];
-        if (hash->table[hash_key])
-            hash->table[hash_key]->prev = hash_elem_ptr;
-
-        assert(hash_elem_ptr->prev == NULL);
-
-        hash->table[hash_key] = hash_elem_ptr;
-    }
-
-    LOG_DEBUG("hash_add_data: return [%p].\n", hash_elem_ptr);
+    assert(hash_list_is_ok(hash_elem_ptr));
     return hash_elem_ptr;
 }
 
-struct hash_list_t *hash_add_node(const struct hash_t *hash, struct hash_list_t *hash_list) {
-    LOG_DEBUG("Called hash_add_node( hash = [%p], hash_list = [%p], cmp_identity = [%p] ).\n",
-              hash, hash_list);
+int hash_delete_data(const struct hash_t *hash, const size_t key) {
     assert(hash);
-    assert(hash_list);
     assert(hash_is_ok(hash));
 
-    size_t hash_key = hash->hash_func(hash_list->cmp_identity) % hash->table_size;
+    cmp_func_t *cmp_func = hash->cmp_func;
+    destruct_internals_func_t *destruct_internals_func = hash->destruct_internals_func;
 
-    hash_list->next = hash->table[hash_key];
-    if (hash->table[hash_key])
-        hash->table[hash_key]->prev = hash_list;
+    size_t hash_table_idx = hash->hash_func(key) % hash->table_size;
 
-    assert(hash_list->prev == NULL);
+    struct hash_list_t *hash_elem_prev_ptr = hash->table[hash_table_idx];
+    struct hash_list_t *hash_elem_ptr = hash_elem_prev_ptr ? hash_elem_prev_ptr->next : NULL;
 
-    hash->table[hash_key] = hash_list;
-
-    LOG_DEBUG("hash_add_node: return [%p].\n", hash_list);
-    return hash_list;
-}
-
-void hash_delete_node(const struct hash_t *hash, struct hash_list_t *hash_list) {
-    LOG_DEBUG("Called hash_delete_node( hash = [%p], hash_list = [%p] ).\n",
-              hash, hash_list);
-    assert(hash);
-    assert(hash_list);
-    assert(hash_is_ok(hash));
-
-    if (hash_list->prev)
-        hash_list->prev->next = hash_list->next;
-
-    if (hash_list->next)
-        hash_list->next->prev = hash_list->prev;
-
-    size_t hash_key = hash->hash_func(hash_list->cmp_identity) % hash->table_size;
-    assert(hash->table[hash_key]);
-
-    if (hash->table[hash_key] == hash_list) {
-        hash->table[hash_key] = hash_list->next;
+    if (!hash_elem_prev_ptr) {
+        assert(!"hash_delete_data: no hash_elem_prev_ptr unexpected situation!");
+        return -1;
     }
 
-    free((void *)hash_list);
+    if (cmp_func((size_t)hash_elem_prev_ptr->key, key)) {
+        // entry node
+        assert(hash_list_is_ok(hash_elem_prev_ptr));
+
+        if (destruct_internals_func)
+            destruct_internals_func(hash_elem_prev_ptr);
+
+        free(hash_elem_prev_ptr);
+        hash->table[hash_table_idx] = hash_elem_ptr;
+
+        return 0;
+    }
+
+    // non-entry node
+    for (; hash_elem_ptr; hash_elem_prev_ptr = hash_elem_ptr, hash_elem_ptr = hash_elem_ptr->next) {
+        if (cmp_func((size_t)hash_elem_ptr->key, key)) {
+            hash_elem_prev_ptr->next = hash_elem_ptr->next;
+
+            assert(hash_list_is_ok(hash_elem_ptr));
+
+            if (destruct_internals_func)
+                destruct_internals_func(hash_elem_ptr);
+
+#ifndef NDEBUG
+            hash_elem_ptr->key = -0xDEAD;
+            hash_elem_ptr->data = NULL;
+            hash_elem_ptr->next = NULL;
+#endif //NDEBUG
+
+            free(hash_elem_ptr);
+
+            return 0;
+        }
+    }
 }
 
 bool hash_is_ok(const struct hash_t *hash) {
     assert(hash);
-    return hash->table && hash->hash_func && (hash->table_size > 0);
+    return hash->table && hash->hash_func && hash->cmp_func && (hash->table_size > 0);
+}
+
+
+bool hash_list_is_ok(struct hash_list_t *hash_list) {
+    assert(hash_list);
+    return (hash_list->key != -0xDEAD);
 }
