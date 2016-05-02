@@ -7,7 +7,6 @@ struct chunk {
 	void * addr;
 	size_t length;
 	off_t offset;
-	struct chunk* next;
 	int ref_cnt;
 };
 

@@ -33,9 +33,9 @@ int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
 	}
 	cm -> cur_chunk_index = 0;
        cm -> skiplist = sl_alloc(&sdt);
-       if (pthread_mutex_init(&cm -> pool_lock, NULL)){
+       /*if (pthread_mutex_init(&cm -> pool_lock, NULL)){
               return 1;
-       }
+       }*/
 	if (!cm -> skiplist)
 		return 1;
 
@@ -51,7 +51,7 @@ int chunk_manager_finalize (struct chunk_manager *cm){
 			chunk_finalize (cm -> chunk_pool + i);
 
 	sl_free(cm -> skiplist);
-	pthread_mutex_destroy(&cm -> pool_lock);
+	//pthread_mutex_destroy(&cm -> pool_lock);
 #ifdef MEMORY_DEBUG
 	cm -> fd = 0xDEAD;
 	cm -> skiplist = (void *) 0xDEADBEEF;
@@ -62,34 +62,32 @@ int chunk_manager_finalize (struct chunk_manager *cm){
 struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 	LOG(INFO, "chunk_manager_get_av_chunk_from_pool called\n");
 	assert(cm);
-       pthread_mutex_lock(&cm -> pool_lock);
-	int end_index = (cm -> cur_chunk_index - 1) & (POOL_SIZE - 1);
-       LOG(DEBUG, "End index is %d, start is %d\n", end_index, cm -> cur_chunk_index);
+       //pthread_mutex_lock(&cm -> pool_lock);
+	int attempt_num = 0;
+	LOG(DEBUG, "End index is %d, start is %d\n", end_index, cm -> cur_chunk_index);
        //FIFO algorithm
-	for (; cm -> cur_chunk_index != end_index; cm -> cur_chunk_index++){
-		struct chunk *cur_ch = cm -> chunk_pool + cm -> cur_chunk_index;
+	for (attempt_num = 0; attempt_num < POOL_SIZE; attempt_num++){
+		int cur_chunk_index = __sync_fetch_and_add(&cm -> cur_chunk_index, 1) & POOL_SIZE_MASK;
+		struct chunk *cur_ch = cm -> chunk_pool + cur_chunk_index;
+		//TODO: ABA problem
 		//By default ref_cnt == -1 is unused chunk
-		LOG(DEBUG, "Trying %d chunk, ref_cnt=%d\n", cm -> cur_chunk_index, cur_ch -> ref_cnt);
+		LOG(DEBUG, "Trying %d chunk, ref_cnt=%d\n", cur_chunk_index, cur_ch -> ref_cnt);
 		if (cur_ch -> ref_cnt == -1){
-			LOG(DEBUG, "Unused chunk %d returned\n", cm -> cur_chunk_index);
-                     cm -> cur_chunk_index++;
-			__atomic_store_n(&cur_ch -> ref_cnt, 1, 0);
-                     //cur_ch -> ref_cnt = 1;
-                     pthread_mutex_unlock(&cm -> pool_lock);
+			LOG(DEBUG, "Unused chunk %d returned\n", cur_chunk_index);
+                     __atomic_store_n(&cur_ch -> ref_cnt, 1, 0);
+                     //pthread_mutex_unlock(&cm -> pool_lock);
 			return cur_ch;
 		}else if (cur_ch -> ref_cnt == 0){
-			LOG(DEBUG, "Refirbished chunk %d returned, cleaning\n", cm -> cur_chunk_index);
+			LOG(DEBUG, "Refirbished chunk %d returned, cleaning\n", cur_chunk_index);
                      sl_remove(cm -> skiplist, cur_ch -> offset);
 
 			chunk_finalize(cur_ch);
-                     cm -> cur_chunk_index++;
-			__atomic_store_n(&cur_ch -> ref_cnt, 1, 0);
-			//cur_ch -> ref_cnt = 1;
-                     pthread_mutex_unlock(&cm -> pool_lock);
+                     __atomic_store_n(&cur_ch -> ref_cnt, 1, 0);
+			//pthread_mutex_unlock(&cm -> pool_lock);
 			return cur_ch;
 		}//else we can't use this chunk: ref_cnt != 0
 	}
-       pthread_mutex_unlock(&cm -> pool_lock);
+       //pthread_mutex_unlock(&cm -> pool_lock);
 	return NULL;
 }
 
@@ -129,7 +127,7 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
               if (cur_ch && cur_ch -> offset == new_chunk -> offset){
 			/* We expect to find our previous chunk here
 			 * But if we lost race to another that's actually fine:
-			 * his chunk is better too. */
+			 * his chunk is better than too. */
 			sl_cas(cm -> skiplist, poffset, (unsigned long)cur_ch, (unsigned long) new_chunk);
 		}else{
 			//This function actually do add to skiplist
