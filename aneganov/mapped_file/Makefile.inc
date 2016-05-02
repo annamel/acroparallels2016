@@ -6,3 +6,7 @@ CFLAGS += $(if $(LOG), -DLOG_ON,)
 CFLAGS += $(if $(PROF), -fprofile-arcs -ftest-coverage,)
 CFLAGS += $(if $(ASAN), -fsanitize=address -fno-omit-frame-pointer,)
 LDFLAGS += $(if $(ASAN), -lasan,)
+
+ifeq ($(CC),icc)
+	LDFLAGS += -lirc
+endif
