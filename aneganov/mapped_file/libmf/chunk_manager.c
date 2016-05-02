@@ -335,3 +335,10 @@ int chpool_fd(chpool_t *cpool) {
 	}
 	return cpool->fd;
 }
+
+size_t chpool_page_size(chpool_t *cpool) {
+	if(!cpool) {
+		return 0;
+	}
+	return cpool->pg_sz;
+}
