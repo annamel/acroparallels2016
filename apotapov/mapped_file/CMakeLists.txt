@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.3)
-project(mapped_file)
+project(mf)
 
 set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -std=c99")
 
@@ -9,6 +9,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/out)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/out)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/out)
 
-add_library(libmappedfile STATIC ${SOURCES})
+add_library(mappedfile STATIC ${SOURCES})
 add_executable(tester test/test.c)
-target_link_libraries(tester libmappedfile)
+target_link_libraries(tester mappedfile)

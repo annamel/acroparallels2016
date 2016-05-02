@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 void print_res(int res_code, const char* test_name) {
     if(res_code) {
@@ -131,7 +132,8 @@ int test_write_read_cmp(const char* filename) {
 
 int performance_test(const char* filename) {
     mf_handle_t handle = mf_open(filename);
-    off_t new_size = (mf_file_size(handle)/get_chunk_size(1))*get_chunk_size(1);
+    long sz = sysconf(_SC_PAGE_SIZE);
+    off_t new_size = (mf_file_size(handle)/sz)*sz;
     time_t start, end;
     char* buf = (char*)calloc(2, sizeof(char));
     int i = 0;
