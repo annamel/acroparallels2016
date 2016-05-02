@@ -19,6 +19,8 @@
 
 #define HALFSIZE 2*GB
 
+//Virtual memory Anti-Cheat
+//Limits virtual memory for 'command'
 #define VAC(command) do{								\
 	struct rlimit rl_good = {.rlim_cur=128*GB, .rlim_max=-1};		\
 	struct rlimit rl_bad = {.rlim_cur=128*MB, .rlim_max=-1};		\

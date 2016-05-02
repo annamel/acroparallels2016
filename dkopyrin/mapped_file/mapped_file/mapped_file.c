@@ -50,6 +50,11 @@ mf_handle_t mf_open(const char *pathname){
 		return NULL;
 	}
 
+	/*
+	 * We try to mmap the whole file to improve performance. In order to do
+	 * this we must have enough virtual memory that is checked by getrlimit
+	 * function.
+	 */
 	struct rlimit rl;
 	if (!getrlimit(RLIMIT_AS, &rl)) {
 		off_t tmp;
