@@ -64,10 +64,11 @@ struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 	assert(cm);
        //pthread_mutex_lock(&cm -> pool_lock);
 	int attempt_num = 0;
-	LOG(DEBUG, "End index is %d, start is %d\n", end_index, cm -> cur_chunk_index);
+	LOG(DEBUG, "Start is %d\n", cm -> cur_chunk_index);
        //FIFO algorithm
 	for (attempt_num = 0; attempt_num < POOL_SIZE; attempt_num++){
-		int cur_chunk_index = __sync_fetch_and_add(&cm -> cur_chunk_index, 1) & POOL_SIZE_MASK;
+		//TODO: Bad things may happen: remove %
+		int cur_chunk_index = __sync_fetch_and_add(&cm -> cur_chunk_index, 1) % POOL_SIZE;
 		struct chunk *cur_ch = cm -> chunk_pool + cur_chunk_index;
 		//TODO: ABA problem
 		//By default ref_cnt == -1 is unused chunk
