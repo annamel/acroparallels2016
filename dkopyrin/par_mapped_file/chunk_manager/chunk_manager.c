@@ -1,4 +1,5 @@
-#include "chunk.h"
+#include "../chunk_queue/chunk.h"
+#include "../chunk_queue/chunk_queue.h"
 
 #define COLOR(x) "\x1B[33m"x"\x1B[0m"
 #define LOGCOLOR(x) COLOR("%s: ")x, __func__
@@ -26,12 +27,9 @@ int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
 	LOG(INFO, "chunk_manager_init called\n");
        assert(cm);
        cm -> fd = fd;
-	int i;
-	for (i = 0; i < POOL_SIZE; i++){
-		chunk_init_unused(cm -> chunk_pool + i);
-	}
 
-	cm -> cur_chunk_index = 0;
+	chunk_queue_init(&cm -> queue);
+	//cm -> cur_chunk_index = 0;
        cm -> skiplist = sl_alloc(&sdt);
        if (pthread_mutex_init(&cm -> pool_lock, NULL)){
               return 1;
@@ -45,13 +43,9 @@ int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
 int chunk_manager_finalize (struct chunk_manager *cm){
 	LOG(INFO, "chunk_manager_finalize called\n");
 	assert(cm);
-	int i;
- 	for (i = 0; i < POOL_SIZE; i++)
- 		if (cm -> chunk_pool[i].ref_cnt != -1)
-			chunk_finalize (cm -> chunk_pool + i);
 
-       LOG(INFO, "sl fini\n");
 	sl_free(cm -> skiplist);
+	chunk_queue_finalize(&cm -> queue);
        pthread_mutex_destroy(&cm -> pool_lock);
 #ifdef MEMORY_DEBUG
 	cm -> fd = 0xDEAD;
@@ -74,7 +68,8 @@ struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 		if (cur_ch -> ref_cnt == -1){
 			LOG(DEBUG, "Unused chunk %d returned\n", cm -> cur_chunk_index);
                      cm -> cur_chunk_index++;
-                     cur_ch -> ref_cnt = 1;
+			__atomic_store_n(&cur_ch -> ref_cnt, 1, 0);
+                     //cur_ch -> ref_cnt = 1;
                      pthread_mutex_unlock(&cm -> pool_lock);
 			return cur_ch;
 		}else if (cur_ch -> ref_cnt == 0){
@@ -83,7 +78,8 @@ struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 
 			chunk_finalize(cur_ch);
                      cm -> cur_chunk_index++;
-                     cur_ch -> ref_cnt = 1;
+			__atomic_store_n(&cur_ch -> ref_cnt, 1, 0);
+			//cur_ch -> ref_cnt = 1;
                      pthread_mutex_unlock(&cm -> pool_lock);
 			return cur_ch;
 		}//else we can't use this chunk: ref_cnt != 0
@@ -125,8 +121,15 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
 		chunk_init (new_chunk, plength, poffset, cm -> fd);
 
 		LOG(DEBUG, "Adding offset %d to skiplist w/ chunk %p\n", new_chunk -> offset, new_chunk);
-              //This function actually do add to skiplist
-		sl_cas(cm -> skiplist, poffset, CAS_EXPECT_DOES_NOT_EXIST, (unsigned long) new_chunk);
+              if (cur_ch && cur_ch -> offset == new_chunk -> offset){
+			/* We expect to find our previous chunk here
+			 * But if we lost race to another that's actually fine:
+			 * his chunk is better too. */
+			sl_cas(cm -> skiplist, poffset, (unsigned long)cur_ch, (unsigned long) new_chunk);
+		}else{
+			//This function actually do add to skiplist
+			sl_cas(cm -> skiplist, poffset, CAS_EXPECT_DOES_NOT_EXIST, (unsigned long) new_chunk);
+		}
 
 		*ret_ch = new_chunk;
 		*chunk_offset = offset - new_chunk -> offset;
@@ -134,7 +137,8 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
 	}else{
 		LOG(DEBUG, "Skiplist lookup success!\n");
               //TODO: Might fail
-              cur_ch -> ref_cnt++;
+		__atomic_fetch_add(&cur_ch -> ref_cnt, 1, 0);
+              //cur_ch -> ref_cnt++;
 		*chunk_offset = offset - cur_ch -> offset;
 		*ret_ch = cur_ch;
 		return cur_ch -> length - offset + cur_ch -> offset;

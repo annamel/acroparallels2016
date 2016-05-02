@@ -110,7 +110,8 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
 		if (new_chunk == NULL)
 			return -1;
 
-		chunk_init (new_chunk, plength, poffset, cm -> fd);
+		if (chunk_init (new_chunk, plength, poffset, cm -> fd))
+			return -1;
 	  	/* We can make adding to rbtree O(1) if we use offset that we already
 		 * found to make less tree traversals
 		 */

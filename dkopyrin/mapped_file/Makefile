@@ -6,9 +6,9 @@ CLEANDIRS := $(DIRS:%=clean-%)
 TESTDIRS := $(DIRS:%=test-%)
 
 ifdef DEBUG
-CFLAGS += -g -DDEBUG_LOG -DDEBUG_STDERRLOG -DMEMORY_DEBUG
+CFLAGS +=  -DDEBUG_LOG -DDEBUG_STDERRLOG -DMEMORY_DEBUG
 else
-CFLAGS += -Ofast -s -DNDEBUG -march=native
+CFLAGS += -g -s -DNDEBUG
 endif
 export CFLAGS MAKE_DIR
 
