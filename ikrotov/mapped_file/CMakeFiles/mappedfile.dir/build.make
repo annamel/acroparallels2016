@@ -118,59 +118,59 @@ CMakeFiles/mappedfile.dir/List/list.c.o.provides: CMakeFiles/mappedfile.dir/List
 
 CMakeFiles/mappedfile.dir/List/list.c.o.provides.build: CMakeFiles/mappedfile.dir/List/list.c.o
 
-CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o: CMakeFiles/mappedfile.dir/flags.make
-CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o: hash-table/hash_table.c
+CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o: CMakeFiles/mappedfile.dir/flags.make
+CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o: hash_table/hash_table.c
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/CMakeFiles $(CMAKE_PROGRESS_4)
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building C object CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o"
-	/usr/bin/cc  $(C_DEFINES) $(C_FLAGS) -o CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o   -c /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash-table/hash_table.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building C object CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o"
+	/usr/bin/cc  $(C_DEFINES) $(C_FLAGS) -o CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o   -c /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash_table/hash_table.c
 
-CMakeFiles/mappedfile.dir/hash-table/hash_table.c.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/mappedfile.dir/hash-table/hash_table.c.i"
-	/usr/bin/cc  $(C_DEFINES) $(C_FLAGS) -E /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash-table/hash_table.c > CMakeFiles/mappedfile.dir/hash-table/hash_table.c.i
+CMakeFiles/mappedfile.dir/hash_table/hash_table.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/mappedfile.dir/hash_table/hash_table.c.i"
+	/usr/bin/cc  $(C_DEFINES) $(C_FLAGS) -E /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash_table/hash_table.c > CMakeFiles/mappedfile.dir/hash_table/hash_table.c.i
 
-CMakeFiles/mappedfile.dir/hash-table/hash_table.c.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/mappedfile.dir/hash-table/hash_table.c.s"
-	/usr/bin/cc  $(C_DEFINES) $(C_FLAGS) -S /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash-table/hash_table.c -o CMakeFiles/mappedfile.dir/hash-table/hash_table.c.s
+CMakeFiles/mappedfile.dir/hash_table/hash_table.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/mappedfile.dir/hash_table/hash_table.c.s"
+	/usr/bin/cc  $(C_DEFINES) $(C_FLAGS) -S /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash_table/hash_table.c -o CMakeFiles/mappedfile.dir/hash_table/hash_table.c.s
 
-CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o.requires:
-.PHONY : CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o.requires
+CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o.requires:
+.PHONY : CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o.requires
 
-CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o.provides: CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o.requires
-	$(MAKE) -f CMakeFiles/mappedfile.dir/build.make CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o.provides.build
-.PHONY : CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o.provides
+CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o.provides: CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o.requires
+	$(MAKE) -f CMakeFiles/mappedfile.dir/build.make CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o.provides.build
+.PHONY : CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o.provides
 
-CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o.provides.build: CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o
+CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o.provides.build: CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o
 
-CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.o: CMakeFiles/mappedfile.dir/flags.make
-CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.o: hash-table/hash_funcs.c
+CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.o: CMakeFiles/mappedfile.dir/flags.make
+CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.o: hash_table/hash_funcs.c
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/CMakeFiles $(CMAKE_PROGRESS_5)
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building C object CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.o"
-	/usr/bin/cc  $(C_DEFINES) $(C_FLAGS) -o CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.o   -c /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash-table/hash_funcs.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building C object CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.o"
+	/usr/bin/cc  $(C_DEFINES) $(C_FLAGS) -o CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.o   -c /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash_table/hash_funcs.c
 
-CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.i"
-	/usr/bin/cc  $(C_DEFINES) $(C_FLAGS) -E /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash-table/hash_funcs.c > CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.i
+CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.i"
+	/usr/bin/cc  $(C_DEFINES) $(C_FLAGS) -E /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash_table/hash_funcs.c > CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.i
 
-CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.s"
-	/usr/bin/cc  $(C_DEFINES) $(C_FLAGS) -S /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash-table/hash_funcs.c -o CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.s
+CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.s"
+	/usr/bin/cc  $(C_DEFINES) $(C_FLAGS) -S /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash_table/hash_funcs.c -o CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.s
 
-CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.o.requires:
-.PHONY : CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.o.requires
+CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.o.requires:
+.PHONY : CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.o.requires
 
-CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.o.provides: CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.o.requires
-	$(MAKE) -f CMakeFiles/mappedfile.dir/build.make CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.o.provides.build
-.PHONY : CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.o.provides
+CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.o.provides: CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.o.requires
+	$(MAKE) -f CMakeFiles/mappedfile.dir/build.make CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.o.provides.build
+.PHONY : CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.o.provides
 
-CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.o.provides.build: CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.o
+CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.o.provides.build: CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.o
 
 # Object files for target mappedfile
 mappedfile_OBJECTS = \
 "CMakeFiles/mappedfile.dir/ChunkManager.c.o" \
 "CMakeFiles/mappedfile.dir/mf_lib/mapped_file.c.o" \
 "CMakeFiles/mappedfile.dir/List/list.c.o" \
-"CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o" \
-"CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.o"
+"CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o" \
+"CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.o"
 
 # External object files for target mappedfile
 mappedfile_EXTERNAL_OBJECTS =
@@ -178,8 +178,8 @@ mappedfile_EXTERNAL_OBJECTS =
 out/libmappedfile.a: CMakeFiles/mappedfile.dir/ChunkManager.c.o
 out/libmappedfile.a: CMakeFiles/mappedfile.dir/mf_lib/mapped_file.c.o
 out/libmappedfile.a: CMakeFiles/mappedfile.dir/List/list.c.o
-out/libmappedfile.a: CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o
-out/libmappedfile.a: CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.o
+out/libmappedfile.a: CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o
+out/libmappedfile.a: CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.o
 out/libmappedfile.a: CMakeFiles/mappedfile.dir/build.make
 out/libmappedfile.a: CMakeFiles/mappedfile.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --red --bold "Linking C static library out/libmappedfile.a"
@@ -193,8 +193,8 @@ CMakeFiles/mappedfile.dir/build: out/libmappedfile.a
 CMakeFiles/mappedfile.dir/requires: CMakeFiles/mappedfile.dir/ChunkManager.c.o.requires
 CMakeFiles/mappedfile.dir/requires: CMakeFiles/mappedfile.dir/mf_lib/mapped_file.c.o.requires
 CMakeFiles/mappedfile.dir/requires: CMakeFiles/mappedfile.dir/List/list.c.o.requires
-CMakeFiles/mappedfile.dir/requires: CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o.requires
-CMakeFiles/mappedfile.dir/requires: CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.o.requires
+CMakeFiles/mappedfile.dir/requires: CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o.requires
+CMakeFiles/mappedfile.dir/requires: CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.o.requires
 .PHONY : CMakeFiles/mappedfile.dir/requires
 
 CMakeFiles/mappedfile.dir/clean:

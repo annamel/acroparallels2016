@@ -1,4 +1,4 @@
-#include "hash-table/hash_table.h"
+#include "hash_table/hash_table.h"
 #include "List/list.h"
 #include "ChunkManager.h"
 #include <stdio.h>

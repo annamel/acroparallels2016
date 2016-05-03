@@ -4,23 +4,23 @@
 CMakeFiles/mappedfile.dir/ChunkManager.c.o: ChunkManager.c
 CMakeFiles/mappedfile.dir/ChunkManager.c.o: ChunkManager.h
 CMakeFiles/mappedfile.dir/ChunkManager.c.o: List/list.h
-CMakeFiles/mappedfile.dir/ChunkManager.c.o: hash-table/hash_funcs.h
-CMakeFiles/mappedfile.dir/ChunkManager.c.o: hash-table/hash_table.h
+CMakeFiles/mappedfile.dir/ChunkManager.c.o: hash_table/hash_funcs.h
+CMakeFiles/mappedfile.dir/ChunkManager.c.o: hash_table/hash_table.h
 
 CMakeFiles/mappedfile.dir/List/list.c.o: List/list.c
 CMakeFiles/mappedfile.dir/List/list.c.o: List/list.h
 
-CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.o: hash-table/hash_funcs.c
-CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.o: hash-table/hash_funcs.h
+CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.o: hash_table/hash_funcs.c
+CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.o: hash_table/hash_funcs.h
 
-CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o: hash-table/hash_funcs.h
-CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o: hash-table/hash_table.c
-CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o: hash-table/hash_table.h
+CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o: hash_table/hash_funcs.h
+CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o: hash_table/hash_table.c
+CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o: hash_table/hash_table.h
 
 CMakeFiles/mappedfile.dir/mf_lib/mapped_file.c.o: ChunkManager.h
 CMakeFiles/mappedfile.dir/mf_lib/mapped_file.c.o: List/list.h
-CMakeFiles/mappedfile.dir/mf_lib/mapped_file.c.o: hash-table/hash_funcs.h
-CMakeFiles/mappedfile.dir/mf_lib/mapped_file.c.o: hash-table/hash_table.h
+CMakeFiles/mappedfile.dir/mf_lib/mapped_file.c.o: hash_table/hash_funcs.h
+CMakeFiles/mappedfile.dir/mf_lib/mapped_file.c.o: hash_table/hash_table.h
 CMakeFiles/mappedfile.dir/mf_lib/mapped_file.c.o: mf_lib/mapped_file.c
 CMakeFiles/mappedfile.dir/mf_lib/mapped_file.c.o: mf_lib/mapped_file.h
 

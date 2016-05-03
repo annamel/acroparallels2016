@@ -2,8 +2,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/mappedfile.dir/ChunkManager.c.o"
   "CMakeFiles/mappedfile.dir/mf_lib/mapped_file.c.o"
   "CMakeFiles/mappedfile.dir/List/list.c.o"
-  "CMakeFiles/mappedfile.dir/hash-table/hash_table.c.o"
-  "CMakeFiles/mappedfile.dir/hash-table/hash_funcs.c.o"
+  "CMakeFiles/mappedfile.dir/hash_table/hash_table.c.o"
+  "CMakeFiles/mappedfile.dir/hash_table/hash_funcs.c.o"
   "out/libmappedfile.pdb"
   "out/libmappedfile.a"
 )

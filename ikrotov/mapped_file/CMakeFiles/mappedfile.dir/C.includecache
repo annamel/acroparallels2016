@@ -7,8 +7,8 @@
 #IncludeRegexTransform: 
 
 /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/ChunkManager.c
-hash-table/hash_table.h
-/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash-table/hash_table.h
+hash_table/hash_table.h
+/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash_table/hash_table.h
 List/list.h
 /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/List/list.h
 ChunkManager.h
@@ -27,8 +27,8 @@ unistd.h
 /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/ChunkManager.h
 sys/mman.h
 -
-hash-table/hash_table.h
-/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash-table/hash_table.h
+hash_table/hash_table.h
+/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash_table/hash_table.h
 List/list.h
 /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/List/list.h
 
@@ -44,19 +44,19 @@ errno.h
 
 /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/List/list.h
 
-/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash-table/hash_funcs.c
+/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash_table/hash_funcs.c
 hash_funcs.h
-/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash-table/hash_funcs.h
+/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash_table/hash_funcs.h
 
-/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash-table/hash_funcs.h
+/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash_table/hash_funcs.h
 inttypes.h
 -
 stdint.h
 -
 
-/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash-table/hash_table.c
+/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash_table/hash_table.c
 hash_table.h
-/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash-table/hash_table.h
+/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash_table/hash_table.h
 stdlib.h
 -
 stdio.h
@@ -64,9 +64,9 @@ stdio.h
 errno.h
 -
 
-/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash-table/hash_table.h
+/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash_table/hash_table.h
 hash_funcs.h
-/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash-table/hash_funcs.h
+/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/hash_table/hash_funcs.h
 
 /home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/mf_lib/mapped_file.c
 ../ChunkManager.h
