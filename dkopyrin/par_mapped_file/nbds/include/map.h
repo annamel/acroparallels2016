@@ -35,6 +35,7 @@ void         map_iter_free  (map_iter_t *iter);
 #define CAS_EXPECT_DOES_NOT_EXIST ( 0)
 #define CAS_EXPECT_EXISTS         (-1)
 #define CAS_EXPECT_WHATEVER       (-2)
+#define CAS_EXPECT_DELETED 	      (-3)
 
 typedef void *       (*map_alloc_t)  (const datatype_t *);
 typedef map_val_t    (*map_cas_t)    (void *, map_key_t , map_val_t, map_val_t);

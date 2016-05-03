@@ -129,7 +129,7 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
 			/* We expect to find our previous chunk here
 			 * But if we lost race to another that's actually fine:
 			 * his chunk is better than too. */
-			sl_cas(cm -> skiplist, poffset, (unsigned long)cur_ch, (unsigned long) new_chunk);
+			sl_cas(cm -> skiplist, poffset, CAS_EXPECT_DELETED, (unsigned long) new_chunk);
 		}else{
 			//This function actually do add to skiplist
 			sl_cas(cm -> skiplist, poffset, CAS_EXPECT_DOES_NOT_EXIST, (unsigned long) new_chunk);

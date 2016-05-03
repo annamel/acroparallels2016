@@ -25,18 +25,17 @@ void *test_ladder(void *num){
 	long err_count = 0;
 
 	long unit_map = FILESIZE / num_threads;
-	long start = unit_map * thread_num;
-	long end = unit_map * thread_num + unit_map;
+	long start = FILESIZE - unit_map * thread_num - unit_map;
+	long end = FILESIZE - unit_map * thread_num;
 
-	printf("Start %ld\n", thread_num);
 	for (it = start; it < end; it += 222){
 		mf_mapmem_handle_t loc_handle;
 		void *loc_ptr = mf_map(file, 0, it, &loc_handle);
 		if (loc_ptr == NULL){
 			err_count++;
 			printf("%s\n", strerror(errno));
-			//if (errno != EINVAL)
-			//	return (void *)1;
+			if (errno != EINVAL)
+				return (void *)1;
 		}else{
 			mf_unmap(file, loc_handle);
               }
