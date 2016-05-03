@@ -99,7 +99,6 @@ mf_handle_t mf_open(const char* pathname) {
     struct sysinfo info;
     result = sysinfo(&info);
     assert(result == 0);
-
     mapped_file->cache_mem_av = info.freeram / 128;
 
     size_t hash_table_size = MAX(8 * mapped_file->file_size / Chunk_size, 10*Page_size);
@@ -121,7 +120,12 @@ mf_handle_t mf_open(const char* pathname) {
         } else {
             mem_size = MIN((size_t)mapped_file->file_size, rl.rlim_cur);
         }
-        mem_ptr = mmap(NULL, (size_t)mem_size, PROT_WRITE, MAP_SHARED, mapped_file->fd, mem_offset);
+        mem_ptr = _mmap((size_t)mem_size, mapped_file->fd, mem_offset);
+        if (mem_ptr == MAP_FAILED) {
+            mem_ptr = NULL;
+            mem_size = -1;
+            mem_offset = -1;
+        }
     }
 #endif //STRESS_NO_VIRTUAL_MEM_TEST
 
@@ -211,9 +215,9 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
 
     chunk = chunk_create(cpa_offset, cpa_size, mapped_area);
     assert(chunk);
-    chunk_is_ok(chunk);
+    assert(chunk_is_ok(chunk));
     complex_key_t *key2ht =  complex_key_clone(&key);
-    complex_key_is_ok(key2ht);
+    assert(complex_key_is_ok(key2ht));
 
     hash_add_data(&mapped_file->chunk_ht, (size_t)key2ht, chunk);
 
@@ -336,7 +340,9 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {
 
     if (!mapped_file->file_mapped && mapped_file->cache_mem_av <= count) {
         chunk_t *cache_chunk = &mapped_file->cache_chunk;
-
+        assert(cache_chunk);
+        assert(chunk_is_ok(cache_chunk));
+        
         _munmap(cache_chunk->mem, (size_t)cache_chunk->mem_size);
         cache_chunk->mem = NULL;
     }
@@ -366,8 +372,9 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
     memcpy(mem_ptr, buf, count);
 
     if (!mapped_file->file_mapped && mapped_file->cache_mem_av <= count) {
-        printf("Going destruct!\n");
         chunk_t *cache_chunk = &mapped_file->cache_chunk;
+        assert(cache_chunk);
+        assert(chunk_is_ok(cache_chunk));
 
         _munmap(cache_chunk->mem, (size_t)cache_chunk->mem_size);
         cache_chunk->mem = NULL;
@@ -529,7 +536,9 @@ static void *_mmap(size_t length, int fd, off_t offset) {
 
     return mem_ptr;
 #else
-    return mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
+    void *mmap_result = mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
+    assert(mmap_result != MAP_FAILED);
+    return mmap_result;
 #endif //NDEBUG
 }
 
