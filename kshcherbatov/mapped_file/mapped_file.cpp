@@ -14,11 +14,13 @@
 #include <stdbool.h>
 #include <execinfo.h>
 #include <sys/sysinfo.h>
+#include <sys/resource.h>
+
 
 const size_t Page_size = (size_t)sysconf(_SC_PAGE_SIZE);
 const size_t Chunk_size = Page_size*1024;
 const size_t RW_atomic_size = Chunk_size*64;
-const size_t Ring_map_cache_size = 32;
+const size_t Ring_map_cache_size = 64;
 
 struct chunk_t {
     void *mem;
@@ -63,6 +65,9 @@ static complex_key_t *complex_key_clone(const complex_key_t *complex_key);
 static size_t pa_size(size_t size);
 static size_t ca_size(size_t size);
 
+static void *_mmap(size_t length, int fd, off_t offset);
+static int _munmap(void *addr, size_t length);
+
 bool chunk_is_not_in_pool(mapped_file_t *mapped_file, chunk_t *chunk);
 
 size_t hash_func(const size_t key);
@@ -103,23 +108,29 @@ mf_handle_t mf_open(const char* pathname) {
     memset(mapped_file->ring_map_cache, NULL, Ring_map_cache_size*sizeof(chunk_t *));
     mapped_file->ring_map_cache_w_idx = 0;
 
-    chunk_t *chunk_cache = &mapped_file->cache_chunk;
+    void *mem_ptr = NULL;
+    ssize_t mem_size = -1;
+    ssize_t mem_offset = -1;
 
-    void *mem_ptr = mmap(NULL, (size_t)mapped_file->file_size, PROT_WRITE, MAP_SHARED, mapped_file->fd, 0);
-    if (mem_ptr == MAP_FAILED)
-    {
-        mapped_file->file_mapped = false;
-        chunk_cache->mem = NULL;
-#ifndef NDEBUG
-        chunk_cache->mem_offset = -1;
-        chunk_cache->mem_size = -1;
-#endif
-    } else {
-        mapped_file->file_mapped = false;
-        chunk_cache->mem_offset = 0;
-        chunk_cache->mem_size = mapped_file->file_size;
+#ifndef STRESS_NO_VIRTUAL_MEM_TEST
+    struct rlimit rl;
+    if (!getrlimit(RLIMIT_AS, &rl)) {
+        mem_offset = 0;
+        if (rl.rlim_cur == RLIM_INFINITY) {
+            mem_size = (size_t)mapped_file->file_size;
+        } else {
+            mem_size = MIN((size_t)mapped_file->file_size, rl.rlim_cur);
+        }
+        mem_ptr = mmap(NULL, (size_t)mem_size, PROT_WRITE, MAP_SHARED, mapped_file->fd, mem_offset);
     }
+#endif //STRESS_NO_VIRTUAL_MEM_TEST
+
+    struct chunk_t *chunk_cache = &mapped_file->cache_chunk;
     chunk_cache->ref_cnt = -1; // prevent using as a single chunk: chunk_is_ok - not ok
+    chunk_cache->mem = mem_ptr;
+    chunk_cache->mem_size = mem_size;
+    chunk_cache->mem_offset = mem_offset;
+    mapped_file->file_mapped = mem_size >= mapped_file->file_size;
 
     assert(mapped_file_is_ok(mapped_file));
     return ((mf_handle_t)mapped_file);
@@ -136,7 +147,7 @@ int mf_close(mf_handle_t mf) {
     hash_fini(&mapped_file->chunk_ht);
 
     if (mapped_file->cache_chunk.mem) {
-        munmap(mapped_file->cache_chunk.mem, (size_t)mapped_file->cache_chunk.mem_size);
+        _munmap(mapped_file->cache_chunk.mem, (size_t)mapped_file->cache_chunk.mem_size);
     }
 
 #ifndef NDEBUG
@@ -155,6 +166,9 @@ int mf_close(mf_handle_t mf) {
 void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapmem_handle) {
     LOG_DEBUG("Called mf_map (mf = [%p], offset = %u, size = %u, mapmem_handle = [%p])\n",
               mf, offset, size, mapmem_handle);
+
+    assert(mf);
+    assert(mapmem_handle);
 
     if (size == 0) {
         return NULL;
@@ -186,11 +200,11 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
         return (void *)&(((char *)chunk->mem)[stair]);
     }
 
-    void *mapped_area = mmap(NULL, cpa_size, PROT_WRITE, MAP_SHARED, mapped_file->fd, cpa_offset);
+    void *mapped_area = _mmap(cpa_size, mapped_file->fd, cpa_offset);
     if (mapped_area == MAP_FAILED) {
-        LOG_ERROR("mf_map: Failed mmap with offset = %u, cpa_size = %u file_size - (cpa_size - cpa_offset) = %d \n\n",
+        LOG_ERROR("mf_map: Failed _mmap with offset = %u, cpa_size = %u file_size - (cpa_size - cpa_offset) = %d \n\n",
                cpa_offset, cpa_size, mapped_file->file_size - (cpa_size - cpa_offset));
-        assert(!"mf_map: Failed mmap area.\n");
+        assert(!"mf_map: Failed _mmap area.\n");
         return NULL;
     }
 
@@ -274,7 +288,7 @@ static void *cache_mem_region(struct mapped_file_t *mapped_file, size_t offset, 
 
     // cache miss
     if (chunk_cache->mem) {
-        munmap(chunk_cache->mem, (size_t)chunk_cache->mem_size);
+        _munmap(chunk_cache->mem, (size_t)chunk_cache->mem_size);
         chunk_cache->mem = NULL;
     }
     
@@ -282,12 +296,12 @@ static void *cache_mem_region(struct mapped_file_t *mapped_file, size_t offset, 
     
     size_t pa_offset = pa_size(offset);
     size_t stair = offset - pa_offset;
-    size = size + stair + 4*Chunk_size;
+    size = size + stair + 2*Chunk_size;
 
     if (pa_offset + size > mapped_file->file_size)
         size = mapped_file->file_size - pa_offset;
 
-    void *mem_ptr = mmap(NULL, size, PROT_WRITE, MAP_SHARED, mapped_file->fd, pa_offset);
+    void *mem_ptr = _mmap(size, mapped_file->fd, pa_offset);
     if (mem_ptr == MAP_FAILED)
         return NULL;
 
@@ -300,7 +314,10 @@ static void *cache_mem_region(struct mapped_file_t *mapped_file, size_t offset, 
 
 ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {
     LOG_DEBUG("Called mf_read (mf = [%p], buf = [%p], count = %u, offset = %u)\n", mf, buf, count, offset);
-    
+    assert(mf);
+    assert(count >= 0);
+    assert(offset >= 0);
+
     if (count == 0)
         return 0;
     
@@ -319,7 +336,7 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {
     if (!mapped_file->file_mapped && mapped_file->cache_mem_av <= count) {
         chunk_t *cache_chunk = &mapped_file->cache_chunk;
 
-        munmap(cache_chunk->mem, (size_t)cache_chunk->mem_size);
+        _munmap(cache_chunk->mem, (size_t)cache_chunk->mem_size);
         cache_chunk->mem = NULL;
     }
 
@@ -328,6 +345,9 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {
 
 ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
     LOG_DEBUG("Called mf_read (mf = [%p], buf = [%p], count = %u, offset = %u)\n", mf, buf, count, offset);
+    assert(mf);
+    assert(count >= 0);
+    assert(offset >= 0);
 
     if (count == 0)
         return 0;
@@ -348,7 +368,7 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
         printf("Going destruct!\n");
         chunk_t *cache_chunk = &mapped_file->cache_chunk;
 
-        munmap(cache_chunk->mem, (size_t)cache_chunk->mem_size);
+        _munmap(cache_chunk->mem, (size_t)cache_chunk->mem_size);
         cache_chunk->mem = NULL;
     }
 
@@ -444,7 +464,7 @@ void destruct_internals_func(hash_list_t *hash_list) {
     chunk_t *chunk = (chunk_t *)hash_list->data;
     assert(chunk);
     assert(chunk_is_ok(chunk));
-    munmap(chunk->mem, (size_t)chunk->mem_size);
+    _munmap(chunk->mem, (size_t)chunk->mem_size);
 
 #ifndef NDEBUG
     chunk->mem = NULL;
@@ -488,4 +508,41 @@ static size_t pa_size(size_t size) {
 
 static size_t ca_size(size_t size) {
     return (size / Chunk_size) * Chunk_size;
+}
+
+static void *_mmap(size_t length, int fd, off_t offset) {
+    assert(fd >= 0);
+    assert(length > 0);
+    assert(offset == pa_size((size_t)offset));
+
+#ifdef MEMDEBUG
+    size_t true_length = length + 2 * Page_size;
+    void *whole_mem_ptr = mmap(NULL, true_length,
+                               PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    assert(whole_mem_ptr != MAP_FAILED);
+    memset(whole_mem_ptr, 0xFF, true_length);
+
+    void *mem_ptr = mmap(whole_mem_ptr + Page_size, length,
+                         PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, offset);
+    assert(mem_ptr != MAP_FAILED);
+
+    return mem_ptr;
+#else
+    return mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
+#endif //NDEBUG
+}
+
+static int _munmap(void *addr, size_t length) {
+    assert(addr);
+    assert(length > 0);
+
+#ifdef MEMDEBUG
+    size_t true_length = length + 2 * Page_size;
+    void *true_addr = addr - Page_size;
+    int munmap_result = munmap(true_addr, true_length);
+    assert(munmap_result == 0);
+    return munmap_result;
+#else
+    return munmap(addr, length);
+#endif //NDEBUG
 }
