@@ -160,6 +160,7 @@ int mf_close(mf_handle_t mf) {
     mapped_file->cache_chunk.mem_size = -1;
 #endif //NDEBUG
 
+    free((void *)mapped_file);
     return 0;
 }
 
