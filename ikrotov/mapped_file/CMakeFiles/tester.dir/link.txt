@@ -1,1 +1,0 @@
-/usr/bin/cc   -std=c99   CMakeFiles/tester.dir/tester/test.c.o  -o out/tester -rdynamic out/libmappedfile.a 
