@@ -17,7 +17,7 @@
 #define SAMPLESIZE 100*MB
 #define VAC(command) do{								\
 	struct rlimit rl_good = {.rlim_cur=128*GB, .rlim_max=-1};		\
-	struct rlimit rl_bad = {.rlim_cur=128*MB, .rlim_max=-1};		\
+	struct rlimit rl_bad = {.rlim_cur=MB, .rlim_max=-1};		\
 	if (setrlimit(RLIMIT_AS, &rl_bad))						\
 		printf("Fail_bad, %s\n", strerror(errno));			\
 	command;									\
@@ -28,14 +28,6 @@
 int main(){
 	mf_handle_t file;
 	VAC(file = mf_open(FILENAME));
-
-	struct rlimit rl_good = {.rlim_cur=128*GB, .rlim_max=-1};
-	struct rlimit rl_bad = {.rlim_cur=128*MB, .rlim_max=-1};
-	if (setrlimit(RLIMIT_AS, &rl_bad))
-		printf("Fail2, %s\n", strerror(errno));
-	file = mf_open(FILENAME);
-	if (setrlimit(RLIMIT_AS, &rl_good))
-		printf("Fail3, %s\n", strerror(errno));
 
 	long it = 0;
 	long err_count = 0;
