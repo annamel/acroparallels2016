@@ -97,9 +97,9 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 			echo "	rm -rf $PWD/build_dir" >> $test_file
 			echo "	mkdir -p $PWD/build_dir" >> $test_file
 			echo "	pushd $PWD/build_dir" >> $test_file
-			echo "	$CMAKE '$make_dir'" >> $test_file
-			echo "	make" >> $test_file
 			echo "	mkdir -p '$out_dir/'" >> $test_file
+			echo "	$CMAKE -H'$make_dir' -B." >> $test_file
+			echo "	make" >> $test_file
 			echo "	cp -f './$LIBOUT_SUFFIX'/* '$out_dir/'" >> $test_file
 			echo "	rm -rf '$PWD/build_dir'" >> $test_file
 			echo "	popd" >> $test_file
