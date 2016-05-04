@@ -10,7 +10,7 @@
 #include "hashtable/hashtable.h"
 
 #define HTBL_SIZE 1024
-#define DEFAULT_CPOOL_SIZE 1024
+#define DEFAULT_CPOOL_SIZE 8192
 
 struct Chunk {
 	cpool_t *cpool;
@@ -61,7 +61,7 @@ int cpool_fd(cpool_t *cpool);
 
 /* ----- */ /* -CODE- */ /* ----- */
 static size_t get_ch_size(off_t count) {
-	return (size_t)count * sysconf(_SC_PAGESIZE);
+	return (size_t)count * sysconf(_SC_PAGESIZE) << 10;
 }
 
 static int ch_init(off_t idx, off_t len, cpool_t *cpool, chunk_t *ch) {
@@ -166,9 +166,9 @@ int ch_acquire(cpool_t *cpool, off_t offset, size_t size, chunk_t **ch_ptr) {
 	off_t idx = (off_t) (offset / get_ch_size(1));
 	off_t len = (off_t) (size / get_ch_size(1) + 1);
 
-	chunk_t *ch = *ch_ptr;
-
 	int err = ch_get(cpool, idx, len, ch_ptr);
+
+	chunk_t *ch = *ch_ptr;
 
 	switch(err) {
 		case 0:

@@ -4,7 +4,7 @@
  #
  # Lang:     C
  # Author:   okhlopkov
- # Version:  0.4
+ # Version:  0.5
 
  */
 
@@ -275,7 +275,7 @@ hval_t hashtable_get (hashtable_t *hashtable, hkey_t key) {
             current_pair = current_pair->next;
     }
 
-	  //returning NULL in cases of not found.
+    //returning NULL in cases of not found.
     if (not_found) {
         #if defined ERROR
             LOG("ERROR: hashtable_get_value_by_key: element not found");

@@ -26,8 +26,8 @@ mf_handle_t mf_open(const char* name) {
 
 int mf_close(mf_handle_t mf) {
     if (!mf) return EAGAIN;
-    errno = cpool_destruct((cpool_t *)mf);
-    return errno ? -1 : 0;
+    int err = cpool_destruct((cpool_t *)mf);
+    return err ? -1 : 0;
 }
 
 ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset) {
@@ -110,5 +110,5 @@ off_t mf_file_size(mf_handle_t mf) {
 	int err = fstat(fd, &sb);
 	if (err == -1) return -1;
 	size = sb.st_size;
-	return errno ? -1 : size;
+	return err ? -1 : size;
 }
