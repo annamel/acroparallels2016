@@ -11,7 +11,7 @@
 
 mf_handle_t mf_open(const char *pathname) {
     created_logger = logger_init("log.txt");
-    write_log_to_file(Info,"mf_open: started!\n");
+   // write_log_to_file(Info,"mf_open: started!\n");
 	if(pathname == NULL) {
         write_log_to_file(Error,"mf_open: wrong pathname, its value is NULL!\n");
 		return NULL;
@@ -27,12 +27,12 @@ mf_handle_t mf_open(const char *pathname) {
         write_log_to_file(Error,"mf_open: chunk pool initialization failed!\n");
 		return NULL;
 	}
-    write_log_to_file(Info,"mf_open: finished!\n");
+   // write_log_to_file(Info,"mf_open: finished!\n");
 	return (mf_handle_t)ch_pool;
 }
 
 int mf_close(mf_handle_t mf) {
-    write_log_to_file(Info,"mf_close: started!\n");
+   // write_log_to_file(Info,"mf_close: started!\n");
 	if(mf == NULL) {
         write_log_to_file(Error,"mf_close: invalid input!\n");
 		return -1;
@@ -42,13 +42,13 @@ int mf_close(mf_handle_t mf) {
         write_log_to_file(Error,"mf_close: deinitialization of chunk pool failed!\n");
 		return res_code;
 	}
-    write_log_to_file(Info,"mf_close: finished!\n\n\n");
+   // write_log_to_file(Info,"mf_close: finished!\n\n\n");
     logger_deinit();
 	return 0;
 }
 
 off_t mf_file_size(mf_handle_t mf) {
-    write_log_to_file(Info,"mf_file_size: started!\n");
+   // write_log_to_file(Info,"mf_file_size: started!\n");
 	if(mf == MF_OPEN_FAILED) {
         write_log_to_file(Error,"mf_file_size: invalid input, mf == MF_OPEN_FAILED!\n");
 		return 0;
@@ -65,31 +65,41 @@ off_t mf_file_size(mf_handle_t mf) {
         write_log_to_file(Error,"mf_file_size: fstat returned -1!\n");
 		return 0;
 	}
-    write_log_to_file(Info,"mf_file_size: finished!\n");
+   // write_log_to_file(Info,"mf_file_size: finished!\n");
 	return sb.st_size;
 }
 
 
 int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle) {
-    write_log_to_file(Info,"mf_unmap: started!\n");
+   // write_log_to_file(Info,"mf_unmap: started!\n");
 	int res_code = 0;
 	if((mf == MF_OPEN_FAILED) || (mapmem_handle == MF_OPEN_FAILED)) {
         write_log_to_file(Error,"mf_unmap: invalid input!\n");
 		return -1;
 	}
+    if(((chunk_t*)mapmem_handle) -> length == 0) {
+        return 0;
+    }
 	res_code = chunk_release((chunk_t*)mapmem_handle);
 	if(res_code) {
         write_log_to_file(Error,"mf_unmap: chunk deinitialization failed!\n");
 		return res_code;
 	}
-    write_log_to_file(Info,"mf_unmap: finished!\n");
+   // write_log_to_file(Info,"mf_unmap: finished!\n");
 	return 0;
 }
 
 void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle) {
-    write_log_to_file(Info,"mf_map: started!\n");
+   // write_log_to_file(Info,"mf_map: started!\n");
 	int res_code = 0;
-	if((mf == MF_OPEN_FAILED) || (mapmem_handle == NULL) || (offset < 0) || (offset + size > mf_file_size(mf))) {
+//added
+    if((offset + size > mf_file_size(mf)) && (offset < mf_file_size(mf))) {
+        size = mf_file_size(mf) - offset;
+        if(size%sysconf(_SC_PAGE_SIZE) != 0) {
+        }
+    }
+//added
+    if((mf == MF_OPEN_FAILED) || (mapmem_handle == NULL) || (offset > mf_file_size(mf)) || (offset < 0)) {
 		*mapmem_handle = MF_OPEN_FAILED;
         write_log_to_file(Error,"mf_map: invalid input!\n");
 		return NULL;
@@ -99,22 +109,22 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 		return NULL;
 	}
 	off_t index = offset/get_chunk_size(1);
-    write_log_to_file(Debug,"mf_map: index is calculated!\n");
+   // write_log_to_file(Debug,"mf_map: index is calculated!\n");
 	off_t length = 0;
 
 	if((offset + size)%get_chunk_size(1) != 0) {
-        write_log_to_file(Debug,"mf_map: (offset + size)%get_chunk_size(1) != 0\n");
+       // write_log_to_file(Debug,"mf_map: (offset + size)%get_chunk_size(1) != 0\n");
 		length = (offset + size)/get_chunk_size(1) - index + 1;
 	} else {
         write_log_to_file(Debug,"mf_map: (offset + size)%get_chunk_size(1) = 0\n");
-		length = (offset+ size)/get_chunk_size(1) - index;
+        length = (offset + size)/get_chunk_size(1) - index;
 	}
 	ch_pool_t* ch_pool = (ch_pool_t *)mf;
 	chunk_t** chunk = (chunk_t**)mapmem_handle;
 
 	*chunk = find_in_range(ch_pool -> h_table, offset, size);
 	if ((*chunk) == NULL) {
-        write_log_to_file(Debug,"mf_map: there is no chunk, which contains needed range of bytes. The next step - init of such chunk!\n");
+        write_log_to_file(Debug,"mf_map: t is no chunk, which contains needed range of bytes. The next step - init of such chunk!\n");
 		int res_code = ch_init(index, length, ch_pool);
 		if(res_code) {
             write_log_to_file(Error,"mf_map: initialization of chunk failed!\n");
@@ -129,25 +139,31 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
         write_log_to_file(Error,"mf_map: pointer to memory is NULL!\n");
 		return MF_MAP_FAILED;
 	}
-    write_log_to_file(Info,"mf_map: finished!\n");
+   // write_log_to_file(Info,"mf_map: finished!\n");
 	return ptr;
 }
 
 
 ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {
-    write_log_to_file(Info,"mf_read: started!\n");
+   // write_log_to_file(Info,"mf_read: started!\n");
 	int res_code = 0;
 	off_t size_of_file = mf_file_size(mf);
     if(size_of_file == 0) {
         write_log_to_file(Error,"mf_read: size of file = 0!\n");
 		return 0;
 	}
-	if((buf == NULL) || (offset < 0) || (offset + count > size_of_file) || (mf == MF_OPEN_FAILED)) {
+
+    if(((offset + (off_t)count) > size_of_file) && (offset < size_of_file)) {
+        count = size_of_file - offset;
+    }
+
+
+    if((buf == NULL) || (offset < 0) || (mf == MF_OPEN_FAILED)) {
         write_log_to_file(Error,"mf_read: invalid input!\n");
-		return -1;
+        return 0;
 	}
 	if(count == 0) {
-        write_log_to_file(Debug,"mf_read: check size of bytes which you want read!\n");
+       // write_log_to_file(Debug,"mf_read: check size of bytes which you want read!\n");
 		return 0;
 	}
 	ch_pool_t* ch_pool = (ch_pool_t*)mf;
@@ -158,42 +174,48 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {
 	}
 
 	off_t index = offset/get_chunk_size(1);
-    write_log_to_file(Debug,"mf_read: index is calculated!\n");
+  //  write_log_to_file(Debug,"mf_read: index is calculated!\n");
 	off_t length = 0;
 
     if((offset + count)%get_chunk_size(1) != 0) {
-        write_log_to_file(Debug,"mf_read: (offset + size)%get_chunk_size(1) != 0\n");
+       // write_log_to_file(Debug,"mf_read: (offset + size)%get_chunk_size(1) != 0\n");
         length = (offset + count)/get_chunk_size(1) - index + 1;
 	} else {
-        write_log_to_file(Debug,"mf_read: (offset + size)%get_chunk_size(1) = 0\n");
+       // write_log_to_file(Debug,"mf_read: (offset + size)%get_chunk_size(1) = 0\n");
         length = (offset+ count)/get_chunk_size(1) - index;
 	}
 
 	chunk_t* chunk_ptr = find_in_range(ch_pool -> h_table, offset, count);
 	if(chunk_ptr == NULL) {
-        write_log_to_file(Debug,"mf_read: there is no chunk, which contains needed range of bytes. The next step - init of such chunk!\n");
+       // write_log_to_file(Debug,"mf_read: there is no chunk, which contains needed range of bytes. The next step - init of such chunk!\n");
         res_code = ch_init(index, length, ch_pool);
 		if(res_code) {
+            printf("%d\n",res_code);
             write_log_to_file(Error,"mf_read: initialization of chunk failed!\n");
 			return res_code; 
 		}
 		chunk_ptr = take_value_ptr(ch_pool -> h_table, index, length);
 	}
     buf = memcpy(buf,(const void*)((chunk_ptr -> data) + offset - (chunk_ptr -> index) * get_chunk_size(1)), count);
-     write_log_to_file(Info,"mf_read: finished!\n");
+    // write_log_to_file(Info,"mf_read: finished!\n");
 	return count;
 }
 
 
 ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
-    write_log_to_file(Info,"mf_write: started!\n");
+   // write_log_to_file(Info,"mf_write: started!\n");
 	int res_code = 0;
 	off_t size_of_file = mf_file_size(mf);
     if(size_of_file == 0) {
         write_log_to_file(Error,"mf_write: size of file = 0!\n");
 		return 0;
 	}
-	if((buf == NULL) || (offset < 0) || (offset + count > size_of_file) || (mf == MF_OPEN_FAILED)) {
+
+    if((offset + count > size_of_file) && (offset < size_of_file)) {
+        count = size_of_file - offset;
+    }
+
+    if((buf == NULL) || (offset < 0) || (offset > size_of_file) || (mf == MF_OPEN_FAILED)) {
         write_log_to_file(Error,"mf_write: invalid input!\n");
 		return -1;
 	}
@@ -201,20 +223,20 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
 	ch_pool_t* ch_pool = (ch_pool_t*)mf;
 
 	off_t index = offset/get_chunk_size(1);
-    write_log_to_file(Debug,"mf_write: index is calculated!\n");
+   // write_log_to_file(Debug,"mf_write: index is calculated!\n");
 	off_t length = 0;
 
     if((offset + count)%get_chunk_size(1) != 0) {
-        write_log_to_file(Debug,"mf_write: (offset + size)%get_chunk_size(1) != 0\n");
+       // write_log_to_file(Debug,"mf_write: (offset + size)%get_chunk_size(1) != 0\n");
         length = (offset + count)/get_chunk_size(1) - index + 1;
 	} else {
-        write_log_to_file(Debug,"mf_write: (offset + size)%get_chunk_size(1) != 0\n");
+       // write_log_to_file(Debug,"mf_write: (offset + size)%get_chunk_size(1) != 0\n");
         length = (offset+ count)/get_chunk_size(1) - index;
 	}
 
 	chunk_t* chunk_ptr = find_in_range(ch_pool -> h_table, offset, count);
 	if(chunk_ptr == NULL) {
-        write_log_to_file(Debug,"mf_write: there is no chunk, which contains needed range of bytes. The next step - init of such chunk!\n");
+       // write_log_to_file(Debug,"mf_write: there is no chunk, which contains needed range of bytes. The next step - init of such chunk!\n");
         res_code = ch_init(index, length, ch_pool);
 		if(res_code) {
             write_log_to_file(Error,"mf_read: initialization of chunk failed!\n");

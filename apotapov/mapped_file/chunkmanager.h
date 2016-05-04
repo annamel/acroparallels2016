@@ -14,4 +14,4 @@ int chunk_release(chunk_t* chunk);
 int chunk_clear(chunk_t* chunk);
 size_t get_chunk_size(off_t multiplier);
 
-#endif  
+#endif
