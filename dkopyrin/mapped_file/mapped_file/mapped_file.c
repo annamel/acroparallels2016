@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/sysinfo.h>
 
 #define COLOR(x) "\x1B[36m"x"\x1B[0m"
 #define LOGCOLOR(x) COLOR("%s: ")x, __func__
@@ -56,13 +57,14 @@ mf_handle_t mf_open(const char *pathname){
 	 * function.
 	 */
 	struct rlimit rl;
-	if (!getrlimit(RLIMIT_AS, &rl)) {
+	struct sysinfo sys;
+	if (!getrlimit(RLIMIT_AS, &rl) && !sysinfo(&sys)) {
 		off_t tmp;
 		struct chunk *ch = NULL;
 		if (rl.rlim_cur == RLIM_INFINITY)
-			chunk_manager_gen_chunk(&mf -> cm, 0, mf -> size, &ch, &tmp);
+			chunk_manager_gen_chunk(&mf -> cm, 0, sys.freeram / 2, &ch, &tmp);
 		else
-			chunk_manager_gen_chunk(&mf -> cm, 0, MIN(rl.rlim_cur, mf -> size), &ch, &tmp);
+			chunk_manager_gen_chunk(&mf -> cm, 0, MIN(rl.rlim_cur, sys.freeram / 2), &ch, &tmp);
 		mf -> prev_ch = ch;
 	}
 	return (mf_handle_t) mf;

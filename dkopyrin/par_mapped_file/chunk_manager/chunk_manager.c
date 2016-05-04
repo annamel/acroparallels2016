@@ -109,13 +109,13 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
 	 */
 	//TODO: implement interval tree or structure that allows to find biggest chunk
 
-	//off_t relative_offset = poffset - cur_ch -> offset;
-	//ssize_t relative_length = plength - cur_ch -> offset;
-       LOG(DEBUG, "Found nice chunk %p\n", cur_ch);
-	if (cur_ch != NULL) LOG(DEBUG, "Closest chunk is offset %d, size %d\n", cur_ch -> offset, cur_ch -> length);
+	LOG(DEBUG, "Found nice chunk %p\n", cur_ch);
+	off_t ch_offset = cur_ch ? cur_ch -> offset : -1;
+	ssize_t ch_length = cur_ch ? cur_ch -> length : -1;
+       if (cur_ch != NULL) {LOG(DEBUG, "Closest chunk is offset %ld, size %ld\n", cur_ch -> offset, cur_ch -> length);}
 	if (cur_ch == NULL ||
-	    cur_ch -> length < poffset - cur_ch -> offset ||
-	    cur_ch -> length < plength) {
+	    ch_length < poffset - ch_offset ||
+	    ch_length < plength) {
               LOG(DEBUG, "No chunk found - making new one of size %lld\n", plength);
 
 		struct chunk *new_chunk = chunk_manager_get_av_chunk_from_pool(cm);
@@ -124,7 +124,7 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
 
 		chunk_init (new_chunk, plength, poffset, cm -> fd);
 
-		LOG(DEBUG, "Adding offset %d to skiplist w/ chunk %p\n", new_chunk -> offset, new_chunk);
+		LOG(DEBUG, "Adding offset %ld to skiplist w/ chunk %p\n", new_chunk -> offset, new_chunk);
               if (cur_ch && cur_ch -> offset == new_chunk -> offset){
 			/* We expect to find our previous chunk here
 			 * But if we lost race to another that's actually fine:
@@ -143,8 +143,8 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
               //TODO: Might fail
 		__atomic_fetch_add(&cur_ch -> ref_cnt, 1, 0);
               //cur_ch -> ref_cnt++;
-		*chunk_offset = offset - cur_ch -> offset;
 		*ret_ch = cur_ch;
-		return cur_ch -> length - offset + cur_ch -> offset;
+		*chunk_offset = offset - ch_offset;
+		return ch_length - offset + ch_offset;
 	}
 }

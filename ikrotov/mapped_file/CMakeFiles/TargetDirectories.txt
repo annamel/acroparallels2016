@@ -1,2 +1,0 @@
-/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/CMakeFiles/tester.dir
-/home/ilyakrotov/Desktop/mf_file_lib/acroparallels2016/ikrotov/mapped_file/CMakeFiles/mappedfile.dir

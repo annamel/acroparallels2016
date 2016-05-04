@@ -4,9 +4,9 @@
 #include <stdlib.h>
 
 struct chunk {
-	void * addr;
 	size_t length;
 	off_t offset;
+	void * addr;
 	int ref_cnt;
 };
 

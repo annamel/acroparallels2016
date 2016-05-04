@@ -51,7 +51,7 @@ mf_handle_t mf_open(const char *pathname){
        if (sysinfo(&info) == 0) {
        	off_t tmp;
        	struct chunk *ch = NULL;
-       	chunk_manager_gen_chunk(&mf -> cm, 0, info.freeram / 2, &ch, &tmp);
+       	//chunk_manager_gen_chunk(&mf -> cm, 0, info.freeram / 2, &ch, &tmp);
        	//mf -> prev_ch = ch;
        }
 	return (mf_handle_t) mf;
