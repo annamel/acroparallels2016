@@ -97,28 +97,6 @@ int ht_add_item(htable_t *ht, hkey_t key, hvalue_t value)
         return 0;
     }  
     return -1;
-
-//    hash_key_t key_hash = hash_func(chunk -> index);
-//    unsigned int place = key_hash % (chunk -> ch_pool -> h_table -> size);
-//    list_element* elem = (list_element*)calloc(1, sizeof(list_element));
-//    elem -> next = NULL;
-//    elem -> prev = NULL;
-//    elem -> data = chunk;
-//    list_element* ptr = (chunk -> ch_pool -> h_table -> table) [place];
-//    if(ptr == NULL) {
-//      (chunk -> ch_pool -> h_table -> table) [place] = elem;
-//    } else {
-//      while(ptr -> next) {
-//        if(((ptr -> data -> index) == (elem -> data -> index)) && ((ptr -> data -> length) == (elem -> data -> length))) {
-//          return 1;
-//        }
-//        ptr = ptr -> next;
-//      }
-//      ptr -> next = elem;
-//      elem -> prev = ptr;
-//    }
-//    return 0;
-
 }
 
 
