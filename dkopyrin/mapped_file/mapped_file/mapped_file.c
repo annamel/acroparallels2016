@@ -52,10 +52,11 @@ mf_handle_t mf_open(const char *pathname){
 	}
 
 	/*
-	 * We try to mmap the whole file to improve performance. In order to do
+	 * We try to mmap part of file to improve performance. In order to do
 	 * this we must have enough virtual memory that is checked by getrlimit
 	 * function.
 	 */
+
 	struct rlimit rl;
 	struct sysinfo sys;
 	if (!getrlimit(RLIMIT_AS, &rl) && !sysinfo(&sys)) {
@@ -65,7 +66,7 @@ mf_handle_t mf_open(const char *pathname){
 			chunk_manager_gen_chunk(&mf -> cm, 0, sys.freeram / 2, &ch, &tmp);
 		else
 			chunk_manager_gen_chunk(&mf -> cm, 0, MIN(rl.rlim_cur, sys.freeram / 2), &ch, &tmp);
-		mf -> prev_ch = ch;
+		//mf -> prev_ch = ch; TODO: This line makes segfault oO
 	}
 	return (mf_handle_t) mf;
 }
@@ -128,11 +129,12 @@ ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t off
 		return read_bytes;
 
 	//Nearly the same approach is used here for getting new chunk
+	ch = NULL;
 	off_t ch_offset = 0;
-	size_t av_chunk_size = chunk_manager_gen_chunk(cm, offset, size, &ch, &ch_offset);
-	if (!ch)
+	ssize_t av_chunk_size = chunk_manager_gen_chunk(cm, offset, size, &ch, &ch_offset);
+	if (av_chunk_size == -1)
 		return read_bytes;
-	LOG(DEBUG, "Got chunk of size %d\n", av_chunk_size);
+	LOG(DEBUG, "Got chunk of size %ld\n", av_chunk_size);
 	size_t read_size = MIN(av_chunk_size, size);
 	itfunc(ch, read_size, ch_offset, buf);
 	read_bytes += read_size;
