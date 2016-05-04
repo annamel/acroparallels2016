@@ -379,7 +379,10 @@ static map_val_t update_item (node_t *item, map_val_t expectation, map_val_t new
     TRACE("s2", "update_item: lost a race. the CAS failed. another thread changed the item's value", 0, 0);
 
     // retry
-    return update_item(item, expectation, new_val); // tail call
+    if (expectation != CAS_EXPECT_DELETED)
+    	return update_item(item, expectation, new_val); // tail call
+    else
+       return NULL;
 }
 
 map_val_t sl_cas (skiplist_t *sl, map_key_t key, map_val_t expectation, map_val_t new_val) {
@@ -400,7 +403,10 @@ map_val_t sl_cas (skiplist_t *sl, map_key_t key, map_val_t expectation, map_val_
             return ret_val;
 
         // If we lose a race with a thread removing the item we tried to update then we have to retry.
-        return sl_cas(sl, key, expectation, new_val); // tail call
+	 if (expectation != CAS_EXPECT_DELETED) //But still we may fail
+        	return sl_cas(sl, key, expectation, new_val); // tail call
+	 else
+	 	return DOES_NOT_EXIST;
     }
 
     if (EXPECT_FALSE(expectation != CAS_EXPECT_DOES_NOT_EXIST && expectation != CAS_EXPECT_WHATEVER)) {

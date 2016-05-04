@@ -81,7 +81,7 @@ struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 	return NULL;
 }
 
-long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t length, struct chunk ** ret_ch, off_t *chunk_offset) {
+ssize_t chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t length, struct chunk ** ret_ch, off_t *chunk_offset) {
 	LOG(INFO, "chunk_manager_gen_chunk called\n");
 	assert(cm);
 	assert(ret_ch);
@@ -100,17 +100,17 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
 
 	//off_t relative_offset = offset - cur_ch -> offset;
 	//ssize_t relative_length = length;
-       LOG(DEBUG, "Found nice chunk %p\n", cur_ch);
-       if (cur_ch != NULL) LOG(DEBUG, "Closest chunk is offset %lld, size %lld\n", cur_ch -> offset, cur_ch -> length);
+	LOG(DEBUG, "Found nice chunk %p\n", cur_ch);
+	if (cur_ch != NULL) LOG(DEBUG, "Closest chunk is offset %lld, size %lld\n", cur_ch -> offset, cur_ch -> length);
 	if (cur_ch == NULL ||
-	    cur_ch -> length < poffset - cur_ch -> offset ||
-	    cur_ch -> length < plength ) {
+	    poffset + plength > cur_ch -> length + cur_ch -> offset ) {
 		LOG(DEBUG, "No chunk found - making new one of size %d\n", plength);
 		struct chunk *new_chunk = chunk_manager_get_av_chunk_from_pool(cm);
 		if (new_chunk == NULL)
 			return -1;
 
-		chunk_init (new_chunk, plength, poffset, cm -> fd);
+		if (chunk_init (new_chunk, plength, poffset, cm -> fd))
+			return -1; //TODO: lmk
 	  	/* We can make adding to rbtree O(1) if we use offset that we already
 		 * found to make less tree traversals
 		 */
@@ -126,7 +126,7 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
 		*chunk_offset = offset - new_chunk -> offset;
 		return new_chunk -> length - offset + new_chunk -> offset;
 	}else{
-		LOG(DEBUG, "Rbtree lookup success!\n");
+		LOG(DEBUG, "Rbtree lookup success!, %ld %ld %ld\n", cur_ch -> length, poffset - cur_ch -> offset, plength);
 		*chunk_offset = offset - cur_ch -> offset;
 		*ret_ch = cur_ch;
 		return cur_ch -> length - offset + cur_ch -> offset;

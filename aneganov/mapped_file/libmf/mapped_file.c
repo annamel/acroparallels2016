@@ -78,7 +78,7 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {
 
 	count = min(count, file_size - offset);
 
-	struct mf_iter it = {0};
+	struct mf_iter it = {0, 0, 0, {0}}; /* Such a initialization is for valgrind & clang */
 	err = mf_iter_init(cpool, offset, count, &it);
 	if( unlikely(err) ) {
 		goto done;
@@ -140,7 +140,7 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
 		goto done;
 	}
 
-	struct mf_iter it = {0};
+	struct mf_iter it = {0, 0, 0, {0}};
 	err = mf_iter_init(cpool, offset, count, &it);
 	if( unlikely(err) ) {
 		goto done;
@@ -242,7 +242,8 @@ off_t mf_file_size(mf_handle_t mf) {
 		goto done;
 	}
 
-	struct stat sb = {0};
+	/* Such a initialization is for valgrind & clang */
+	struct stat sb = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0}, {0, 0}, {0, 0}, {0}};
 	err = fstat(fd, &sb);
 	if( err == -1 ) {
 		err = errno;

@@ -14,7 +14,7 @@ else
 CFLAGS += -Ofast -DNDEBUG -s -lpthread
 endif
 endif
-export CFLAGS MAKE_DIR
+export CFLAGS MAKE_DIR WEAK_DEBUG
 
 all: make_dir_init $(BUILDDIRS)
 	ar rcs "$(PWD)/out/libmappedfile.a" "$(PWD)/out"/*.o

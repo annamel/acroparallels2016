@@ -51,7 +51,7 @@ mf_handle_t mf_open(const char *pathname){
        if (sysinfo(&info) == 0) {
        	off_t tmp;
        	struct chunk *ch = NULL;
-       	chunk_manager_gen_chunk(&mf -> cm, 0, info.freeram / 2, &ch, &tmp);
+       	//chunk_manager_gen_chunk(&mf -> cm, 0, info.freeram / 2, &ch, &tmp);
        	//mf -> prev_ch = ch;
        }
 	return (mf_handle_t) mf;
@@ -126,7 +126,8 @@ ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t off
 
 	//After iterations set new prev chunk
 	//*prev_ch = ch;
-       ch -> ref_cnt--;
+	__atomic_fetch_sub(&ch -> ref_cnt, 1, 0);
+       //ch -> ref_cnt--;
 	return read_bytes;
 }
 
@@ -168,9 +169,11 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 	}else{*/
 		//Elsewhere we generate a new one
 		//LOG(DEBUG, "Gen new chunk\n");
-		size_t av_chunk_size = chunk_manager_gen_chunk(&_mf -> cm, offset, size, &ch, &ch_offset);
-		if (av_chunk_size == -1)
-			return NULL;
+	size_t av_chunk_size = chunk_manager_gen_chunk(&_mf -> cm, offset, size, &ch, &ch_offset);
+	if (av_chunk_size == -1){
+		errno = EAGAIN;
+		return NULL;
+	}
 	//}
 
 	//ch -> ref_cnt++; - it is done by gen_chunk already
@@ -184,7 +187,8 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle){
 	LOG(INFO, "mf_unmap called\n");
 	assert(mf); assert(mapmem_handle);
 
-	((struct chunk *)mapmem_handle) -> ref_cnt--;
+	__atomic_fetch_sub(&(((struct chunk *)mapmem_handle) -> ref_cnt), 1, 0);
+	//((struct chunk *)mapmem_handle) -> ref_cnt--;
 	return 0;
 }
 

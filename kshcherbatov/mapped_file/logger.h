@@ -19,6 +19,7 @@ enum LOGLEVEL_TYPES {
     #define DEBUG LOGLEVEL_UNUSED
 #endif
 */
+
 #ifndef DEFAULT_LOG_FILENAME
     #define DEFAULT_LOG_FILENAME "log.txt"
 #endif

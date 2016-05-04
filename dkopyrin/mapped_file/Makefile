@@ -6,10 +6,15 @@ CLEANDIRS := $(DIRS:%=clean-%)
 TESTDIRS := $(DIRS:%=test-%)
 
 ifdef DEBUG
-CFLAGS += -g -DDEBUG_LOG -DDEBUG_STDERRLOG -DMEMORY_DEBUG
+CFLAGS += -g -DDEBUG_LOG -DDEBUG_STDERRLOG #-DMEMORY_DEBUG
 else
-CFLAGS += -Ofast -s -DNDEBUG -march=native
+ifdef WEAK_DEBUG
+CFLAGS += -g
+else
+CFLAGS += -Ofast -DNDEBUG -s
 endif
+endif
+
 export CFLAGS MAKE_DIR
 
 all: make_dir_init $(BUILDDIRS)

@@ -3,6 +3,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <sys/sysinfo.h>
 
 #define COLOR(x) "\x1B[36m"x"\x1B[0m"
 #define LOGCOLOR(x) COLOR("%s: ")x, __func__
@@ -48,11 +51,21 @@ mf_handle_t mf_open(const char *pathname){
 		return NULL;
 	}
 
-	struct sysinfo info;
-	if (sysinfo(&info) == 0) {
+	/*
+	 * We try to mmap part of file to improve performance. In order to do
+	 * this we must have enough virtual memory that is checked by getrlimit
+	 * function.
+	 */
+
+	struct rlimit rl;
+	struct sysinfo sys;
+	if (!getrlimit(RLIMIT_AS, &rl) && !sysinfo(&sys)) {
 		off_t tmp;
 		struct chunk *ch = NULL;
-		chunk_manager_gen_chunk(&mf -> cm, 0, info.freeram / 2, &ch, &tmp);
+		if (rl.rlim_cur == RLIM_INFINITY)
+			chunk_manager_gen_chunk(&mf -> cm, 0, sys.freeram / 2, &ch, &tmp);
+		else
+			chunk_manager_gen_chunk(&mf -> cm, 0, MIN(rl.rlim_cur, sys.freeram / 2), &ch, &tmp);
 		mf -> prev_ch = ch;
 	}
 	return (mf_handle_t) mf;
@@ -96,13 +109,13 @@ ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t off
 		LOG(DEBUG, "Got prev chunk of size %ld\n", ch_size);
 		//Check if prev chunk is good for this task: offset lays in chunk
 		if (ch_offset <= offset && offset < ch_offset + ch_size){
-			ch_offset = offset - ch_offset;
 			/* If we use chunk not from beginning but from relative offset
 			 * then we only can read av_chunk_size. We believe, that
 			 * itfunc actually read from chunk
 			 */
-			size_t av_chunk_size = ch_size - ch_offset;
-			LOG(DEBUG, "Using chunk prev chunk of av_size %d\n", av_chunk_size);
+			ch_offset = offset - ch_offset;
+		  	size_t av_chunk_size = ch_size - ch_offset;
+			LOG(DEBUG, "Using chunk prev chunk of av_size %ld\n", av_chunk_size);
 			size_t read_size = MIN(av_chunk_size, size);
 			itfunc(ch, read_size, ch_offset, buf);
 			buf += read_size;
@@ -112,15 +125,18 @@ ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t off
 			size -= read_size;
 		}
 	}
+	LOG(DEBUG, "Left to read %ld\n", size);
+
 	if (size <= 0)
 		return read_bytes;
 
 	//Nearly the same approach is used here for getting new chunk
+	ch = NULL;
 	off_t ch_offset = 0;
-	size_t av_chunk_size = chunk_manager_gen_chunk(cm, offset, size, &ch, &ch_offset);
-	if (!ch)
+	ssize_t av_chunk_size = chunk_manager_gen_chunk(cm, offset, size, &ch, &ch_offset);
+	if (av_chunk_size == -1)
 		return read_bytes;
-	LOG(DEBUG, "Got chunk of size %d\n", av_chunk_size);
+	LOG(DEBUG, "Got chunk of size %ld\n", av_chunk_size);
 	size_t read_size = MIN(av_chunk_size, size);
 	itfunc(ch, read_size, ch_offset, buf);
 	read_bytes += read_size;

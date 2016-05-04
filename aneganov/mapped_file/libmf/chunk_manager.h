@@ -4,8 +4,8 @@
 #include <sys/types.h>
 #include "mfdef.h"
 
-typedef struct Chunk chunk_t;
-typedef struct ChunkPool chpool_t;
+typedef struct chunk chunk_t;
+typedef struct chunk_pool chpool_t;
 
 __must_check int chunk_acquire(chpool_t *cpool, off_t offset, size_t size, chunk_t **chunk);
 __must_check int chunk_find(chpool_t *cpool, off_t offset, size_t size, chunk_t **chunk);
