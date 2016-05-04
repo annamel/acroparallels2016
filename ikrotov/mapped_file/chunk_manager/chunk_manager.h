@@ -5,8 +5,8 @@
 #define DEFAULT_ARRAY_SIZE 1024
 
 #include <sys/mman.h>
-#include "hash_table/hash_table.h"
-#include "List/list.h"
+#include "../hash_table/hash_table.h"
+#include "../List/list.h"
 
 #define min(a,b) \
    ({ __typeof__ (a) _a = (a); \
