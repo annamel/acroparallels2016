@@ -6,6 +6,10 @@
 void *buffer_for_stack [SIZE];
 
 logger_t* logger_init(char *filename) {
+    if(is_initialized == 1) {
+        return created_logger;
+    }
+
     created_logger = (logger_t*)calloc(1, sizeof(logger_t));
     if(created_logger == NULL) {
         perror("Initialization of logger failed!\n");
@@ -25,10 +29,14 @@ logger_t* logger_init(char *filename) {
         return NULL;
     }
     created_logger -> type_of_log_by_default = Debug;
+    is_initialized = 1;
     return created_logger;
 }
 
 void logger_deinit() {
+    if(is_initialized == 0) {
+        return;
+    }
     if(created_logger == NULL) {
         printf("Logger hasn't been initiated!\n");
         return;
@@ -36,6 +44,7 @@ void logger_deinit() {
     fclose(created_logger -> file_pointer);
     buff_deinit();
     free(created_logger);
+    is_initialized = 0;
     return;
 }
 
@@ -136,4 +145,5 @@ int write_log_to_file(log_type_t log_type, char *message) {
     free(mes);
     return 0;
 }
+
 

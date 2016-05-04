@@ -19,9 +19,12 @@ int main(){
 	char out[4096];
 
 	long it = 0;
-	for (it = 0; it < FILESIZE; it += rand() % 4096){
-		if (mf_read(file, out, 4096, it) == -1)
+	for (it = 0; it < FILESIZE - 4096; it += 4096){
+		int ret = mf_read(file, out, 4096, it);
+		if (ret != 4096){
+			printf("Was able to read only %d/4096 bytes from %ld/%ld\n", ret, it, FILESIZE);
 			return 1;
+		}
 	}
 
 	if (ptr) mf_unmap(file, handle);

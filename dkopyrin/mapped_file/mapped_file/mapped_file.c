@@ -66,7 +66,7 @@ mf_handle_t mf_open(const char *pathname){
 			chunk_manager_gen_chunk(&mf -> cm, 0, sys.freeram / 2, &ch, &tmp);
 		else
 			chunk_manager_gen_chunk(&mf -> cm, 0, MIN(rl.rlim_cur, sys.freeram / 2), &ch, &tmp);
-		//mf -> prev_ch = ch; TODO: This line makes segfault oO
+		mf -> prev_ch = ch;
 	}
 	return (mf_handle_t) mf;
 }
@@ -109,13 +109,13 @@ ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t off
 		LOG(DEBUG, "Got prev chunk of size %ld\n", ch_size);
 		//Check if prev chunk is good for this task: offset lays in chunk
 		if (ch_offset <= offset && offset < ch_offset + ch_size){
-			ch_offset = offset - ch_offset;
 			/* If we use chunk not from beginning but from relative offset
 			 * then we only can read av_chunk_size. We believe, that
 			 * itfunc actually read from chunk
 			 */
-			size_t av_chunk_size = ch_size - ch_offset;
-			LOG(DEBUG, "Using chunk prev chunk of av_size %d\n", av_chunk_size);
+			ch_offset = offset - ch_offset;
+		  	size_t av_chunk_size = ch_size - ch_offset;
+			LOG(DEBUG, "Using chunk prev chunk of av_size %ld\n", av_chunk_size);
 			size_t read_size = MIN(av_chunk_size, size);
 			itfunc(ch, read_size, ch_offset, buf);
 			buf += read_size;
@@ -125,6 +125,8 @@ ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t off
 			size -= read_size;
 		}
 	}
+	LOG(DEBUG, "Left to read %ld\n", size);
+
 	if (size <= 0)
 		return read_bytes;
 
