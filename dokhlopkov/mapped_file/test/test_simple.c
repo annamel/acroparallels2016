@@ -65,7 +65,7 @@ int test_4(const char* filename) {
     mf_mapmem_handle_t mm_handle = NULL;
 
     void *ptr = mf_map(handle, 0, msgsize, &mm_handle);
-    if (ptr == NULL) return ERROROCCURED;
+    if (ptr == NULL || mm_handle == NULL) return ERROROCCURED;
 
     char *buf = (char *)malloc(msgsize);
     memset(buf, 0, msgsize);
