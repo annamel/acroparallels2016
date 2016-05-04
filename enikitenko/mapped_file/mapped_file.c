@@ -7,6 +7,9 @@
 #include <string.h>
 #include <errno.h>
 
+// TODO: huge tlb
+// TODO: read/write chunks
+
 #ifndef max
     #define max(a,b) ((a) > (b) ? (a) : (b))
 #endif
@@ -163,11 +166,14 @@ static int mapmem_destroy(void* key, void* value, void* data)
 	mapped_chunk_t* chunk = (mapped_chunk_t*) value;
 
 	chunk->ref_count--;
-	if (chunk->ref_count != 0)
-		return 0;
+	if (chunk->ref_count != 0) // TODO: assert
+		return 0;	
 
 	mapped_file_t* file = (mapped_file_t*) data;
-	unmap_internal(chunk->data, chunk_key->offset, chunk_key->size, file->page_size, file->file_size);
+
+	file->mapped_memory_usage -= chunk->size;
+		
+	unmap_internal(chunk->data, chunk->offset, chunk->size, file->page_size, file->file_size);
 
 	invalidate_data(chunk_key, sizeof (mapped_chunk_key_t));
 	invalidate_data(chunk, sizeof (mapped_chunk_t));
@@ -224,6 +230,9 @@ mf_handle_t mf_open(const char* pathname)
 		close(file->fd);
 		RETURN_ERRNO(EINVAL, MF_OPEN_FAILED);
 	}
+
+	file->mapped_memory_usage = 0;
+	file->free_chunks = NULL;
 
 	file->data = map_internal(0, file->file_size, file->fd, file->page_size, file->file_size);
 	if (file->data == MAP_FAILED)
@@ -306,18 +315,36 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
 		RETURN(data);
 	}
 
+	file->mapped_memory_usage += size;
+
 	mapped_chunk_key_t* key_ptr = malloc(sizeof (mapped_chunk_key_t));
 	if (!key_ptr)
 		RETURN_ERRNO(EINVAL, MF_MAP_FAILED);
 	key_ptr->size = aligned_size;
 	key_ptr->offset = aligned_offset;
+	
+	void* pointer;
+	while ((pointer = map_internal(aligned_offset, aligned_size, file->fd, file->page_size, file->file_size)) == MAP_FAILED)
+	{
+		if (file->free_chunks == NULL)
+			RETURN_FAIL(MF_MAP_FAILED);
 
-	void* pointer = map_internal(aligned_offset, aligned_size, file->fd, file->page_size, file->file_size);
-	if (pointer == MAP_FAILED)
-		RETURN_FAIL(MF_MAP_FAILED);
+		mapped_chunk_t* free_chunk = file->free_chunks;
+		file->free_chunks = file->free_chunks->next;
+
+		key.size = free_chunk->size;
+		key.offset = free_chunk->offset;
+
+		if (!hashtable_remove(&file->chunks, &key, mapmem_destroy, file))
+		{
+			invalidate_data(chunk, sizeof (mapped_chunk_t));
+			free(chunk);
+			RETURN_ERRNO(EINVAL, -1);
+		}
+	}
 
 	chunk = malloc(sizeof (mapped_chunk_t));
-	if (!chunk)
+	if (!chunk) // TODO: free
 		RETURN_ERRNO(EINVAL, MF_MAP_FAILED);
 
 	void* data = (void*) (&((char*) pointer)[offset_delta]);
@@ -347,17 +374,12 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle)
 	}
 
 	mapped_chunk_t* chunk = (mapped_chunk_t*) mapmem_handle;
-	mapped_chunk_key_t key = // TODO: return key
-	{
-		.size = chunk->size, 
-		.offset = chunk->offset
-	};
 
-	if (!hashtable_remove(&file->chunks, &key, mapmem_destroy, file))
+	chunk->ref_count--;
+	if (chunk->ref_count == 0)
 	{
-		invalidate_data(chunk, sizeof (mapped_chunk_t));
-		free(chunk);
-		RETURN_ERRNO(EINVAL, -1);
+		chunk->next = file->free_chunks;
+		file->free_chunks = chunk;
 	}
 
 	RETURN(0);

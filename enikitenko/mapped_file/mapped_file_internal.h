@@ -14,12 +14,13 @@ typedef struct
 
 struct mapped_file;
 
-typedef struct
+typedef struct mapped_chunk
 {
 	void* data;
 	size_t size;
 	off_t offset;
 	int ref_count;
+	struct mapped_chunk* next;
 
 } mapped_chunk_t;
 
@@ -29,7 +30,10 @@ typedef struct mapped_file
 	size_t page_size;
 	size_t chunk_size;
 	size_t file_size;
-	hashtable_t chunks; // hashtable is useless for this task so fuck performance and memory use
+	hashtable_t chunks;
+
+	mapped_chunk_t* free_chunks;
+	int mapped_memory_usage;
 
 	int fully_mapped;
 	void* data;
@@ -41,6 +45,6 @@ typedef struct mapped_file
 #define CHUNKS_HASHTABLE_SIZE 40009
 #define READ_WRITE_MIN_SIZE (4*1024*1024)
 #define UNMAP_READ_WRITE_SIZE (64*1024*1024)
-#define MAP_CHUNK_SIZE (1024*1024)
+#define MAP_CHUNK_SIZE (512*1024*1024)
 
 #endif // __MAPPED_FILE_INTERNAL__
