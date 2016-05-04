@@ -1,6 +1,0 @@
-all:
-
-test:
-	$(CC) $(CFLAGS) -o "$(MAKE_DIR)/psycho" psycho.c "$(MAKE_DIR)/libmappedfile.a" -I../../../include/
-clean:
-	rm -f"$(MAKE_DIR)/psycho" "$(MAKE_DIR)/*.o"
