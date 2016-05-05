@@ -11,27 +11,8 @@
 
 #define HASHTABLE_SIZE 1024
 
-/* hash() is a modification of murmur3, adapted for specific case */
-#define ROT32(x, y) ((x << y) | (x >> (32 - y))) // avoid effort
-uint16_t hash(const hkey_t *key) {
-    uint32_t hash = 0;
-    uint32_t k;
-
-    for (int i = 0; i < 4; i++) {
-        k = key->raw[i]  * 0xcc9e2d51;
-        k = ROT32(k, 15) * 0x1b873593;
-        hash ^= k;
-        hash = ROT32(hash, 13) * 5 + 0xe6546b64;
-    }
-
-    hash ^= 16;
-    hash ^= (hash >> 16);
-    hash *= 0x85ebca6b;
-    hash ^= (hash >> 13);
-    hash *= 0xc2b2ae35;
-    hash ^= (hash >> 16);
-
-    return hash % HASHTABLE_SIZE;
+static inline uint16_t hash(const hkey_t *key) {
+    return key->idx % HASHTABLE_SIZE;
 }
 
 typedef struct elem {

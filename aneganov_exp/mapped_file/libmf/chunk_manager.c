@@ -140,10 +140,6 @@ static int chunk_get(chpool_t *cpool, off_t idx, off_t len, chunk_t **chunk) {
 		goto error;
 	}
 
-	if(*chunk == NULL) {
-		log_write(LOG_ERR, "chunk_get: *chunk == NULL\n");
-	}
-
 	if( (*chunk)->key.idx + (*chunk)->key.len < idx + len ) {
 		err = ENOKEY;
 		goto error;
