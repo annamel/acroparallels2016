@@ -4,6 +4,9 @@
 #define LOGCOLOR(x) COLOR("%s: ")x, __func__
 #include "../logger/log.h"
 #include "chunk_manager.h"
+#ifdef DANGER_MMAP
+#define __USE_GNU
+#endif
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <assert.h>
@@ -103,8 +106,22 @@ ssize_t chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t 
 	LOG(DEBUG, "Found nice chunk %p\n", cur_ch);
 	if (cur_ch != NULL) LOG(DEBUG, "Closest chunk is offset %lld, size %lld\n", cur_ch -> offset, cur_ch -> size);
 	if (cur_ch == NULL ||
-	    poffset + psize > cur_ch -> size + cur_ch -> offset ) {
-		LOG(DEBUG, "No chunk found - making new one of size %d\n", psize);
+	    offset + size > cur_ch -> size + cur_ch -> offset ) {
+		LOG(DEBUG, "No chunk found - making new one of size %ld\n", psize);
+#ifdef DANGER_MMAP
+		LOG(DEBUG, "Try remap to %ld\n", psize);
+		//We are tring to expand existing mmap - maybe it will succeed
+		if (cur_ch != NULL && cur_ch -> offset == poffset){
+			if (mremap(cur_ch -> addr, cur_ch -> size, size, 0) != MAP_FAILED){
+	   			LOG(DEBUG, "remap success!\n", psize);
+				cur_ch -> size = psize;
+				//mremap success!
+				*chunk_offset = offset - cur_ch -> offset;
+				*ret_ch = cur_ch;
+				return cur_ch -> size - offset + cur_ch -> offset;
+			}
+		}
+#endif
 		struct chunk *new_chunk = chunk_manager_get_av_chunk_from_pool(cm);
 		if (new_chunk == NULL)
 			return -1;

@@ -190,9 +190,9 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 	}
 
 	ch -> ref_cnt++;
+	_mf -> prev_ch = ch;
 	// We use chunk as mapmem handle because we only need to decrease ref_cnt
 	// when unmap is called
-	_mf -> prev_ch = ch;
 	*mapmem_handle = ch;
 	return ch -> addr + ch_offset;
 }

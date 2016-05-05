@@ -31,7 +31,7 @@ int main(){
 
 	long it = 0;
 	long err_count = 0;
-	for (it = 0; it < FILESIZE; it += rand() % MB){
+	for (it = 0; it < FILESIZE; it += rand() % 1024){
 		mf_mapmem_handle_t loc_handle;
 		void *loc_ptr = mf_map(file, it, MB, &loc_handle);
 		if (loc_ptr == NULL){
