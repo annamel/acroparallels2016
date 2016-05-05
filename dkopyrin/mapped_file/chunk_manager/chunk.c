@@ -15,7 +15,7 @@ int chunk_init_unused (struct chunk *ch) {
 	return 0;
 }
 
-int chunk_init (struct chunk *ch, size_t length, off_t offset, int fd){
+int chunk_init (struct chunk *ch, size_t size, off_t offset, int fd){
 	LOG(INFO, "Chunk init called\n");
 	assert(ch);
 #ifdef MEMORY_DEBUG
@@ -26,21 +26,21 @@ int chunk_init (struct chunk *ch, size_t length, off_t offset, int fd){
 	 * page with junk on at begin and end of mmap.
 	 */
 	LOG(DEBUG, "Creating wrap\n", strerror(errno));
-	void *wrap = mmap(NULL, length + 2 * sysconf(_SC_PAGESIZE), PROT_READ | PROT_WRITE,
+	void *wrap = mmap(NULL, size + 2 * sysconf(_SC_PAGESIZE), PROT_READ | PROT_WRITE,
 			  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 	if (wrap == MAP_FAILED) {
 		LOG(ERROR, "Can't mmap wrap, %s\n", strerror(errno));
 		return -1;
 	}
-	memset(wrap, 0x66, length + 2 * sysconf(_SC_PAGESIZE));
-	ch -> addr = mmap(wrap + sysconf(_SC_PAGESIZE), length, PROT_READ | PROT_WRITE,
+	memset(wrap, 0x66, size + 2 * sysconf(_SC_PAGESIZE));
+	ch -> addr = mmap(wrap + sysconf(_SC_PAGESIZE), size, PROT_READ | PROT_WRITE,
 			  MAP_SHARED | MAP_FIXED, fd, offset);
 	if (ch -> addr == MAP_FAILED) {
 		LOG(ERROR, "Can't mmap file in chunk with wrap, %s\n", strerror(errno));
 		return -1;
 	}
 #else
-	ch -> addr = mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
+	ch -> addr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
 	if (ch -> addr == MAP_FAILED) {
 		LOG(ERROR, "Can't mmap file in chunk, %s\n", strerror(errno));
 		return -1;
@@ -48,7 +48,7 @@ int chunk_init (struct chunk *ch, size_t length, off_t offset, int fd){
 #endif
 
 	ch -> ref_cnt = 0;
-	ch -> length = length;
+	ch -> size = size;
 	ch -> offset = offset;
 	return 0;
 }
@@ -58,13 +58,13 @@ int chunk_finalize (struct chunk *ch) {
 	assert(ch);
 
 #ifdef MEMORY_DEBUG
-	if (munmap(ch -> addr  - sysconf(_SC_PAGESIZE), ch -> length  + 2*sysconf(_SC_PAGESIZE))) {
+	if (munmap(ch -> addr  - sysconf(_SC_PAGESIZE), ch -> size  + 2*sysconf(_SC_PAGESIZE))) {
 		LOG(ERROR, "Can't munmap file in chunk, %s\n", strerror(errno));
 		return -2;
 	}
 	ch -> addr = (void *)0xDEADBEEF;
 #else
-	if (munmap(ch -> addr, ch -> length)) {
+	if (munmap(ch -> addr, ch -> size)) {
 		LOG(ERROR, "Can't munmap file in chunk, %s\n", strerror(errno));
 		return -2;
 	}

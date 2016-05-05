@@ -81,14 +81,14 @@ struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 	return NULL;
 }
 
-ssize_t chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t length, struct chunk ** ret_ch, off_t *chunk_offset) {
+ssize_t chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t size, struct chunk ** ret_ch, off_t *chunk_offset) {
 	LOG(INFO, "chunk_manager_gen_chunk called\n");
 	assert(cm);
 	assert(ret_ch);
 	assert(chunk_offset);
 	//All chunks are aligned by CHUNK_MASK to improve search perfomance
 	off_t poffset = offset & CHUNK_MASK;
-	size_t plength = ((offset + length) & CHUNK_MASK) + MIN_CHUNK_SIZE - poffset;
+	size_t psize = ((offset + size) & CHUNK_MASK) + MIN_CHUNK_SIZE - poffset;
 
 	search_chunk.offset = poffset;
 	struct chunk *cur_ch = (struct chunk *)rbtree_finddata(cm -> rbtree, &search_chunk);
@@ -99,17 +99,17 @@ ssize_t chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t 
 	//TODO: implement interval tree or structure that allows to find biggest chunk
 
 	//off_t relative_offset = offset - cur_ch -> offset;
-	//ssize_t relative_length = length;
+	//ssize_t relative_size = size;
 	LOG(DEBUG, "Found nice chunk %p\n", cur_ch);
-	if (cur_ch != NULL) LOG(DEBUG, "Closest chunk is offset %lld, size %lld\n", cur_ch -> offset, cur_ch -> length);
+	if (cur_ch != NULL) LOG(DEBUG, "Closest chunk is offset %lld, size %lld\n", cur_ch -> offset, cur_ch -> size);
 	if (cur_ch == NULL ||
-	    poffset + plength > cur_ch -> length + cur_ch -> offset ) {
-		LOG(DEBUG, "No chunk found - making new one of size %d\n", plength);
+	    poffset + psize > cur_ch -> size + cur_ch -> offset ) {
+		LOG(DEBUG, "No chunk found - making new one of size %d\n", psize);
 		struct chunk *new_chunk = chunk_manager_get_av_chunk_from_pool(cm);
 		if (new_chunk == NULL)
 			return -1;
 
-		if (chunk_init (new_chunk, plength, poffset, cm -> fd))
+		if (chunk_init (new_chunk, psize, poffset, cm -> fd))
 			return -1; //TODO: lmk
 	  	/* We can make adding to rbtree O(1) if we use offset that we already
 		 * found to make less tree traversals
@@ -124,11 +124,11 @@ ssize_t chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t 
 		}
 		*ret_ch = new_chunk;
 		*chunk_offset = offset - new_chunk -> offset;
-		return new_chunk -> length - offset + new_chunk -> offset;
+		return new_chunk -> size - offset + new_chunk -> offset;
 	}else{
-		LOG(DEBUG, "Rbtree lookup success!, %ld %ld %ld\n", cur_ch -> length, poffset - cur_ch -> offset, plength);
+		LOG(DEBUG, "Rbtree lookup success!, %ld %ld %ld\n", cur_ch -> size, poffset - cur_ch -> offset, psize);
 		*chunk_offset = offset - cur_ch -> offset;
 		*ret_ch = cur_ch;
-		return cur_ch -> length - offset + cur_ch -> offset;
+		return cur_ch -> size - offset + cur_ch -> offset;
 	}
 }

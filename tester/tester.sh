@@ -125,11 +125,13 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo "$func_name() {" >> $test_file
 				echo "    $CC $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' '$test' $LDFLAGS" >> $test_file
 				echo "    $CXX $CXXFLAGS -o '$test_out_name' '$test_object_name' -L'$out_dir' $LDFLAGS" >> $test_file
+				echo "    set +x" >> $test_file
 				echo '    for i in `seq 0 '"$LOOPS"'`; do' >> $test_file
 				echo '        resarr[$i]=-1' >> $test_file
 				echo "    done" >> $test_file
 				echo '    (>&4 echo "")' >> $test_file
 				echo "    (>&4 echo '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c)')" >> $test_file
+				echo "    set -x" >> $test_file
 				echo "    set +e" >> $test_file
 				echo "    timeout 10 $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt' 2>&4 1>&4" >> $test_file
 				echo '    ret=$?' >> $test_file

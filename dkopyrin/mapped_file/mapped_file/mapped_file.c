@@ -104,7 +104,7 @@ ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t off
 
 	//This if tries to use chunk from previous iters: prev_ch
 	if (ch){
-		size_t ch_size = ch -> length;
+		size_t ch_size = ch -> size;
 		off_t ch_offset = ch -> offset;
 		LOG(DEBUG, "Got prev chunk of size %ld\n", ch_size);
 		//Check if prev chunk is good for this task: offset lays in chunk
@@ -177,7 +177,7 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 	//Map works nearly the same as r/w: firstly we try prev_ch
   	struct chunk *ch = _mf -> prev_ch;
 	off_t ch_offset = 0;
-  	if (ch && ch -> offset <= offset && offset < ch -> offset + ch -> length){
+  	if (ch && ch -> offset <= offset && offset < ch -> offset + ch -> size){
 		//Chunk is OK, we have to set relative chunk offset
 		LOG(DEBUG, "Get chunk from cache\n");
 		ch_offset = offset - ch -> offset;
