@@ -123,6 +123,7 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 
 				TEST_BUILD=$TEST_BUILD\;$test_out_name\;$test_object_name
 				echo "$func_name() {" >> $test_file
+				echo "    sleep 1" >> $test_file
 				echo "    $CC $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' '$test' $LDFLAGS" >> $test_file
 				echo "    $CXX $CXXFLAGS -o '$test_out_name' '$test_object_name' -L'$out_dir' $LDFLAGS" >> $test_file
 				echo "    set +x" >> $test_file
