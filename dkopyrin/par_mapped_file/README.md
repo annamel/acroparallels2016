@@ -55,7 +55,7 @@ If one use any profiling tool on __test_ladder.c__(generating continuous interse
 see that hotspot is rbtree lookup. As scenario of continuous read is common storing last
 used chunk might save from rbtree lookup that takes O(1) unlike lookup O(log n).
 
-# Paralle rbtree problem
+# Parallel rbtree problem
 
 It is very hard to use rbtree in parallel program as it is not efficient. That is why rbtree was replaced with 
 parallel lock-free skiplist which gives nearly the same performance as rbtree.
