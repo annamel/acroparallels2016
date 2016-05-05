@@ -124,7 +124,7 @@ int mf_close(mf_handle_t mf){
 //  как жаль что нет лямбда функций
 size_t number_first_page = 0;
 size_t size_in_page = 0;
-int check(Data data){
+int check_data(Data data){
     if (data.number_first_page <= number_first_page &&
         data.size_in_pages + data.number_first_page >= size_in_page + number_first_page)
         return 1;
@@ -144,7 +144,7 @@ Node * find_chank(File *file, off_t offset, size_t size){
         size = file->size_file - offset;
     number_first_page = offset / mempagesize;
     size_in_page = (offset + size) / mempagesize - number_first_page + 1;
-    Node * node = pool_find(&file->pool, number_first_page, check);
+    Node * node = pool_find(&file->pool, number_first_page, check_data);
     if (node == NULL){
         Data data;
         data.counter = 0;
@@ -198,11 +198,15 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle){
     check_to_NULL(mf, -1);
     File *file = mf;
-    check_to_NULL(mapmem_handle, -1);
-    Node *node = mapmem_handle;
-    // добавляем в список чанков с нулевым counter
-    if (--node->value.counter == 0){
-        ilist_append(&file->pool.list_zero, node);
+    if (file->flag_mmap_all)
+        return 0;
+    else {
+        check_to_NULL(mapmem_handle, -1);
+        Node *node = mapmem_handle;
+        // добавляем в список чанков с нулевым counter
+        if (--node->value.counter == 0){
+            ilist_append(&file->pool.list_zero, node);
+        }
     }
     return 0;
 }
@@ -211,6 +215,8 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset){
     File *file = mf;
     if (offset > file->size_file)
         return -1;
+    if (offset + count > file->size_file)
+        count = file->size_file - offset;
     if (file->flag_mmap_all){
         void *ptr = file->ptr_all + offset;
         memcpy(buf, ptr, count);
@@ -221,13 +227,15 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset){
         void *ptr = node->value.ptr + offset - node->value.number_first_page*mempagesize;
         memcpy(buf, ptr, count);
     }
-    return 0;
+    return count;
 }
 ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset){
     check_to_NULL(mf, -1);
     File *file = mf;
     if (offset > file->size_file)
         return -1;
+    if (offset + count > file->size_file)
+        count = file->size_file - offset;
     if (file->flag_mmap_all){
         void *ptr = file->ptr_all + offset;
         memcpy(ptr, buf, count);
@@ -238,11 +246,11 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset){
         void *ptr = node->value.ptr + offset - node->value.number_first_page*mempagesize;
         memcpy(ptr, buf, count);
     }
-    return 0;
+    return count;
 }
 off_t mf_file_size(mf_handle_t mf){
     check_to_NULL(mf, -1);
-    File *file;
+    File *file = mf;
     return file->size_file;
 }
 
