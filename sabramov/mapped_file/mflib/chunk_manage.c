@@ -44,7 +44,7 @@ int is_chunk_reusable(chunk_t* chunk, int  chunk_size)
 	return 0;
 }
 
-inline void chunk_reuse(chunk_t* chunk, off_t offset, int pg_multiple_offset, void** chunk_addr)
+void chunk_reuse(chunk_t* chunk, off_t offset, int pg_multiple_offset, void** chunk_addr)
 {
 		*chunk_addr = chunk->addr + (offset - pg_multiple_offset);			
 }

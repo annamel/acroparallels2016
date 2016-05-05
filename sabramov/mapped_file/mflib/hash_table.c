@@ -12,7 +12,7 @@ struct chunk** init_hash_table()
 	return htable;
 } 
 
-inline void deinit_hash_table(chunk_t** hash_table)
+void deinit_hash_table(chunk_t** hash_table)
 {
 	free(hash_table);
 }
