@@ -1,4 +1,4 @@
-SUBDIRS = libmf unittests test
+SUBDIRS = libmf unittests __test
 
 all:
 	@set -e; \
