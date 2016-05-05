@@ -1,4 +1,9 @@
 #include "../../../include/mapped_file.h"
+/*
+ * Test Pyramid w/ VAC
+ * -------------------
+ * Read description of test_pyramid
+ */
 
 #include <fcntl.h>
 #include <unistd.h>

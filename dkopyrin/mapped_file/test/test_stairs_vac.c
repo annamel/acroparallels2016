@@ -1,4 +1,9 @@
 #include "../../../include/mapped_file.h"
+/*
+ * Test Stairs w/ VAC
+ * ------------------
+ * Read description for test_stairs.c
+ */
 
 #include <fcntl.h>
 #include <unistd.h>

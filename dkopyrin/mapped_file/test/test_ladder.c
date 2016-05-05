@@ -1,4 +1,17 @@
 #include "../../../include/mapped_file.h"
+/*
+ * Test ladder
+ * ----------
+ * This test works nearly the same as test_ht but does not make first chunk.
+ * That is why special chunk structure is generated:
+ * CCCCCCCCC
+ *    CCCCCCCCCC
+ *        CCCCCCCC
+ *           CCCCCCCCCC
+ *            CCCCCCCCCCCC
+ * If your algorithm has low granularity performance will be very bad because
+ * for each request algorithm will have to make new map.
+ */
 
 #include <fcntl.h>
 #include <unistd.h>
