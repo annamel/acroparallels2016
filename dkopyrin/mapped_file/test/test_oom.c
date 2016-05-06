@@ -1,4 +1,11 @@
 #include "../../../include/mapped_file.h"
+/*
+ * Test OOM (Out-of-memory)
+ * -----------------------
+ * This test tries to read file that cannot be fully inserted into RAM.
+ * That is why your algorithm will have to clean up previously mapped chunks
+ * not to be killed by Out-of-memory killer.
+ */
 
 #include <fcntl.h>
 #include <unistd.h>
