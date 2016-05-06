@@ -183,6 +183,7 @@ done:
 void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle) {
 	int err = 0;
 	void *ptr = NULL;
+	*mapmem_handle = MF_MAP_FAILED;
 
 	if( mf == MF_OPEN_FAILED || mapmem_handle == NULL || offset < 0 || offset + size > mf_file_size(mf) ) {
 		err = EINVAL;

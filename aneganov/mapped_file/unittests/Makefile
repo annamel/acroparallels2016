@@ -2,7 +2,7 @@ include ../Makefile.inc
 
 CFLAGS += -I../libmf
 
-PROGS = test_hashtable test_chunkmanager test_log
+PROGS = test_chunkmanager test_log test_skiplist
 OBJS=$(PROGS:=.o)
 OBJS += memtest.o
 
