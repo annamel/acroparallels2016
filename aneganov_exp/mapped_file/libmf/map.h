@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef union hkey {
 	struct {
@@ -20,6 +21,6 @@ int map_construct(int (*cmp)(val_t, val_t), map_t **map);
 int map_destruct(map_t *map);
 int map_add(map_t * map, hkey_t *key, val_t val, val_t *oldval_ptr);
 int map_lookup_le(const map_t * map, hkey_t *key, val_t *val);
-int map_del(map_t *map, hkey_t *key);
+int map_del(map_t *map, hkey_t *key, bool is_indexed);
 
 #endif

@@ -71,11 +71,9 @@ static int chpool_del(list_t *pos) {
 
 	list_del(&chunk->list);
 
-	if( chunk->is_indexed ) {
-		int err = map_del(chunk->cpool->map, &chunk->key);
-		if(unlikely(err))
-			return err;
-	}
+	int err = map_del(chunk->cpool->map, &chunk->key, chunk->is_indexed);
+	if(unlikely(err))
+		return err;
 
 	chunk->cpool->nr_pages -= chunk->key.len;
 
@@ -86,7 +84,7 @@ static int chpool_add(chunk_t *chunk) {
 	log_write(LOG_DEBUG, "chpool_add: adding new chunk to chpool...\n");
 	chpool_t *cpool = chunk->cpool;
 
-	int err;
+	int err = 0;
 	while( cpool->nr_pages + chunk->key.len > cpool->threshold && !(err = chpool_del(cpool->head.next)) );
 
 	if(unlikely(err && err != EBUSY)) {
@@ -98,6 +96,7 @@ static int chpool_add(chunk_t *chunk) {
 	chunk_t *oldval;
 	err = map_add(cpool->map, &chunk->key, (val_t)chunk, (val_t *)&oldval);
 	if (unlikely(err && err != EKEYREJECTED)) {
+		log_write(LOG_DEBUG, "map_add: %s", strerror(err));
 		return err;
 	}
 	if (err != EKEYREJECTED) {
@@ -123,6 +122,7 @@ static int chunk_construct(chpool_t *cpool, off_t idx, off_t len, chunk_t **chun
 	}
 
 	if(unlikely((err = chpool_add(*chunk)))) {
+		log_write(LOG_DEBUG, "chpool_add: %s\n", strerror(err));
 		return err;
 	}
 

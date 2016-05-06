@@ -66,7 +66,7 @@ int map_lookup_le(const map_t * map, hkey_t *key, val_t *val_ptr) {
     unsigned idx = hash(key);
     elem_t elem = map->cache[idx];
 
-    if(elem.valid && elem.key.idx == key->idx && elem.key.len == key->len) {
+    if(elem.valid && elem.key.idx == key->idx) {
         *val_ptr = elem.val;
         return 0;
     }
@@ -74,16 +74,11 @@ int map_lookup_le(const map_t * map, hkey_t *key, val_t *val_ptr) {
     return skiplist_lookup_le(map->skiplist, key->idx, val_ptr);
 }
 
-int map_del(map_t *map, hkey_t *key) {
+int map_del(map_t *map, hkey_t *key, bool is_indexed) {
     if(unlikely(map == NULL || key == NULL))
         return EINVAL;
 
-    unsigned idx = hash(key);
-    elem_t elem = map->cache[idx];
+    map->cache[hash(key)].valid = false;
 
-    if(elem.key.idx == key->idx && elem.key.len == key->len) {
-        elem.valid = false;
-    }
-
-    return skiplist_del(map->skiplist, key->idx);
+    return is_indexed ? skiplist_del(map->skiplist, key->idx) : 0;
 }

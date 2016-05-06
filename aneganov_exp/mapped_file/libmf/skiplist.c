@@ -34,6 +34,7 @@ typedef struct skiplist {
 	int lvl;
 	int max_lvl;
 	int (*inher_cmp)(val_t, val_t);
+	node_t *update[0];
 } skiplist_t;
 
 int skiplist_construct(int max_lvl, int (*inher_cmp)(val_t, val_t), skiplist_t **newlist_ptr) {
@@ -42,7 +43,7 @@ int skiplist_construct(int max_lvl, int (*inher_cmp)(val_t, val_t), skiplist_t *
 	}
 
 	int err;
-	if(unlikely((err = mf_malloc(sizeof(skiplist_t), (void **)newlist_ptr)))) {
+	if(unlikely((err = mf_malloc(sizeof(skiplist_t) + (max_lvl+1)*sizeof(node_t *), (void **)newlist_ptr)))) {
 		return err;
 	}
 
@@ -53,11 +54,11 @@ int skiplist_construct(int max_lvl, int (*inher_cmp)(val_t, val_t), skiplist_t *
 	newlist->nil.key = (skey_t)((uint64_t)(-1) >> 1);
 	log_write(LOG_DEBUG, "nil.key = %jx\n", newlist->nil.key);
 
-	if(unlikely((err = mf_malloc(sizeof(node_t) + (max_lvl+2) * sizeof(node_t *), (void **)&newlist->head)))) {
+	if(unlikely((err = mf_malloc(sizeof(node_t) + (max_lvl+1) * sizeof(node_t *), (void **)&newlist->head)))) {
 		return err;
 	}
 
-	for(int i = 0; i < max_lvl + 2; i++)
+	for(int i = 0; i < max_lvl + 1; i++)
 		newlist->head->forward[i] = &newlist->nil;
 
 	return 0;
@@ -95,11 +96,6 @@ int skiplist_add(skiplist_t *list, skey_t key, val_t val, val_t *oldval_ptr) {
 	int err = 0;
 	*oldval_ptr = NULL;
 
-	node_t **update;
-	if (unlikely((err = mf_malloc( (list->max_lvl + 1) * sizeof(node_t *), (void **)&update)))) {
-		return err;
-	}
-
 	node_t *p = list->head;
 	node_t *q;
 	int k = list->lvl;
@@ -108,7 +104,7 @@ int skiplist_add(skiplist_t *list, skey_t key, val_t val, val_t *oldval_ptr) {
 		while (q = p->forward[k], q->key < key) {
 			p = q;
 		}
-		update[k] = p;
+		list->update[k] = p;
 	} while(--k >= 0);
 
 	if (q->key == key) {
@@ -123,36 +119,28 @@ int skiplist_add(skiplist_t *list, skey_t key, val_t val, val_t *oldval_ptr) {
 	k = random_level(list);
 	if (k > list->lvl) {	
 		k = ++list->lvl;
-		update[k] = list->head;
+		list->update[k] = list->head;
 	};
 
 	if (unlikely((err = mf_malloc(sizeof(node_t) + (k+1) * sizeof(node_t *), (void **)&q)))) {
-		goto done;
+		return err;
 	}
 
 	q->key = key;
 	q->val = val;
 
 	do {
-		p = update[k];
+		p = list->update[k];
 		q->forward[k] = p->forward[k];
 		p->forward[k] = q;
 	} while(--k >= 0);
 
-done:
-	mf_free(update);
-	return err;
+	return 0;
 }
 
 int skiplist_del(skiplist_t *list, skey_t key) {
 	if(unlikely(list == NULL)) {
 		return EINVAL;
-	}
-
-	int err = 0;
-	node_t **update = NULL;
-	if (unlikely((err = mf_malloc( (list->max_lvl + 1) * sizeof(node_t *), (void **)&update)))) {
-		return err;
 	}
 
 	node_t *p = list->head;
@@ -164,11 +152,11 @@ int skiplist_del(skiplist_t *list, skey_t key) {
 		while (q = p->forward[k], q->key < key) {
 			p = q;
 		}
-		update[k] = p;
+		list->update[k] = p;
 	} while(--k >= 0);
 
 	if (q->key == key) {
-		for(k = 0; k <= m && (p = update[k])->forward[k] == q; k++) {
+		for(k = 0; k <= m && (p = list->update[k])->forward[k] == q; k++) {
 			p->forward[k] = q->forward[k];
 		}
 		mf_free(q);
@@ -179,12 +167,9 @@ int skiplist_del(skiplist_t *list, skey_t key) {
 
 		list->lvl = m;
 	}
-	else {
-		err = ENOKEY;
-	}
+	else return ENOKEY;
 
-	mf_free(update);
-	return err;
+	return 0;
 }
 
 int skiplist_get(const skiplist_t *list, skey_t key, val_t *val_ptr) {
