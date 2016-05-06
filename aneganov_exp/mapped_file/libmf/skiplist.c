@@ -33,11 +33,10 @@ typedef struct skiplist {
 	node_t nil;
 	int lvl;
 	int max_lvl;
-	int (*inher_cmp)(val_t, val_t);
 	node_t *update[0];
 } skiplist_t;
 
-int skiplist_construct(int max_lvl, int (*inher_cmp)(val_t, val_t), skiplist_t **newlist_ptr) {
+int skiplist_construct(int max_lvl, skiplist_t **newlist_ptr) {
 	if(unlikely(newlist_ptr == NULL || max_lvl < 0)) {
 		return EINVAL;
 	}
@@ -50,8 +49,8 @@ int skiplist_construct(int max_lvl, int (*inher_cmp)(val_t, val_t), skiplist_t *
 	skiplist_t *newlist = *newlist_ptr;
 	newlist->lvl = 0;
 	newlist->max_lvl = max_lvl;
-	newlist->inher_cmp = inher_cmp;
 	newlist->nil.key = (skey_t)((uint64_t)(-1) >> 1);
+	newlist->nil.val = NULL;
 	log_write(LOG_DEBUG, "nil.key = %jx\n", newlist->nil.key);
 
 	if(unlikely((err = mf_malloc(sizeof(node_t) + (max_lvl+1) * sizeof(node_t *), (void **)&newlist->head)))) {
@@ -86,15 +85,14 @@ static int random_level(skiplist_t *list) {
     return level > list->max_lvl ? list->max_lvl : level;
 }
 
-int skiplist_add(skiplist_t *list, skey_t key, val_t val, val_t *oldval_ptr) {
-	if(unlikely(list == NULL || oldval_ptr == NULL)) {
+int skiplist_add(skiplist_t *list, skey_t key, val_t val) {
+	if(unlikely(list == NULL)) {
 		return EINVAL;
 	}
 
 	log_write(LOG_DEBUG, "skiplist_add: val = %p\n", val);
 
 	int err = 0;
-	*oldval_ptr = NULL;
 
 	node_t *p = list->head;
 	node_t *q;
@@ -108,12 +106,8 @@ int skiplist_add(skiplist_t *list, skey_t key, val_t val, val_t *oldval_ptr) {
 	} while(--k >= 0);
 
 	if (q->key == key) {
-		if(list->inher_cmp(val, q->val) == 1) {
-			*oldval_ptr = q->val;
-			q->val = val;
-			return 0;
-		}
-		else return EKEYREJECTED;
+		q->val = val;
+		return 0;
 	};
 
 	k = random_level(list);
@@ -215,6 +209,31 @@ int skiplist_lookup_le(const skiplist_t *list, skey_t key, val_t *val_ptr) {
 			return ENOKEY;
 		}
 		else q = p;
+	}
+
+	log_write(LOG_DEBUG, "skiplist_lookup_le: q->val = %p\n", q->val);
+	*val_ptr = q->val;
+
+	return 0;
+}
+
+int skiplist_lookup_ge(const skiplist_t *list, skey_t key, val_t *val_ptr) {
+	if(unlikely(list == NULL || val_ptr == NULL)) {
+		return EINVAL;
+	}
+
+	int k = list->lvl;
+	node_t *p = list->head;
+	node_t *q;
+
+	do {
+		while (q = p->forward[k], q->key < key) {
+			p = q;
+		}
+	} while (--k >= 0);
+
+	if (q->key != key && q->val == NULL) {
+		return ENOKEY;
 	}
 
 	log_write(LOG_DEBUG, "skiplist_lookup_le: q->val = %p\n", q->val);

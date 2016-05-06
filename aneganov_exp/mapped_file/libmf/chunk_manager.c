@@ -72,7 +72,7 @@ static int chpool_del(list_t *pos) {
 	list_del(&chunk->list);
 
 	int err = map_del(chunk->cpool->map, &chunk->key, chunk->is_indexed);
-	if(unlikely(err))
+	if(unlikely(err && err != ENOKEY))
 		return err;
 
 	chunk->cpool->nr_pages -= chunk->key.len;
@@ -260,6 +260,10 @@ static int right_cmp(val_t val1, val_t val2) {
 	return (right1 > right2) ? 1 : (right1 < right2) ? -1 : 0;
 }
 
+static off_t skey_from_val(val_t val) {
+	return ((chunk_t *)val)->key.idx;
+}
+
 int chpool_construct(int fd, int prot, chpool_t **cpool_ptr) {
 	if(unlikely(fd < 0 || cpool_ptr == NULL)) {
 		return EINVAL;
@@ -287,7 +291,7 @@ int chpool_construct(int fd, int prot, chpool_t **cpool_ptr) {
 	cpool->prot = prot;
 	INIT_LIST_HEAD(&cpool->head);
 
-	return map_construct(right_cmp, &cpool->map);
+	return map_construct(right_cmp, skey_from_val, &cpool->map);
 }
 
 int chpool_destruct(chpool_t *cpool) {

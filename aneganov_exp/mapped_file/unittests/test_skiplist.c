@@ -17,10 +17,6 @@ static void print_usage(const char * const program_name, FILE * const stream, co
     exit(exit_code);
 }
 
-int cmp(val_t x, val_t y) {
-	return 1;
-}
-
 int main(int argc, char *argv[]) {
     const char * const short_options = "hL:d:";
 
@@ -53,7 +49,7 @@ int main(int argc, char *argv[]) {
 	off_t keys[sampleSize];
 	void* v;
 
-	int err = skiplist_construct(32, cmp, &l);
+	int err = skiplist_construct(32, &l);
 	log_write(err ? LOG_ERR : LOG_INFO, "skiplist_construct: %s\n", strerror(err));
 	if(err) {
 		return 1;
@@ -61,7 +57,7 @@ int main(int argc, char *argv[]) {
 
 	for(int k = 0; k < sampleSize; k++) {
 		keys[k] = k;
-		err = skiplist_add(l, keys[k], (void *)keys[k], &v);
+		err = skiplist_add(l, keys[k], (void *)keys[k]);
 		log_write(err ? LOG_ERR : LOG_INFO, "skiplist_add (key = %jx): %s\n", keys[k], strerror(err));
 		if(err) {
 			return 2;
@@ -91,7 +87,7 @@ int main(int argc, char *argv[]) {
 
 			keys[k] = k;
 
-			err = skiplist_add(l, keys[k], (void *)keys[k], &v);
+			err = skiplist_add(l, keys[k], (void *)keys[k]);
 			log_write(err ? LOG_ERR : LOG_INFO, "skiplist_add (key = %jx): %s\n", keys[k], strerror(err));
 			if(err) {
 				return 2;
