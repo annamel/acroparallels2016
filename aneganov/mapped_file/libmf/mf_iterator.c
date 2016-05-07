@@ -21,17 +21,21 @@ static int mf_iter_step(struct mf_iter *it) {
 
 	int err = chunk_find(it_private->cpool, it->offset, page_size - 1,  &it_private->chunk);
 	switch(err) {
+		case ENOKEY:
+			err = chunk_acquire(it_private->cpool, it->offset, page_size, &it_private->chunk);
+			if(unlikely(err)) {
+				return err;
+			}
+			/*it_private->chunk = NULL;
+			it->ptr = NULL;
+			it->step_size = min(it_private->size, page_size - (it->offset % page_size));
+			break;*/
 		case 0:
 			err = chunk_get_mem(it_private->chunk, it->offset, &it->ptr, &border);
 			if(unlikely(err)) {
 				return err;
 			}
 			it->step_size = min(it_private->size, border - it->offset);
-			break;
-		case ENOKEY:
-			it_private->chunk = NULL;
-			it->ptr = NULL;
-			it->step_size = min(it_private->size, page_size - (it->offset % page_size));
 			break;
 		default:
 			it_private->chunk = NULL;

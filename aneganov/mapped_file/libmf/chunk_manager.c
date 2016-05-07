@@ -139,17 +139,14 @@ static int chunk_get(chpool_t *cpool, off_t idx, off_t len, chunk_t **chunk) {
 
 	int err = map_lookup_le(cpool->map, &key, (val_t *)chunk);
 	if(err) {
-		goto error;
+		return err;
 	}
 
 	if( (*chunk)->key.idx + (*chunk)->key.len < idx + len ) {
-		err = ENOKEY;
-		goto error;
+		return ENOKEY;
 	}
 
-error:
-	log_write(LOG_DEBUG, "chunk_get: %s\n", strerror(err));
-	return err;
+	return 0;
 }
 
 static inline off_t get_chunk_idx(chpool_t *cpool, off_t offset) {
@@ -215,11 +212,13 @@ int chunk_acquire(chpool_t *cpool,  off_t offset, size_t size, chunk_t **chunk_p
 }
 
 int chunk_find(chpool_t *cpool, off_t offset, size_t size, chunk_t **chunk) {
+#ifdef DEBUG
 	if(unlikely(!cpool || !chunk)) {
 		return EINVAL;
 	}
 
 	BUG_ON(!cpool->map);
+#endif
 
 	if(size == 0) {
 		*chunk = NULL;
@@ -282,7 +281,7 @@ int chpool_construct(int fd, int prot, chpool_t **cpool_ptr) {
 	chpool_t *cpool = *cpool_ptr;
 
 #ifndef DEBUG
-	cpool->pg_sz = sysconf(_SC_PAGESIZE) << 15;
+	cpool->pg_sz = sysconf(_SC_PAGESIZE) << 14;
 #else
 	cpool->pg_sz = sysconf(_SC_PAGESIZE);
 #endif
