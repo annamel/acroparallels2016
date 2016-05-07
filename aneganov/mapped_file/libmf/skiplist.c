@@ -80,7 +80,7 @@ void skiplist_destruct(skiplist_t *list) {
 
 static int random_level(skiplist_t *list) {
     int level = 0;
-    while (rand() < RAND_MAX/2)
+    while (rand() < RAND_MAX/2 && level < list->max_lvl)
         level++;
     return level > list->max_lvl ? list->max_lvl : level;
 }

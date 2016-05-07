@@ -1,5 +1,5 @@
 CFLAGS = -Wall -std=gnu11 -Wextra -Werror -Wno-sign-compare -Wno-unused-parameter
-CFLAGS += $(if $(or $(DEBUG), $(PROF), $(DEBUG2), $(ASAN)), -O0, -Ofast)
+CFLAGS += $(if $(or $(DEBUG), $(PROF), $(DEBUG2), $(ASAN)), -O0, -Ofast -O3)
 CFLAGS += $(if $(or $(DEBUG), $(DEBUG2), $(ASAN)), -g -DDEBUG,)
 CFLAGS += $(if $(DEBUG2), -DDEBUG2,)
 CFLAGS += $(if $(LOG), -DLOG_ON,)

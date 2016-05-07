@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/sysinfo.h>
 #include <errno.h>
+#include <sys/stat.h>
 
 #include "list.h"
 #include "mfdef.h"
@@ -27,6 +28,7 @@ struct chunk {
 
 struct chunk_pool {
 	int fd;
+	off_t fsize;
 	int prot;
 	size_t threshold;
 	size_t nr_pages;
@@ -280,16 +282,22 @@ int chpool_construct(int fd, int prot, chpool_t **cpool_ptr) {
 	chpool_t *cpool = *cpool_ptr;
 
 #ifndef DEBUG
-	cpool->pg_sz = sysconf(_SC_PAGESIZE) << 12;
+	cpool->pg_sz = sysconf(_SC_PAGESIZE) << 15;
 #else
 	cpool->pg_sz = sysconf(_SC_PAGESIZE);
 #endif
 
-	cpool->threshold = (info.freeram / cpool->pg_sz) << 1;
+	cpool->threshold = ((info.freehigh / cpool->pg_sz) / 3) << 1;
 	cpool->nr_pages = 0;
 	cpool->fd = fd;
 	cpool->prot = prot;
 	INIT_LIST_HEAD(&cpool->head);
+
+	struct stat sb = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0}, {0, 0}, {0, 0}, {0}};
+	if(unlikely(fstat(fd, &sb) == -1)) {
+		return errno;
+	}
+	cpool->fsize = sb.st_size;
 
 	return map_construct(right_cmp, skey_from_val, &cpool->map);
 }
@@ -323,21 +331,24 @@ int chpool_destruct(chpool_t *cpool) {
 	return 0;
 }
 
-int chunk_get_mem(chunk_t *chunk, off_t offset, void **buf) {
+int chunk_get_mem(chunk_t *chunk, off_t offset, void **buf, off_t *border) {
 	if(unlikely(chunk == NULL || buf == NULL)) {
 		return EINVAL;
 	}
 
 	off_t left =  chunk->key.idx * chunk->cpool->pg_sz;
+	off_t right = left + chunk->key.len * chunk->cpool->pg_sz;
 
 #ifdef DEBUG
-	off_t right = left + chunk->key.len * chunk->cpool->pg_sz;
 	if(offset < left || offset >= right) {
 		return EINVAL;
 	}
 #endif
 
 	*buf = (char *)chunk->payload + (offset - left);
+	if(border) {
+		*border = right;
+	}
 
 	log_write(LOG_DEBUG, "chunk_get_mem: chunk->payload == %p, *buf = %p\n", chunk->payload, *buf);
 
@@ -356,4 +367,11 @@ size_t chpool_page_size(chpool_t *cpool) {
 		return 0;
 	}
 	return cpool->pg_sz;
+}
+
+off_t chpool_fsize(chpool_t *cpool) {
+	if(unlikely(!cpool)) {
+		return -1;
+	}
+	return cpool->fsize;	
 }

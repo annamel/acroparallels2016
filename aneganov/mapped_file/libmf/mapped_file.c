@@ -1,5 +1,4 @@
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <errno.h>
@@ -53,11 +52,7 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {
 	int err = 0;
 	ssize_t read_bytes = 0;
 
-	off_t file_size = mf_file_size(mf);
-	if(file_size == -1) {
-		err = EBADF;
-		goto done;
-	}
+	off_t file_size = chpool_fsize((chpool_t *)mf);
 
 	if( mf == MF_OPEN_FAILED || buf == NULL || offset < 0 || offset > file_size ) {
 		err = EINVAL;
@@ -123,7 +118,7 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
 	int err = 0;
 	ssize_t written_bytes = 0;
 
-	if( mf == MF_OPEN_FAILED || buf == NULL || offset < 0 || offset > mf_file_size(mf) ) {
+	if( mf == MF_OPEN_FAILED || buf == NULL || offset < 0 || offset + count > chpool_fsize((chpool_t *)mf) ) {
 		err = EINVAL;
 		goto done;
 	}
@@ -185,7 +180,7 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 	void *ptr = NULL;
 	*mapmem_handle = MF_MAP_FAILED;
 
-	if( mf == MF_OPEN_FAILED || mapmem_handle == NULL || offset < 0 || offset + size > mf_file_size(mf) ) {
+	if( mf == MF_OPEN_FAILED || mapmem_handle == NULL || offset < 0 || offset + size > chpool_fsize((chpool_t *)mf) ) {
 		err = EINVAL;
 		goto done;
 	}
@@ -202,7 +197,7 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 		goto done;
 	}
 
-	err = chunk_get_mem(*chunk_ptr, offset, &ptr);
+	err = chunk_get_mem(*chunk_ptr, offset, &ptr, NULL);
 
 	log_write(LOG_DEBUG, "mf_map: ptr = %p, size = %zx\n", ptr, size);
 
@@ -230,27 +225,5 @@ done:
 }
 
 off_t mf_file_size(mf_handle_t mf) {
-	int err = 0;
-
-	if( mf == MF_OPEN_FAILED ) {
-		err = EINVAL;
-		goto done;
-	}
-
-	int fd = chpool_fd( (chpool_t *)mf );
-	if( unlikely(fd < 0) ) {
-		err = EBADF;
-		goto done;
-	}
-
-	/* Such a initialization is for valgrind & clang */
-	struct stat sb = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0}, {0, 0}, {0, 0}, {0}};
-	err = fstat(fd, &sb);
-	if( err == -1 ) {
-		err = errno;
-	}
-
-done:
-	errno = err;
-	return err ? -1 : sb.st_size;
+	return chpool_fsize((chpool_t *)mf);
 }
