@@ -1,6 +1,16 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
+/*  
+ *	The main advantage of logger is providing  
+ *	log messages with unfixed length for better 
+ *  description of errors. 
+ *  In the case of fatal error logger flushes all possible 
+ *  log messages into log file and prints fatal error messages
+ *  into the same file.  
+ *  Written by Semyon Abramov
+ */
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,7 +23,7 @@
 
 #ifdef DEBUG_MODE
 
-#define BUFFER_SIZE 2048
+#define BUFFER_SIZE 4096
 #define CALL_TRACE_BUF_SIZE	250 
 #define LOG_FILE "log_file"
 
@@ -26,34 +36,26 @@ typedef enum log_level
 	INFO_LEVEL
 } log_level_t;
 
-
-typedef enum assoc_of_buf
-{
-	TWO_WAY = 2,
-	FOUR_WAY = 4,
-	EIGHT_WAY = 8
-} assoc_of_buf_t;
-
 struct Logger 
 {
 	log_level_t level;
 	FILE* log_file;
-	int buf_assoc;
-	int cur_buf;
-	int size_of_buf;
 };	
 
+char* conf_log_file;
+
 char* call_trace_buf [CALL_TRACE_BUF_SIZE];
-char** log_buffer;
 char* write_p;
 int filedesc;
-
+char log_buffer[BUFFER_SIZE];
 struct Logger* logger; 
+
+void flush_buf();
 
 #define log_string(str, message, nbytes, ...) \
 	do { \
-		nbytes = snprintf(write_p, (uint8_t*)log_buffer[logger->cur_buf] + \
-		logger->size_of_buf - (uint8_t*)write_p, str message "\n", ##__VA_ARGS__); \
+		nbytes = snprintf(write_p, (uint8_t*)log_buffer + \
+		BUFFER_SIZE - (uint8_t*)write_p, str message "\n", ##__VA_ARGS__); \
 	} while(0)	
 
 #define log_with_level(log_lev, nbytes, message,  ...) \
@@ -77,6 +79,18 @@ struct Logger* logger;
 
 #define log_message(log_lev, message, ...) \
 	do { \
+		if (logger == NULL) \
+		{	\
+			logger = malloc(sizeof(struct Logger)); \
+			write_p = log_buffer; \
+			if (conf_log_file) \
+				filedesc = open(conf_log_file, O_RDWR | O_CREAT, S_IRWXU); \
+			else \
+				filedesc = open(LOG_FILE, O_RDWR | O_CREAT, S_IRWXU); \
+			logger->log_file = fdopen(filedesc, "r+"); \
+			logger->level = INFO_LEVEL; \
+			atexit(flush_buf); \
+		} \
 		if (logger->level >= log_lev)  \
 		{ \
 			if (log_lev == FATAL_LEVEL) \
@@ -92,38 +106,17 @@ struct Logger* logger;
 			{ \
 				int nbytes; \
 				log_with_level(log_lev, nbytes, message, ##__VA_ARGS__); \
-				if (nbytes >= (uint8_t*)log_buffer[logger->cur_buf] + logger->size_of_buf - (uint8_t*)write_p) \
+				if (nbytes >= (uint8_t*)log_buffer + BUFFER_SIZE - (uint8_t*)write_p) \
 				{	\
-					if (write_p == (char*)log_buffer[logger->cur_buf]) \
-					{ \
-						printf("Log message is too long"); \
-						log_with_level(log_lev, nbytes, "log_message is too long");  \
-					} \
-					else \
-					{	\
 							stall_cur_buf(); \
-							switch_buf(logger); \
 							log_with_level(log_lev, nbytes, message, ##__VA_ARGS__); \
-							write_p = (uint8_t*)(write_p) + nbytes; \
-					} \
+							write_p = (char*)log_buffer; \
 				} \
 				else \
 				{  \
 					write_p = (uint8_t*)(write_p) + nbytes; \
 				} \
 			}	\
-		}	\
-	} while(0)
-
-#define log_fatal() \
-	do { \
-		if (logger->level >= FATAL_LEVEL) \
-		{ \
-			fprintf(logger->log_file, "%s\n%s\n%s\n", "Application failed with FATAL ERROR.", \
-			"Call trace is represented above.", "Other saved logs available below in order from the earliest to the latest log"); \
-			size_t btrace_size = backtrace((void**)call_trace_buf, CALL_TRACE_BUF_SIZE); \
-			backtrace_symbols_fd((void**)call_trace_buf, btrace_size, filedesc); \
-			flush_buf(logger); \
 		}	\
 	} while(0)
 
