@@ -36,6 +36,24 @@ typedef struct skiplist {
 	node_t *update[0];
 } skiplist_t;
 
+#if 0
+/* The state must be seeded so that it is not everywhere zero. */
+static uint64_t random_state[2];
+
+static uint64_t xorshift128plus() {
+	uint64_t x = random_state[0];
+	uint64_t const y = random_state[1];
+	random_state[0] = y;
+	x ^= x << 23; // a
+	random_state[1] = x ^ y ^ (x >> 17) ^ (y >> 26); // b, c
+	return random_state[1] + y;
+}
+#endif
+
+static inline uint64_t sk_random() {
+	return rand();
+}
+
 int skiplist_construct(int max_lvl, skiplist_t **newlist_ptr) {
 	if(unlikely(newlist_ptr == NULL || max_lvl < 0)) {
 		return EINVAL;
@@ -80,7 +98,7 @@ void skiplist_destruct(skiplist_t *list) {
 
 static int random_level(skiplist_t *list) {
     int level = 0;
-    while (rand() < RAND_MAX/2 && level < list->max_lvl)
+    while (sk_random() < RAND_MAX/2 && level < list->max_lvl)
         level++;
     return level > list->max_lvl ? list->max_lvl : level;
 }

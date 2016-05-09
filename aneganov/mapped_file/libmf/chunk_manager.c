@@ -6,6 +6,8 @@
 #include <sys/sysinfo.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #include "list.h"
 #include "mfdef.h"
@@ -13,18 +15,8 @@
 #include "map.h"
 #include "log.h"
 #include "bug.h"
+#include "chunk.h"
 #include "chunk_manager.h"
-
-typedef struct list_head list_t;
-
-struct chunk {
-	chpool_t *cpool;
-	hkey_t key;
-	bool is_indexed;
-	unsigned ref_cnt;
-	list_t list;
-	void *payload;
-}; /* chunk_t */
 
 struct chunk_pool {
 	int fd;
@@ -33,23 +25,11 @@ struct chunk_pool {
 	size_t threshold;
 	size_t nr_pages;
 	size_t pg_sz;
+	unsigned pg_order;
+	off_t pg_mask;
 	list_t head;
 	map_t *map;
 }; /* chpool_t */
-
-static int chunk_init(off_t idx, off_t len, chpool_t *cpool, chunk_t *chunk) {
-	chunk->key.idx = idx;
-	chunk->key.len = len;
-	chunk->ref_cnt = 1;
-	chunk->cpool = cpool;
-	chunk->payload = mmap(NULL, chunk->key.len * cpool->pg_sz, cpool->prot, MAP_SHARED, cpool->fd, chunk->key.idx * cpool->pg_sz);
-	log_write(LOG_DEBUG, "chunk_init: offset = %jd, chunk->payload == %p\n", chunk->key.idx * cpool->pg_sz, chunk->payload);
-
-	if(chunk->payload == MAP_FAILED) {
-		return errno;
-	}
-	return 0;
-}
 
 static int chunk_destruct(chunk_t *chunk) {
 	if( munmap(chunk->payload, chunk->key.len * chunk->cpool->pg_sz) == -1 ) {
@@ -95,40 +75,13 @@ static int chpool_add(chunk_t *chunk) {
 
 	list_add_tail(&chunk->list, &cpool->head);
 
-	chunk_t *oldval;
-	err = map_add(cpool->map, &chunk->key, (val_t)chunk, (val_t *)&oldval);
+	err = map_add(cpool->map, &chunk->key, chunk);
 	if (unlikely(err && err != EKEYREJECTED)) {
 		log_write(LOG_DEBUG, "map_add: %s", strerror(err));
 		return err;
 	}
-	if (err != EKEYREJECTED) {
-		chunk->is_indexed = true;
-	}
-	else if (oldval != NULL) {
-		oldval->is_indexed = false;
-	}
 
 	cpool->nr_pages += chunk->key.len;
-	return 0;
-}
-
-static int chunk_construct(chpool_t *cpool, off_t idx, off_t len, chunk_t **chunk) {
-	int err;
-
-	if(unlikely((err = mf_malloc(sizeof(chunk_t), (void **)chunk)))) {
-		return err;
-	}
-
-	if(unlikely((err = chunk_init(idx, len, cpool, *chunk)))) {
-		return err;
-	}
-
-	if(unlikely((err = chpool_add(*chunk)))) {
-		log_write(LOG_DEBUG, "chpool_add: %s\n", strerror(err));
-		return err;
-	}
-
-	log_write(LOG_DEBUG, "chunk_construct(idx=%jd, len=%jd): success\n", idx, len);
 	return 0;
 }
 
@@ -137,7 +90,7 @@ static int chunk_get(chpool_t *cpool, off_t idx, off_t len, chunk_t **chunk) {
 
 	hkey_t key = {{.idx = idx, .len = len}};
 
-	int err = map_lookup_le(cpool->map, &key, (val_t *)chunk);
+	int err = map_lookup_le(cpool->map, &key, chunk);
 	if(err) {
 		return err;
 	}
@@ -150,19 +103,55 @@ static int chunk_get(chpool_t *cpool, off_t idx, off_t len, chunk_t **chunk) {
 }
 
 static inline off_t get_chunk_idx(chpool_t *cpool, off_t offset) {
-	return offset / cpool->pg_sz;
+	return offset >> cpool->pg_order;
 }
 
 static inline off_t get_chunk_len(chpool_t *cpool, off_t offset, size_t size) {
-	return (size + (offset % cpool->pg_sz))/cpool->pg_sz + 1;
+	return ((size + (offset & cpool->pg_mask)) >> cpool->pg_order) + 1;
+}
+
+static int chunk_init(off_t idx, off_t len, chpool_t *cpool, chunk_t *chunk) {
+	chunk->key.idx = idx;
+	chunk->key.len = len;
+	chunk->ref_cnt = 0;
+	chunk->cpool = cpool;
+	chunk->payload = mmap(NULL, chunk->key.len * cpool->pg_sz, cpool->prot, MAP_SHARED, cpool->fd, chunk->key.idx * cpool->pg_sz);
+	log_write(LOG_DEBUG, "chunk_init: offset = %jd, chunk->payload == %p\n", chunk->key.idx * cpool->pg_sz, chunk->payload);
+
+	if(chunk->payload == MAP_FAILED) {
+		return errno;
+	}
+	return 0;
+}
+
+static int chunk_construct(chpool_t *cpool, off_t idx, off_t len, chunk_t **chunk_ptr) {
+	int err;
+
+	if(unlikely((err = mf_malloc(sizeof(chunk_t), (void **)chunk_ptr)))) {
+		return err;
+	}
+
+	if(unlikely((err = chunk_init(idx, len, cpool, *chunk_ptr)))) {
+		return err;
+	}
+
+	if(unlikely((err = chpool_add(*chunk_ptr)))) {
+		log_write(LOG_DEBUG, "chpool_add: %s\n", strerror(err));
+		return err;
+	}
+
+	log_write(LOG_DEBUG, "chunk_construct(idx=%jd, len=%jd): success\n", idx, len);
+	return 0;
 }
 
 int chunk_acquire(chpool_t *cpool,  off_t offset, size_t size, chunk_t **chunk_ptr) {
+#ifdef DEBUG
 	if(unlikely(!cpool || !chunk_ptr)) {
 		return EINVAL;
 	}
 
 	BUG_ON(!cpool->map);
+#endif
 
 	if(size == 0) {
 		*chunk_ptr = NULL;
@@ -175,36 +164,15 @@ int chunk_acquire(chpool_t *cpool,  off_t offset, size_t size, chunk_t **chunk_p
 	int err = chunk_get(cpool, idx, len, chunk_ptr);
 	log_write(LOG_DEBUG, "chunk_acquire: chunk_get(idx=%jd, len=%jd): %s\n", idx, len, strerror(err));
 
-	chunk_t *chunk = *chunk_ptr;
-
 	switch(err) {
+		case ENOKEY:
+			if(unlikely((err = chunk_construct(cpool, idx, len, chunk_ptr)))) {
+				return err;
+			}
 		case 0:
-			chunk->ref_cnt++;
+			(*chunk_ptr)->ref_cnt++;
 			return 0;
 			break;
-		case ENOKEY:
-			{
-				if( *chunk_ptr == NULL || !(err = chpool_del(&chunk->list)) ) {
-					return chunk_construct(cpool, idx, len, chunk_ptr);
-				}
-				if(unlikely(err != EBUSY)) {
-					return err;
-				}
-				void *newpayload = mremap(chunk->payload, chunk->key.len * cpool->pg_sz, (idx + len - chunk->key.idx) * cpool->pg_sz, 0);
-				if(newpayload != MAP_FAILED) {
-					chunk->payload = newpayload;
-					chunk->ref_cnt++;
-					return 0;
-				}
-				else {
-					if(unlikely(errno != ENOMEM)) {
-						return errno;
-					}
-					log_write(LOG_DEBUG, "mremap failed\n");
-					return chunk_construct(cpool, idx, len, chunk_ptr);
-				}
-				break;
-			}
 		default:
 			return err;
 			break;
@@ -247,28 +215,24 @@ int chunk_release(chunk_t *chunk) {
 		return EAGAIN;
 	}
 
-	chunk->ref_cnt--;
-	list_move(&chunk->list, &chunk->cpool->head);
-
-	log_write(LOG_DEBUG, "chunk_release: for chunk %p ref_cnt == %u\n", chunk, chunk->ref_cnt);
+	if(--chunk->ref_cnt == 0) {
+		if(chunk->is_indexed) {
+			list_move(&chunk->list, &chunk->cpool->head);
+		}
+		else {
+			return chpool_del(&chunk->list);
+		}
+	}
 
 	return 0;
 }
 
-static int right_cmp(val_t val1, val_t val2) {
-	off_t right1 = ((chunk_t *)val1)->key.idx + ((chunk_t *)val1)->key.len;
-	off_t right2 = ((chunk_t *)val2)->key.idx + ((chunk_t *)val2)->key.len;
-	return (right1 > right2) ? 1 : (right1 < right2) ? -1 : 0;
-}
-
-static off_t skey_from_val(val_t val) {
-	return ((chunk_t *)val)->key.idx;
-}
-
 int chpool_construct(int fd, int prot, chpool_t **cpool_ptr) {
+#ifdef DEBUG
 	if(unlikely(fd < 0 || cpool_ptr == NULL)) {
 		return EINVAL;
 	}
+#endif
 
 	int err;
 	if(unlikely((err = mf_malloc(sizeof(chpool_t), (void **)cpool_ptr)))) {
@@ -286,7 +250,22 @@ int chpool_construct(int fd, int prot, chpool_t **cpool_ptr) {
 	cpool->pg_sz = sysconf(_SC_PAGESIZE);
 #endif
 
-	cpool->threshold = ((info.freehigh / cpool->pg_sz) / 3) << 1;
+	size_t pg_sz = cpool->pg_sz;
+	cpool->pg_order = 0;
+	cpool->pg_mask = 0;
+	while(pg_sz) {
+		pg_sz >>= 1;
+		cpool->pg_mask <<= 1;
+		cpool->pg_mask++;
+		cpool->pg_order++;
+
+	}
+	if(cpool->pg_order) cpool->pg_order--;
+
+	struct rlimit rl = {0, 0};
+	getrlimit(RLIMIT_AS, &rl);
+
+	cpool->threshold = (rl.rlim_cur == RLIM_INFINITY) ? ((info.freeram / cpool->pg_sz) >> 2) * 3 : rl.rlim_cur;
 	cpool->nr_pages = 0;
 	cpool->fd = fd;
 	cpool->prot = prot;
@@ -298,13 +277,26 @@ int chpool_construct(int fd, int prot, chpool_t **cpool_ptr) {
 	}
 	cpool->fsize = sb.st_size;
 
-	return map_construct(right_cmp, skey_from_val, &cpool->map);
+	if(unlikely((err = map_construct(&cpool->map)))) {
+		return err;
+	}
+
+#ifndef DEBUG2
+	chunk_t *chunk;
+	size_t ch_sz = (rl.rlim_cur == RLIM_INFINITY) ? (info.freeram >> 1) : min(rl.rlim_cur, (info.freeram >> 1));
+	off_t len = get_chunk_len(cpool, 0, min(ch_sz, cpool->fsize));
+	err = chunk_construct(cpool, 0, len, &chunk);
+#endif
+
+	return 0;
 }
 
 int chpool_destruct(chpool_t *cpool) {
+#ifdef DEBUG
 	if(cpool == NULL) {
 		return EINVAL;
 	}
+#endif
 
 	int err;
 
@@ -331,9 +323,11 @@ int chpool_destruct(chpool_t *cpool) {
 }
 
 int chunk_get_mem(chunk_t *chunk, off_t offset, void **buf, off_t *border) {
+#ifdef DEBUG
 	if(unlikely(chunk == NULL || buf == NULL)) {
 		return EINVAL;
 	}
+#endif
 
 	off_t left =  chunk->key.idx * chunk->cpool->pg_sz;
 	off_t right = left + chunk->key.len * chunk->cpool->pg_sz;
@@ -355,22 +349,28 @@ int chunk_get_mem(chunk_t *chunk, off_t offset, void **buf, off_t *border) {
 }
 
 int chpool_fd(chpool_t *cpool) {
+#ifdef DEBUG
 	if(unlikely(!cpool)) {
 		return -1;
 	}
+#endif
 	return cpool->fd;
 }
 
 size_t chpool_page_size(chpool_t *cpool) {
+#ifdef DEBUG
 	if(unlikely(!cpool)) {
 		return 0;
 	}
+#endif
 	return cpool->pg_sz;
 }
 
 off_t chpool_fsize(chpool_t *cpool) {
+#ifdef DEBUG
 	if(unlikely(!cpool)) {
 		return -1;
 	}
+#endif
 	return cpool->fsize;	
 }

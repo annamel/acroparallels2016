@@ -13,14 +13,14 @@ typedef union hkey {
 	uint32_t raw[sizeof(off_t)/2];
 } hkey_t;
 
-typedef void* val_t;
+typedef struct chunk* hval_t;
 
 typedef struct map map_t;
 
-int map_construct(int (*cmp)(val_t, val_t), off_t (*skey_from_val)(val_t), map_t **map);
+int map_construct(map_t **map);
 int map_destruct(map_t *map);
-int map_add(map_t * map, hkey_t *key, val_t val, val_t *oldval_ptr);
-int map_lookup_le(const map_t * map, hkey_t *key, val_t *val);
+int map_add(map_t * map, hkey_t *key, hval_t val);
+int map_lookup_le(const map_t * map, hkey_t *key, hval_t *val);
 int map_del(map_t *map, hkey_t *key, bool is_indexed);
 
 #endif
