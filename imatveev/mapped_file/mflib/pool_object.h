@@ -33,9 +33,7 @@ typedef struct pool_object{
 } PoolObject;
 
 int data_free(Data data);
-PoolObject *init_pool_object(size_t size_table);
-int _init_pool_object(PoolObject *pool, size_t size_table);
-void  deinit_pool_object(PoolObject *pool);
+int init_pool_object(PoolObject *pool, size_t size_table);
 void _deinit_pool_object(PoolObject *pool);
 int append_array(PoolObject *pool);
 Node *pool_append(PoolObject *pool, Data data);

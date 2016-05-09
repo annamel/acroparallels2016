@@ -17,16 +17,6 @@ int list_is_empty(List *list){
     else
         return (list->first_node == NULL) ? 1 : 0;
 }
-List *_init_empty_list(void){
-    List *list = malloc(sizeof(List));
-    if (list == NULL){
-        errno = ENOMEM;
-        return NULL;
-    }
-    list->first_node = NULL;
-    list->last_node = NULL;
-    return list;
-}
 int init_empty_list(List *list){
     if (list == NULL)
         return -1;
@@ -37,18 +27,14 @@ int init_empty_list(List *list){
 int list_append(List *list, Node *new_node){
     if (list == NULL || new_node == NULL)
         return -1;
+    new_node->prev = NULL;
+    new_node->next = list->first_node;
     if (list->first_node == NULL){
-        list->first_node = new_node;
         list->last_node = new_node;
-        new_node->next = NULL;
-        new_node->prev = NULL;
     } else {
-        Node *node = list->first_node;
-        node->prev = new_node;
-        new_node->next = node;
-        new_node->prev = NULL;
-        list->first_node = new_node;
+        list->first_node->prev = new_node;
     }
+    list->first_node = new_node;
     return 0;
 }
 int list_remove(List *list, Node *node){
@@ -72,7 +58,7 @@ int list_remove(List *list, Node *node){
     }
     return 0;
 }
-Node *list_get_first(List *list){
+Node *list_remove_first(List *list){
     if (list == NULL || list->first_node == NULL)
         return NULL;
     Node *node = list->first_node;
@@ -83,7 +69,7 @@ Node *list_get_first(List *list){
         list->last_node = NULL;
     return node;
 }
-Node *list_get_last(List *list){
+Node *list_remove_last(List *list){
     if (list == NULL || list->last_node == NULL)
         return NULL;
     Node *node = list->last_node;

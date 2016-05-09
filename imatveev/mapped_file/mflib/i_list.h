@@ -23,15 +23,14 @@ typedef struct iList {
     iNode *last_inode;
 } iList;
 
-iList *_init_empty_ilist(void);
 // RETURN VALUE: 0 - success, -1 - failed
 int init_empty_ilist(iList *list);
 // append as first Node
 int ilist_append(iList *list, Node *new_node);
 int ilist_remove(iList *list, Node *node);
 // delete from list and return node
-iNode *ilist_get_first(iList *list);
-iNode *ilist_get_last(iList *list);
+iNode *ilist_remove_first(iList *list);
+iNode *ilist_remove_last(iList *list);
 int ilist_is_empty(iList *list);
 ssize_t ilist_size(iList *list);
 

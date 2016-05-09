@@ -22,8 +22,7 @@ typedef struct HashTable {
 size_t new_hash_func(size_t x);
 size_t BPhash(size_t value);
 size_t key(Node *node);
-HashTable *init_hash_table(size_t size);
-int _init_hash_table(HashTable *table, size_t size);
+int init_hash_table(HashTable *table, size_t size);
 // RETURN VALUE: 0 - success, -1 - failed
 int hash_table_append(HashTable *table, Node *new_node);
 int hash_table_remove(HashTable *table, Node *node);
