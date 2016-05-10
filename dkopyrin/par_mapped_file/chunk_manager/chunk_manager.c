@@ -33,9 +33,6 @@ int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
 	}
 	cm -> cur_chunk_index = 0;
        cm -> skiplist = sl_alloc(&sdt);
-       /*if (pthread_mutex_init(&cm -> pool_lock, NULL)){
-              return 1;
-       }*/
 	if (!cm -> skiplist)
 		return 1;
 

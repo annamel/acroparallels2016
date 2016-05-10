@@ -1,5 +1,5 @@
 all:
-	$(CC) $(CFLAGS) -Wall -c -I"../../../include/" mapped_file.c -o "$(MAKE_DIR)/mapped_file.o"
+	$(CC) $(CFLAGS) -Wall -c -I"../../../include/" -I"../nbds/include" mapped_file.c -o "$(MAKE_DIR)/mapped_file.o"
 
 test:
 
