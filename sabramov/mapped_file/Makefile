@@ -3,6 +3,7 @@ DIR := mflib
 BUILD := $(DIR:%=build-%)
 CLEAN := $(DIR:%=clean-%)
 
+CFLAGS += -Ofast
 export CFLAGS MAKED
 
 all: build_all $(BUILD)

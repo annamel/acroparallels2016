@@ -1,14 +1,13 @@
 #include "chunk_manage.h"
 #include "mapped_file.h"
-
-#define TABLE_SIZE 1024
-
+#include <stdlib.h>	
+#include <string.h>
+#include <stdint.h>
 
 struct chunk** init_hash_table()
 {
 	chunk_t** htable = malloc(sizeof(chunk_t*) * TABLE_SIZE);
 	memset(htable, 0, (sizeof(chunk_t*) * TABLE_SIZE)/sizeof(char));
-
 	return htable;
 } 
 
@@ -17,38 +16,22 @@ void deinit_hash_table(chunk_t** hash_table)
 	free(hash_table);
 }
 
-int fast_lookup(int key, chunk_t* chunk, file_handle_t* fh)
+
+int fast_lookup(long long key, chunk_t* chunk, file_handle_t* fh)
 {
 	chunk_t** hash_table = fh->hash_table;
-
 	int h = hash_func(key);
-
-	if (hash_table[h] != NULL) 
-	{ 
-		chunk_t* p = hash_table[h]; 
+	chunk_t* p = NULL;
 		
-		do { 
-			
-			if (p -> pg_multiple_offset == key) 
-			{	
-				if (p->size == chunk->size)
-					return 1;	
-				else
-					return 0;
-			}
-			else 
-				p = p -> next; 
-		
-		} while (p != NULL); 
-		
-		return 0; 
-	} 
-
-	return 0;	
+	for (p = hash_table[h]; p != NULL; p = p->next)
+		if (p -> pg_round_down_off == key)		
+			return (p->size == chunk->size);			
+	
+	return 0;
 }
 
 /*
-uint32_t hash_func(uint32_t a)
+int hash_func(long long a)
 {
    a = (a+0x7ed55d16) + (a<<12);
    a = (a^0xc761c23c) ^ (a>>19);
@@ -61,47 +44,30 @@ uint32_t hash_func(uint32_t a)
 }
 */
 
-int hash_func(int key)
+int hash_func(long long key)
 {
 	return ((key / 4096) % TABLE_SIZE);
 }
 
 
-chunk_t* table_lookup(int key, file_handle_t* fh) 
+chunk_t* table_lookup(long long key, file_handle_t* fh) 
 { 
 	chunk_t** hash_table = fh->hash_table;
-	// chunk_t* p; 
-
-	int h = hash_func(key); 
-	
-	if (hash_table[h] != NULL) 
-	{ 
-		chunk_t* p = hash_table[h]; 
-		
-		do { 
-			
-			if (p -> pg_multiple_offset == key) 
-			{	
-				return p;	
-			}
-			else 
-			{
-				p = p -> next; 
-			}
-		
-		} while (p != NULL); 
-		
-		return NULL; 
-	} 
+	int h = hash_func(key);
+	chunk_t* p = NULL; 
+ 
+	for (p = hash_table[h]; p != NULL; p = p->next)
+		if (p -> pg_round_down_off == key) 
+			return p;	
 
 	return NULL;
 }
 
-int push_chunk(int key, chunk_t** chunk_ptr, file_handle_t** fh)
+int push_chunk(long long key, chunk_t** chunk_ptr, file_handle_t** fh)
 {
 	chunk_t** hash_table = (*fh)->hash_table;
-
 	int h  = hash_func(key);
+
 
 	if (hash_table[h] != NULL)
 	{
@@ -109,13 +75,12 @@ int push_chunk(int key, chunk_t** chunk_ptr, file_handle_t** fh)
 
 		do {
 			
-			if (p->pg_multiple_offset == key)
+			if (p->pg_round_down_off == key)
 			{				
 				chunk_t* ch = *chunk_ptr;
-
 				*chunk_ptr = (*chunk_ptr)->next;
 				
-				if (p->prev == NULL)
+				if (!p->prev)
 				{
 					ch->next = p->next;
 					ch->prev = p->prev;
@@ -136,10 +101,11 @@ int push_chunk(int key, chunk_t** chunk_ptr, file_handle_t** fh)
 				if (!p->ref_count)			
 				{	
 					p->next = NULL;
+					int unmap = munmap(p->addr, p->size);
+					(*fh)->cur_mem_usage -= p->size;
 					p->prev = (*fh)->free_chunks_tail;
 					(*fh)->free_chunks_tail->next = p;
 					(*fh)->free_chunks_tail = p;
-					
 					if (!(*chunk_ptr))
 						*chunk_ptr = p;
 				}
@@ -153,12 +119,10 @@ int push_chunk(int key, chunk_t** chunk_ptr, file_handle_t** fh)
 			} 
 			else
 			{				
-				if (p->next == NULL)
+				if (!p->next)
 				{	
-					p->next = *chunk_ptr;			// FIXME: need to test
-					
+					p->next = *chunk_ptr;
 					*chunk_ptr = (*chunk_ptr)->next;
-
 					p->next->prev = p;
 					p->next->next = NULL;
 
@@ -175,7 +139,6 @@ int push_chunk(int key, chunk_t** chunk_ptr, file_handle_t** fh)
 	else
 	{
 		hash_table[h] = *chunk_ptr;
-
 		(*chunk_ptr) = (*chunk_ptr)->next;
 
 		if ((*chunk_ptr) == NULL)
@@ -191,42 +154,16 @@ int push_chunk(int key, chunk_t** chunk_ptr, file_handle_t** fh)
 	return 0;
 }
 
-int pull_chunk(int key, file_handle_t* fh)
+int hash_table_unmap(chunk_t** hash_table)
 {
-	chunk_t** hash_table = fh->hash_table;
-	chunk_t* p;
-	
-	int h = hash_func(key);	
+	chunk_t* ptr = NULL;
+	int i = 0;
 
-	if (hash_table[h] == NULL)
-		return 0;
-
-	p = hash_table[h];
-
-	do {
-
-		if (p->pg_multiple_offset == key)
-		{
-			if (p->prev)
-				p->prev->next = p->next;
-
-			if (p->next)
-				p->next->prev = p->prev;
-
-			if (!p->ref_count)
-			{
-				p->next = fh->free_chunks->next;
-				p->next->prev = p;
-				p->prev = NULL;
-				fh->free_chunks = p;
-			} 
-			
-			break;
-		}
-		else
-			p = p->next;
-	
-	} while (p != NULL);
+	for (i = 0; i < TABLE_SIZE; i++)
+	{
+		for (ptr = hash_table[i]; ptr != NULL; ptr = ptr->next)
+			munmap(ptr->addr, ptr->size);			
+	}
 
 	return 0;
 }
