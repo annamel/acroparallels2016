@@ -29,15 +29,14 @@ typedef struct List {
     Node *last_node;
 } List;
 
-List *_init_empty_list(void);
 // RETURN VALUE: 0 - success, -1 - failed
 int init_empty_list(List *list);
 // append as first Node
 int list_append(List *list, Node *new_node);
 int list_remove(List *list, Node *node);
 // delete from list and return node
-Node *list_get_first(List *list);
-Node *list_get_last(List *list);
+Node *list_remove_first(List *list);
+Node *list_remove_last(List *list);
 int list_is_empty(List *list);
 ssize_t list_size(List *list);
 // check - возвращает 1 если чанк подходит, 0 если нет
