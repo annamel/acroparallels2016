@@ -5,14 +5,20 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+#include "../nbds/include/runtime.h"
 #include "../nbds/runtime/rlocal.h"
 
+#undef DEBUG_LOG
 #define COLOR(x) "\x1B[36m"x"\x1B[0m"
 #define LOGCOLOR(x) COLOR("%s: ")x, __func__
 #include "../logger/log.h"
 #include <assert.h>
 #include <sys/sysinfo.h>
 #define MIN(x,y) ((x>y) ? y: x)
+
+//We will not use previous chunk every time because it is ref_cnt sub/add is
+//bottleneck. So let's make new chunk with probability 1/USE_PROB
+#define USE_PROB 657
 
 struct _mf {
 	int fd;
@@ -56,9 +62,9 @@ mf_handle_t mf_open(const char *pathname){
 	if (sysinfo(&info) == 0) {
        	off_t tmp;
 #ifdef DEBUG
-       	chunk_manager_gen_chunk(&mf -> cm, 0, 1, &ch, &tmp);
+       	chunk_manager_force_gen_chunk(&mf -> cm, 0, 1, &ch, &tmp);
 #else
-		chunk_manager_gen_chunk(&mf -> cm, 0, info.freeram / 2, &ch, &tmp);
+		chunk_manager_force_gen_chunk(&mf -> cm, 0, info.freeram / 2, &ch, &tmp);
 #endif
 		int thr;
 		for (thr = 0; thr < MAX_NUM_THREADS; thr++)
@@ -141,7 +147,7 @@ ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t off
 	//After iterations set new prev chunk
 	*prev_ch = ch;
 	__atomic_fetch_sub(&(*prev_ch) -> ref_cnt, 1, 0);
-	//__atomic_fetch_add(&ch -> ref_cnt, 1, 0);
+	__atomic_fetch_add(&ch -> ref_cnt, 1, 0);
        //ch -> ref_cnt--;
 	return read_bytes;
 }
@@ -165,7 +171,7 @@ ssize_t mf_write(mf_handle_t mf, const void *buf, size_t size, off_t offset){
 }
 
 void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle){
-	LOG(INFO, "mf_map called, off %ld, size %ld\n", offset, size);
+	LOG(INFO, "[%d] mf_map called, off %ld, size %ld\n", GET_THREAD_INDEX(), offset, size);
 	assert(mf); assert(mapmem_handle);
 
 	struct _mf * _mf = (struct _mf *) mf;
@@ -179,10 +185,32 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 
   	struct chunk *ch = prev_ch;
 	off_t ch_offset = 0;
-  	if (ch && ch -> offset <= offset + size && offset + size < ch -> offset + ch -> length){
+	if (ch && ch -> offset <= offset + size && offset + size < ch -> offset + ch -> length){
 		//Chunk is OK, we have to set relative chunk offset
-		LOG(DEBUG, "Get chunk from cache, off %ld, size %ld\n", ch -> offset, ch -> length);
-		ch_offset = offset - ch -> offset;
+		/* We know that chunk is fine. But using previous chunk might not be
+		 * a good decision. If every thread wants to work with one chunk
+		 * we generate heavy race condition - and bad performance on atomic
+		 * instructions. Let's throw coin and use prev chunk if coin flipped good
+		 */
+		int gen_prob = nbd_rand() % USE_PROB;
+		if (gen_prob){
+			LOG(DEBUG, "Get chunk from cache, off %ld, size %ld\n", ch -> offset, ch -> length);
+			__atomic_fetch_add(&ch -> ref_cnt, 1, 0);
+			ch_offset = offset - ch -> offset;
+		}else{
+			LOG(DEBUG, "Force to gen new chunk\n");
+			size_t av_chunk_size = chunk_manager_force_gen_chunk(&_mf -> cm, offset, size, &ch, &ch_offset);
+			if (av_chunk_size == -1){
+				errno = EAGAIN;
+				return NULL;
+			}
+
+			LOG(DEBUG, "Current ref_cnt are ch: %d, prev_ch: %d\n", ch -> ref_cnt, prev_ch -> ref_cnt);
+			__atomic_fetch_add(&ch -> ref_cnt, 1, 0); //Now ref_cnt is set on a new chunk
+			__atomic_fetch_sub(&prev_ch -> ref_cnt, 1, 0); //Removing ref_cnt on previous prev_ch
+			_mf -> prev_ch_by_thread[GET_THREAD_INDEX()] = ch;
+
+		}
 	}else{
 		//Elsewhere we generate a new one
 		LOG(DEBUG, "Gen new chunk\n");
@@ -197,8 +225,6 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 		_mf -> prev_ch_by_thread[GET_THREAD_INDEX()] = ch;
 	}
 
-
-	//ch -> ref_cnt++; - it is done by gen_chunk already
 	// We use chunk as mapmem handle because we only need to decrease ref_cnt
 	// when unmap is called
 	*mapmem_handle = ch;

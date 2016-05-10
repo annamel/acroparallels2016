@@ -12,6 +12,9 @@
 #include "../nbds/include/skiplist.h"
 #include "../nbds/include/runtime.h"
 
+const int ref_cnt_new = -1;
+const int ref_cnt_free = 0;
+
 int skiplist_cmp(void *l, void *r){
 	return (off_t) l - (off_t) r;
 }
@@ -70,18 +73,17 @@ struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 		//TODO: ABA problem
 		//By default ref_cnt == -1 is unused chunk
 		LOG(DEBUG, "Trying %d chunk, ref_cnt=%d\n", cur_chunk_index, cur_ch -> ref_cnt);
-		if (cur_ch -> ref_cnt == -1){
+		if (__sync_bool_compare_and_swap(&cur_ch -> ref_cnt, ref_cnt_new, 1)){
 			LOG(DEBUG, "Unused chunk %d returned\n", cur_chunk_index);
-                     __atomic_store_n(&cur_ch -> ref_cnt, 1, 0);
                      //pthread_mutex_unlock(&cm -> pool_lock);
 			return cur_ch;
-		}else if (cur_ch -> ref_cnt == 0){
+		}else if (__sync_bool_compare_and_swap(&cur_ch -> ref_cnt, ref_cnt_free, 1)){
 			LOG(DEBUG, "Refirbished chunk %d returned, cleaning\n", cur_chunk_index);
+			//TODO: Might remove good chunk
                      sl_remove(cm -> skiplist, cur_ch -> offset);
 
 			chunk_finalize(cur_ch);
-                     __atomic_store_n(&cur_ch -> ref_cnt, 1, 0);
-			//pthread_mutex_unlock(&cm -> pool_lock);
+                     //pthread_mutex_unlock(&cm -> pool_lock);
 			return cur_ch;
 		}//else we can't use this chunk: ref_cnt != 0
 	}
@@ -111,8 +113,7 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
 	ssize_t ch_length = cur_ch ? cur_ch -> length : -1;
        if (cur_ch != NULL) {LOG(DEBUG, "Closest chunk is offset %ld, size %ld\n", cur_ch -> offset, cur_ch -> length);}
 	if (cur_ch == NULL ||
-	    ch_length < poffset - ch_offset ||
-	    ch_length < plength) {
+           offset + length > ch_length + ch_offset) {
               LOG(DEBUG, "No chunk found - making new one of size %lld\n", plength);
 
 		struct chunk *new_chunk = chunk_manager_get_av_chunk_from_pool(cm);
@@ -120,6 +121,7 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
 			return -1;
 
 		chunk_init (new_chunk, plength, poffset, cm -> fd);
+		//No need to increase ref_cnf: it is already ref_cnt=1
 
 		LOG(DEBUG, "Adding offset %ld to skiplist w/ chunk %p\n", new_chunk -> offset, new_chunk);
               if (cur_ch && cur_ch -> offset == new_chunk -> offset){
@@ -144,4 +146,27 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
 		*chunk_offset = offset - ch_offset;
 		return ch_length - offset + ch_offset;
 	}
+}
+
+long int chunk_manager_force_gen_chunk (struct chunk_manager *cm, off_t offset, size_t length, struct chunk ** ret_ch, off_t *chunk_offset) {
+	LOG(INFO, "chunk_manager_force_gen_chunk calles\n");
+
+	struct chunk *new_chunk = chunk_manager_get_av_chunk_from_pool(cm);
+	if (new_chunk == NULL)
+		return -1;
+
+	off_t poffset = offset & CHUNK_MASK;
+	size_t plength = ((offset + length) & CHUNK_MASK) + MIN_CHUNK_SIZE - poffset;
+
+	chunk_init (new_chunk, plength, poffset, cm -> fd);
+
+	LOG(DEBUG, "Adding offset %ld to skiplist w/ chunk %p\n", new_chunk -> offset, new_chunk);
+
+	//This function actually do add to skiplist
+	sl_cas(cm -> skiplist, poffset, CAS_EXPECT_DOES_NOT_EXIST, (unsigned long) new_chunk);
+
+	*ret_ch = new_chunk;
+	*chunk_offset = offset - new_chunk -> offset;
+	return new_chunk -> length - offset + new_chunk -> offset;
+
 }
