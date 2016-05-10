@@ -168,21 +168,4 @@ int hash_table_unmap(chunk_t** hash_table)
 	return 0;
 }
 
-int hash_table_unmap(chunk_t** hash_table)
-{
-	int i = 0;
-
-	for (i = 0; i < TABLE_SIZE; i++)
-	{
-		chunk_t* ptr = hash_table[i];
-
-		while (ptr)
-		{
-			munmap(ptr->addr, ptr->size);
-			ptr = ptr->next;
-		}
-	}
-
-	return 0;
-}
 
