@@ -4,7 +4,7 @@
 
 #include "logger/logger.h"
 #include "chunk_manager/chunk_manager.h"
-#include "mapped_file/mapped_file.h"
+#include "mapped_file.h"
 #include "asnorkin_test.h"
 
 
