@@ -122,7 +122,7 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 	ch_pool_t* ch_pool = (ch_pool_t *)mf;
 	chunk_t** chunk = (chunk_t**)mapmem_handle;
 
-	*chunk = find_in_range(ch_pool -> h_table, offset, size);
+	*chunk = take_value_ptr(ch_pool -> h_table, index, length);
 	if ((*chunk) == NULL) {
         write_log_to_file(Debug,"mf_map: t is no chunk, which contains needed range of bytes. The next step - init of such chunk!\n");
 		int res_code = ch_init(index, length, ch_pool);
@@ -185,7 +185,7 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {
         length = (offset+ count)/get_chunk_size(1) - index;
 	}
 
-	chunk_t* chunk_ptr = find_in_range(ch_pool -> h_table, offset, count);
+	chunk_t* chunk_ptr = take_value_ptr(ch_pool -> h_table, index, length);
 	if(chunk_ptr == NULL) {
        // write_log_to_file(Debug,"mf_read: there is no chunk, which contains needed range of bytes. The next step - init of such chunk!\n");
         res_code = ch_init(index, length, ch_pool);
@@ -234,7 +234,7 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
         length = (offset+ count)/get_chunk_size(1) - index;
 	}
 
-	chunk_t* chunk_ptr = find_in_range(ch_pool -> h_table, offset, count);
+	chunk_t* chunk_ptr = take_value_ptr(ch_pool -> h_table, index, length);
 	if(chunk_ptr == NULL) {
        // write_log_to_file(Debug,"mf_write: there is no chunk, which contains needed range of bytes. The next step - init of such chunk!\n");
         res_code = ch_init(index, length, ch_pool);

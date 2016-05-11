@@ -31,6 +31,7 @@ struct dcl_item
 dclist_t *dcl_init();
 int dcl_add_last(dclist_t *list, lvalue_t value);
 int dcl_del_first(dclist_t *list);
+int dcl_del_by_value(dclist_t *list, lvalue_t value);
 int dcl_deinit(dclist_t *list);
 void dcl_print(dclist_t *list);
 
