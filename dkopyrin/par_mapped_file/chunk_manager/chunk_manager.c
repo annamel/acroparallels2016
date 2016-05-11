@@ -9,11 +9,8 @@
 #include <assert.h>
 #include <limits.h>
 
-#include "../nbds/include/skiplist.h"
-#include "../nbds/include/runtime.h"
-
-const int ref_cnt_new = -1;
-const int ref_cnt_free = 0;
+//#include "../nbds/include/skiplist.h"
+//#include "../nbds/include/runtime.h"
 
 int skiplist_cmp(void *l, void *r){
 	return (off_t) l - (off_t) r;
@@ -47,7 +44,7 @@ int chunk_manager_finalize (struct chunk_manager *cm){
 	assert(cm);
 	int i;
 	for (i = 0; i < POOL_SIZE; i++)
- 		if (cm -> chunk_pool[i].ref_cnt != -1)
+ 		if (cm -> chunk_pool[i].trc.ref_cnt != -1)
 			chunk_finalize (cm -> chunk_pool + i);
 
 	sl_free(cm -> skiplist);
@@ -72,12 +69,33 @@ struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 		struct chunk *cur_ch = cm -> chunk_pool + cur_chunk_index;
 		//TODO: ABA problem
 		//By default ref_cnt == -1 is unused chunk
-		LOG(DEBUG, "Trying %d chunk, ref_cnt=%d\n", cur_chunk_index, cur_ch -> ref_cnt);
-		if (__sync_bool_compare_and_swap(&cur_ch -> ref_cnt, ref_cnt_new, 1)){
+		LOG(DEBUG, "Trying %d chunk, state=%d, ref_cnt=%d\n", cur_chunk_index, cur_ch -> trc.state, cur_ch -> trc.ref_cnt);
+
+		// We want to find chunk to cleanup. However we might fail race and
+		// and get very bad ABA problem. That is why ref_cnt is used with state.
+		// Algorithm try to find correct chunk and with ref_cnt=0 or ref_cnt=-1
+		// If he succeed in it it atomically increase ref_cnt and set new ref_cnt
+		// That is how we can find whether this chunk was cleaned
+		union tagged_ref_cnt trc_new;
+		trc_new.ref_cnt = (int32_t)-1;
+		trc_new.state = 0;
+		union tagged_ref_cnt trc_free;
+		trc_free.ref_cnt = 0;
+		trc_free.state = 0;
+
+		union tagged_ref_cnt trc_update;
+		trc_update.ref_cnt = 1;
+		trc_update.state = 0;
+		LOG(DEBUG, "New is %016lx\n", trc_new.trc);
+		LOG(DEBUG, "Free is %016lx\n", trc_free.trc);
+		LOG(DEBUG, "Update is %016lx\n", trc_update.trc);
+
+		if (__sync_bool_compare_and_swap((long *)&cur_ch -> trc.trc, trc_new.trc, trc_update.trc)){
 			LOG(DEBUG, "Unused chunk %d returned\n", cur_chunk_index);
+			LOG(DEBUG, "state=%d, ref_cnt=%d, ptr=%016lx\n", cur_chunk_index, cur_ch -> trc.state, cur_ch -> trc.ref_cnt, cur_ch -> trc.trc);
                      //pthread_mutex_unlock(&cm -> pool_lock);
 			return cur_ch;
-		}else if (__sync_bool_compare_and_swap(&cur_ch -> ref_cnt, ref_cnt_free, 1)){
+		}else if (__sync_bool_compare_and_swap((long *)&cur_ch -> trc.trc, trc_free.trc, trc_update.trc)){
 			LOG(DEBUG, "Refirbished chunk %d returned, cleaning\n", cur_chunk_index);
 			//TODO: Might remove good chunk
                      sl_remove(cm -> skiplist, cur_ch -> offset);
@@ -91,7 +109,7 @@ struct chunk *chunk_manager_get_av_chunk_from_pool (struct chunk_manager *cm){
 	return NULL;
 }
 
-long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t length, struct chunk ** ret_ch, off_t *chunk_offset) {
+ssize_t chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t length, struct chunk ** ret_ch, off_t *chunk_offset) {
 	LOG(INFO, "offset2chunk called\n");
 	assert(cm);
 	assert(ret_ch);
@@ -112,8 +130,8 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
 	off_t ch_offset = cur_ch ? cur_ch -> offset : -1;
 	ssize_t ch_length = cur_ch ? cur_ch -> length : -1;
        if (cur_ch != NULL) {LOG(DEBUG, "Closest chunk is offset %ld, size %ld\n", cur_ch -> offset, cur_ch -> length);}
-	if (cur_ch == NULL ||
-           offset + length > ch_length + ch_offset) {
+	if (cur_ch == NULL || cur_ch -> trc.state != STATE_OK ||
+           ch_offset > offset || offset + length > ch_length + ch_offset) {
               LOG(DEBUG, "No chunk found - making new one of size %lld\n", plength);
 
 		struct chunk *new_chunk = chunk_manager_get_av_chunk_from_pool(cm);
@@ -121,6 +139,7 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
 			return -1;
 
 		chunk_init (new_chunk, plength, poffset, cm -> fd);
+		//__atomic_store_n((int32_t *)&new_chunk -> trc.state, STATE_OK, 0);
 		//No need to increase ref_cnf: it is already ref_cnt=1
 
 		LOG(DEBUG, "Adding offset %ld to skiplist w/ chunk %p\n", new_chunk -> offset, new_chunk);
@@ -139,8 +158,9 @@ long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t
 		return new_chunk -> length - offset + new_chunk -> offset;
 	}else{
 		LOG(DEBUG, "Skiplist lookup success!\n");
-              //TODO: Might fail
-		__atomic_fetch_add(&cur_ch -> ref_cnt, 1, 0);
+              //TODO: Might fail - ABA
+		//TODO: Implement cur_ch -> trc.state != STATE_OK ||
+		__atomic_fetch_add(&cur_ch -> trc.ref_cnt, 1, 0);
               //cur_ch -> ref_cnt++;
 		*ret_ch = cur_ch;
 		*chunk_offset = offset - ch_offset;

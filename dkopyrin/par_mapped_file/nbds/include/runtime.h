@@ -7,6 +7,7 @@
 
 #include <pthread.h>
 #include "tls.h"
+#include <stddef.h>
 
 void nbd_thread_init (void);
 uint64_t nbd_rand (void);
