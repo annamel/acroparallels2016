@@ -8,9 +8,9 @@
 
 
 
-#include "dc_list/dc_list.h"
-#include "sorted_set/sorted_set.h"
-#include "typedefs.h"
+#include "../dc_list/dc_list.h"
+#include "../sorted_set/sorted_set.h"
+#include "../typedefs.h"
 
 
 

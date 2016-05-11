@@ -3,8 +3,8 @@
 
 
 
-#include "chunk_manager/chunk_manager.h"
-#include "typedefs.h"
+#include "../chunk_manager/chunk_manager.h"
+#include "../typedefs.h"
 
 
 

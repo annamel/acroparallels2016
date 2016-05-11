@@ -10,8 +10,8 @@
 
 
 
-#include "chunk_manager/chunk_manager.h"
-#include "logger/logger.h"
+#include "../chunk_manager/chunk_manager.h"
+#include "../logger/logger.h"
 
 
 
