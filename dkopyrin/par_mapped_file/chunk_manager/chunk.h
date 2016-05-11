@@ -3,11 +3,22 @@
 
 #include <stdlib.h>
 
+#define STATE_OK 0
+#define STATE_BEING_FREED 0
+
+union tagged_ref_cnt{
+	int64_t trc;
+	struct{
+		int32_t state;
+		int32_t ref_cnt;
+	};
+};
+
 struct chunk {
 	size_t length;
 	off_t offset;
 	void * addr;
-	int ref_cnt;
+	union tagged_ref_cnt trc;
 };
 
 int chunk_init (struct chunk *ch, size_t length, off_t offset, int fd);
