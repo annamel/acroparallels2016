@@ -12,7 +12,9 @@ CMappedFile::CMappedFile(const char* fileName) :
 	root_(0, 0),
 	entireFile_(NULL),
 	cache_(NULL),
-	size_(0)
+	size_(0),
+	regionPool_(isUnmappedMoreLikely_),
+	poolSize_(0)
 {
 	desc_ = open(fileName, O_RDWR | O_CREAT, 0755);
 	
@@ -24,18 +26,17 @@ CMappedFile::CMappedFile(const char* fileName) :
 		
 		root_ = CFileRegion(0, size_);
 		
-		//if (size_ && size_ <= MAX_ENTIRELY_MAPPED_SIZE)
-			entireFile_ = map(0, size_, NULL);
+		entireFile_ = map(0, size_, NULL);
 	}
 }
 
 CMappedFile::~CMappedFile()
 {
 	if (entireFile_)
-		entireFile_->removeReference();
-		
+		unmap(entireFile_);
+	
 	if (cache_)
-		cache_->removeReference();
+		unmap(cache_);
 		
 	close(desc_);
 }
@@ -67,7 +68,15 @@ CFileRegion* CMappedFile::map(off_t offset, off_t size, void** address)
 		}
 	}
 	else
+	{
+		if (!region->isReferenced())
+		{
+			regionPool_.erase(region);
+			poolSize_ -= region->getSize();
+		}
+			
 		delete newRegion;
+	}
 		
 	region->addReference();
 	
@@ -92,14 +101,9 @@ ssize_t CMappedFile::fileCopy_(off_t offset, size_t size, uint8_t* to, const uin
 		if (!region)
 		{
 			if (cache_)
-			{
-				cache_->removeReference();
+				unmap(cache_);
 				
-				if (!cache_->isReferenced())
-					delete cache_;
-			}
-			
-			region = cache_ = map(offset, CACHE_SIZE_PAGES * sysconf(_SC_PAGE_SIZE), NULL);
+			region = cache_= map(offset, CACHE_SIZE_PAGES * sysconf(_SC_PAGE_SIZE), NULL);
 		}
 		
 		assert(region);
@@ -119,6 +123,53 @@ ssize_t CMappedFile::fileCopy_(off_t offset, size_t size, uint8_t* to, const uin
 	}
 	
 	return bytesProcessed;
+}
+
+void CMappedFile::unmap(CFileRegion* region)
+{
+	assert(region);
+	assert(region->isMapped());
+	assert(region->getParent());
+	
+	region->removeReference();
+
+	if (!region->isReferenced())
+	{
+		if (!region->getParent()->isMapped())
+		{
+			regionPool_.insert(region);
+			poolSize_ += region->getSize();
+			
+			while (poolSize_ > MAX_POOL_SIZE)
+			{
+				auto unmapped = regionPool_.begin();
+				poolSize_ -= (*unmapped)->getSize();
+				delete *unmapped;
+				regionPool_.erase(unmapped);
+			}
+		}
+		else
+		{
+			printf("deleting %p\n", region);
+			delete region;
+		}
+	}
+}
+
+bool CMappedFile::isUnmappedMoreLikely_(CFileRegion* a, CFileRegion* b)
+{
+	//TODO: inmap time
+	assert(!a->isReferenced() && !b->isReferenced());
+	assert(a->isMapped() && b->isMapped());
+	assert(a->getParent() && b->getParent());
+	
+	if (a->getParent()->isMapped() && !b->getParent()->isMapped())
+		return true;
+	
+	if (!a->getParent()->isMapped() && b->getParent()->isMapped())
+		return false;
+		
+	return a->getSize() < b->getSize();
 }
 
 ssize_t CMappedFile::read(off_t offset, size_t size, uint8_t* buf)

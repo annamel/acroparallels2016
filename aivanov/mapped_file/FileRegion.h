@@ -20,7 +20,7 @@ private:
 	uint8_t*									address_;
 	std::set<CFileRegion*, TCompare>::iterator	iteratorInParent_;
 
-	static bool isLess_(CFileRegion* a, CFileRegion* b);
+	static bool isOffsetLess_(CFileRegion* a, CFileRegion* b);
 	
 	void adopt_(CFileRegion* child);
 	void readopt_(CFileRegion* child);
@@ -44,6 +44,8 @@ public:
 	bool doesInclude(off_t offset);
 	void* getAddress(off_t offset);
 	size_t getSizeAfter(off_t offset);
+	size_t getSize();
+	CFileRegion* getParent();
 	
 	void map(int fd);
 };

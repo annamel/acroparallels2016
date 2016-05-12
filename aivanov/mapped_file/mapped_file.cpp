@@ -77,15 +77,11 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 	return data;
 }
 
-int mf_unmap(mf_handle_t, mf_mapmem_handle_t mm)
+int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mm)
 {
-	LOGI("Unmapping %p", mm);
-	CFileRegion* region = ((CFileRegion*) mm);
+	LOGI("Unmapping %p for file %p", mm, mf);
 	
-	region->removeReference();
-	
-	if (!region->isReferenced())
-		delete region;
+	((CMappedFile*) mf)->unmap((CFileRegion*) mm);
 		
 	LOGI("Unmapped region");
 	return 0;
