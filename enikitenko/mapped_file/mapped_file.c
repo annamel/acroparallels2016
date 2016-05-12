@@ -7,9 +7,6 @@
 #include <string.h>
 #include <errno.h>
 
-// TODO: huge tlb
-// TODO: read/write chunks
-
 #ifndef max
     #define max(a,b) ((a) > (b) ? (a) : (b))
 #endif
@@ -69,7 +66,6 @@
 	mapped_file_t* file = (mapped_file_t*) mf;						\
 	if (!file)														\
 		RETURN_ERRNO(EINVAL, retval);
-
 
 #ifdef WITH_LOGGER
 	__attribute__((constructor))
