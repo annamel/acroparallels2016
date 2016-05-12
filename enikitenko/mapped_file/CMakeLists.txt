@@ -2,7 +2,11 @@ project (Logger)
 cmake_minimum_required (VERSION 2.8)
 
 set (WITH_LOGGER                  OFF  CACHE BOOL   "Enable logger")
-set (DEBUG_MODE                   OFF  CACHE BOOL   "Debug mode")
+set (DEBUG_MODE                   OFF  CACHE BOOL   "Enable debug mode")
+
+if (DEBUG_MODE)
+	set (MMAP_PROTECTION          ON   CACHE BOOL   "Enable mmap protection")
+endif (DEBUG_MODE)
 
 list (APPEND SOURCES
 	mapped_file.c
@@ -21,6 +25,10 @@ endif (WITH_LOGGER)
 
 if (DEBUG_MODE)
 	add_definitions (-DDEBUG_MODE)
+
+	if (MMAP_PROTECTION)
+		add_definitions (-DMMAP_PROTECTION)
+	endif (MMAP_PROTECTION)
 endif (DEBUG_MODE)
 
 add_library (mappedfile ${SOURCES})
