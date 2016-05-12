@@ -22,6 +22,9 @@ if [ $UNAME == "Darwin" ]; then
 else
 	LDFLAGS=$LDFLAGS\ -lrt
 fi
+#if [ $CC == "icc" ]; then
+#	LDFLAGS=$LDFLAGS\ "-lirc"
+#fi
 
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 CALL_PWD="$(pwd)"
@@ -49,7 +52,7 @@ if [ -z "$ROOT_TEST_DIR" ]; then
 else
 	ROOT_TEST_DIR=$(echo $ROOT_TEST_DIR | tr ' ' ';')
 fi
-if [ -z "PREC" ]; then
+if [ -z "$PREC" ]; then
 	PREC=""
 fi
 if [ -z "$CC" ]; then
@@ -57,6 +60,13 @@ if [ -z "$CC" ]; then
 fi
 if [ -z "$CXX" ]; then
 	CXX=g++
+fi
+
+source $PWD/tester_config
+if [ -z "$LOOPS" ]; then
+	LOOPS=9
+else
+	LOOPS=$(($LOOPS-1))
 fi
 
 which cmake3 > /dev/null
@@ -70,12 +80,12 @@ INCLUDE_DIR="$PWD/../include"
 
 
 
-MF_SUFFIX="par_mapped_file"
-TEST_MF_SUFFIX="mapped_file"
-TEST_SUFFIX="test"
+MF_SUFFIX="mapped_file"
+TEST_SUFFIX="test_par"
 LIBMAKE_SUFFIX="."
 LIBOUT_SUFFIX="out"
 TEST_BUILD=""
+LOOPS=3
 
 for root_lib_dir  in $ROOT_LIB_DIR  ; do
 	make_dir="$root_lib_dir/$MF_SUFFIX/$LIBMAKE_SUFFIX/"
@@ -88,9 +98,9 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 			echo "	rm -rf $PWD/build_dir" >> $test_file
 			echo "	mkdir -p $PWD/build_dir" >> $test_file
 			echo "	pushd $PWD/build_dir" >> $test_file
-			echo "	$CMAKE '$make_dir'" >> $test_file
-			echo "	make" >> $test_file
 			echo "	mkdir -p '$out_dir/'" >> $test_file
+			echo "	$CMAKE -H'$make_dir' -B." >> $test_file
+			echo "	make" >> $test_file
 			echo "	cp -f './$LIBOUT_SUFFIX'/* '$out_dir/'" >> $test_file
 			echo "	rm -rf '$PWD/build_dir'" >> $test_file
 			echo "	popd" >> $test_file
@@ -102,11 +112,11 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 		echo "}" >> $test_file
 		echo "" >> $test_file
 		for root_test_dir in $ROOT_TEST_DIR ; do
-			test_dir="$root_test_dir/$TEST_MF_SUFFIX/$TEST_SUFFIX/"
+			test_dir="$root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/"
 			if [ -f $test_dir/prepare.py ]; then
 				python $test_dir/prepare.py
 			fi
-			for test in $root_test_dir/$TEST_MF_SUFFIX/$TEST_SUFFIX/*.c ; do
+			for test in $root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/*.c ; do
 			if [ -f $test ]; then
 				func_name="it_check_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .c)"
 				test_out_name="$out_dir/$(basename $test .c)"
@@ -114,28 +124,45 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 
 				TEST_BUILD=$TEST_BUILD\;$test_out_name\;$test_object_name
 				echo "$func_name() {" >> $test_file
+				echo "    sleep 1" >> $test_file
 				echo "    $CC $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' '$test' $LDFLAGS" >> $test_file
 				echo "    $CXX $CXXFLAGS -o '$test_out_name' '$test_object_name' -L'$out_dir' $LDFLAGS" >> $test_file
-				echo '    resarr=(-1 -1 -1 -1 -1 -1 -1 -1 -1 -1)' >> $test_file
+				echo "    set +x" >> $test_file
+				echo '    for i in `seq 0 '"$((6*$LOOPS))"'`; do' >> $test_file
+				echo '        resarr[$i]=-1' >> $test_file
+				echo "    done" >> $test_file
 				echo '    (>&4 echo "")' >> $test_file
 				echo "    (>&4 echo '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c)')" >> $test_file
+				echo "    set -x" >> $test_file
 				echo "    set +e" >> $test_file
-				echo "    timeout 10 $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt' 2>&4 1>&4" >> $test_file
-				echo '    if [ $? -eq 124 ]; then' >> $test_file
+				echo "    timeout 10 $PREC '$test_out_name' 1 2>&4 1>&4" >> $test_file
+				echo '    ret=$?' >> $test_file
+				echo '    if [ $ret -eq 124 ]; then' >> $test_file
 				echo "       (>&3 echo -n '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c) ')" >> $test_file
 				echo '       (>&3 echo ${resarr[*]})' >> $test_file
 				echo "       exit 124" >> $test_file
 				echo "    fi" >> $test_file
+				echo '    if [ $ret -ne 0 ]; then' >> $test_file
+				echo '       exit $ret' >> $test_file
+				echo "    fi" >> $test_file
 				echo "    set -e" >> $test_file
 				echo '    (>&4 echo "")' >> $test_file
 				echo "    (>&3 echo -n '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c) ')" >> $test_file
-				echo '    for i in `seq 0 9`; do' >> $test_file
+
+				echo '    j=0' >> $test_file
+				echo '    for num_thr in 1 2 4 8 16 32 64; do' >> $test_file
+
+				echo '    for i in `seq 0 '"$LOOPS"'`; do' >> $test_file
 				echo "        rm -rf ./times" >> $test_file
 				echo '        start=$(date +"%s.%N")' >> $test_file
-				echo "        $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt'" >> $test_file
+				echo "        $PREC '$test_out_name' \$num_thr" >> $test_file
 				echo '        end=$(date +"%s.%N")' >> $test_file
-				echo '        resarr[$i]=$(echo "$end-$start" | bc | sed "s/^\./0./")' >> $test_file
+				echo '        resarr[$j]=$(echo "$end-$start" | bc | sed "s/^\./0./")' >> $test_file
+				echo '        j=$(($j+1))' >> $test_file
 				echo "    done" >> $test_file
+
+				echo "    done" >> $test_file
+
 				echo '    (>&3 echo ${resarr[*]})' >> $test_file
 				echo '    (>&4 echo ${resarr[*]})' >> $test_file
 				#echo '    (>&3 echo "")' >> $test_file

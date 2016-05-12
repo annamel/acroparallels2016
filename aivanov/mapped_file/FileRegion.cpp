@@ -6,7 +6,7 @@ CFileRegion::CFileRegion(off_t offset, size_t size) :
 	offset_(offset),
 	size_(size),
 	references_(0),
-	children_(isLess_),
+	children_(isOffsetLess_),
 	parent_(NULL),
 	address_(NULL)
 {
@@ -15,6 +15,9 @@ CFileRegion::CFileRegion(off_t offset, size_t size) :
 CFileRegion* CFileRegion::takeChild(CFileRegion* region)
 {
 	assert(doesInclude(region));
+	
+	if (isMapped())
+		return this;
 	
 	auto next = children_.upper_bound(region);
 		
@@ -53,7 +56,7 @@ CFileRegion* CFileRegion::maxAt(off_t offset)
 	if (prev == children_.end())
 		return NULL;
 		
-	assert((*prev)->isReferenced());
+	assert((*prev)->isMapped());
 	return (*prev)->doesInclude(&temp) ? *prev : NULL;
 }
 
@@ -64,14 +67,19 @@ void CFileRegion::map(int fd)
 		long pageSize = sysconf(_SC_PAGE_SIZE);
 	
 		uint8_t* address = (uint8_t*) mmap(NULL, memoryRegionSize + 2 * pageSize, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
-		assert(address != MAP_FAILED);
+		if (address == MAP_FAILED)
+		{
+			address_ = NULL;
+			return;
+		}
 	
 		address_ = (uint8_t*) mmap(address + pageSize, size_, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, region->offset_);
 	#else
 		address_ = (uint8_t*) mmap(NULL, size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset_);
 	#endif
 
-	assert(address_ != MAP_FAILED);
+	if (address_ == MAP_FAILED)
+		address_ = NULL;
 }
 
 void CFileRegion::unmap_()
@@ -92,7 +100,7 @@ void CFileRegion::adopt_(CFileRegion* child)
 {
 	assert(!child->parent_);
 	
-	children_.insert(child);
+	child->iteratorInParent_ = children_.insert(child).first;
 	child->parent_ = this;
 }
 
@@ -100,7 +108,7 @@ void CFileRegion::orphan_()
 {
 	assert(parent_);
 	
-	parent_->children_.erase(this);
+	parent_->children_.erase(iteratorInParent_);
 	parent_ = NULL;
 }
 
@@ -133,11 +141,6 @@ CFileRegion::~CFileRegion()
 	unmap_();
 }
 
-bool CFileRegion::operator <(const CFileRegion& a)
-{
-	return offset_ < a.offset_;		
-}
-
 bool CFileRegion::doesInclude(const CFileRegion* a)
 {
 	return offset_ <= a->offset_ && offset_ + size_ >= a->offset_ + a->size_;
@@ -161,14 +164,24 @@ bool CFileRegion::isReferenced()
 	return !!references_;
 }
 
-bool CFileRegion::isLess_(CFileRegion* a, CFileRegion* b)
+bool CFileRegion::isOffsetLess_(CFileRegion* a, CFileRegion* b)
 {
-	return *a < *b;
+	return a->offset_ < b->offset_;
 }
 
 bool CFileRegion::doesInclude(off_t offset)
 {
 	return offset >= offset_ && offset < offset_ + off_t(size_);
+}
+
+bool CFileRegion::isMapped()
+{
+	return !!address_;
+}
+
+CFileRegion* CFileRegion::getParent()
+{
+	return parent_;
 }
 
 void* CFileRegion::getAddress(off_t offset)
@@ -186,5 +199,9 @@ size_t CFileRegion::getSizeAfter(off_t offset)
 	return size_ - (offset - offset_);
 }
 
+size_t CFileRegion::getSize()
+{
+	return size_;
+}
 
 
