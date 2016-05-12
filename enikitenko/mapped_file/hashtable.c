@@ -3,14 +3,13 @@
 #include <assert.h>
 #include <string.h>
 
-void hashtable_init(hashtable_t* h, size_t size, hashfunction hash, keycomparator comparator)
+void hashtable_init(hashtable_t* h, size_t size, hashfunction hash)
 {
 	assert(h);
 	assert(size > 0);
 	
 	h->size = size;
 	h->hash = hash;
-	h->comparator = comparator;
 
 	h->elements = malloc(size * sizeof(_list_t*));
 	assert(h->elements);
@@ -39,12 +38,12 @@ void hashtable_destroy(hashtable_t* h, destroyfunction destroy, void* data)
 	h->size = 0;
 }
 
-int hashtable_add(hashtable_t* h, void* key, void* element)
+int hashtable_add(hashtable_t* h, uint64_t key, void* element)
 {
 	assert(h);
 	assert(element);
 	
-	size_t hash = h->hash(key);
+	uint64_t hash = h->hash(key);
 	unsigned elem = hash % h->size;
 	
 	_list_t* l = h->elements[elem];
@@ -58,12 +57,12 @@ int hashtable_add(hashtable_t* h, void* key, void* element)
 	{
 		while (l->next)
 		{
-			if (h->comparator(l->key, key))
+			if (l->key == key)
 				return 0;
 			l = l->next;
 		}
 		
-		if (h->comparator(l->key, key))
+		if (l->key == key)
 			return 0;
 	
 		l->next = malloc(sizeof (_list_t));
@@ -77,16 +76,16 @@ int hashtable_add(hashtable_t* h, void* key, void* element)
 	return 1;
 }
 
-void* hashtable_get(hashtable_t* h, void* key)
+void* hashtable_get(hashtable_t* h, uint64_t key)
 {
 	assert(h);
 	
-	size_t hash = h->hash(key);
+	uint64_t hash = h->hash(key);
 	unsigned elem = hash % h->size;
 	_list_t* l = h->elements[elem];
 	while (l)
 	{
-		if (h->comparator(l->key, key))
+		if (l->key == key)
 			return l->data;
 		
 		l = l->next;
@@ -95,18 +94,18 @@ void* hashtable_get(hashtable_t* h, void* key)
 	return NULL;
 }
 
-int hashtable_remove(hashtable_t* h, void* key, destroyfunction destroy, void* data)
+int hashtable_remove(hashtable_t* h, uint64_t key, destroyfunction destroy, void* data)
 {
 	assert(h);
 	
-	size_t hash = h->hash(key);
+	uint64_t hash = h->hash(key);
 	unsigned elem = hash % h->size;
 	_list_t* prev = h->elements[elem];
 
 	_list_t* l = prev ? prev->next : NULL;
 	if (prev)
 	{
-		if (h->comparator(prev->key, key))
+		if (prev->key == key)
 		{
 			if (destroy)
 				if (!destroy(prev->key, prev->data, data))
@@ -123,7 +122,7 @@ int hashtable_remove(hashtable_t* h, void* key, destroyfunction destroy, void* d
 	}
 	while (l)
 	{
-		if (h->comparator(l->key, key))
+		if (l->key == key)
 		{
 			_list_t* next = l->next;
 			if (destroy)
