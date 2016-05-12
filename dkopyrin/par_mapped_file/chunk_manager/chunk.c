@@ -11,7 +11,7 @@
 
 int chunk_init_unused (struct chunk *ch) {
 	assert(ch);
-	ch -> ref_cnt = -1;
+	ch -> trc.ref_cnt = -1;
 	return 0;
 }
 

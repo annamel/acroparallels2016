@@ -1,9 +1,11 @@
 #include "../../../include/mapped_file.h"
-#include "../chunk_manager/chunk_manager.h"
+#include "../local_chunk_manager/local_chunk_manager.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 
+#undef DEBUG_LOG
 #define COLOR(x) "\x1B[36m"x"\x1B[0m"
 #define LOGCOLOR(x) COLOR("%s: ")x, __func__
 #include "../logger/log.h"
@@ -11,11 +13,19 @@
 #include <sys/sysinfo.h>
 #define MIN(x,y) ((x>y) ? y: x)
 
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <sys/sysinfo.h>
+
+//We will not use previous chunk every time because it is ref_cnt sub/add is
+//bottleneck. So let's make new chunk with probability 1/USE_PROB
+//657
+#define USE_PROB 100
+
 struct _mf {
 	int fd;
 	size_t size;
-	struct chunk_manager cm;
-	struct chunk *prev_ch;
+	struct local_chunk_manager lcm;
 };
 
 size_t fsize(const char *filename) {
@@ -42,18 +52,26 @@ mf_handle_t mf_open(const char *pathname){
 		return NULL;
 	mf -> fd = fd;
 	mf -> size = size;
-	mf -> prev_ch = NULL;
-	if(chunk_manager_init(&mf -> cm, fd, O_RDWR | O_CREAT)){
+	if(local_chunk_manager_init(&mf -> lcm, fd, O_RDWR | O_CREAT)){
 		free(mf);
 		return NULL;
 	}
-       struct sysinfo info;
-       if (sysinfo(&info) == 0) {
-       	off_t tmp;
-       	struct chunk *ch = NULL;
-       	//chunk_manager_gen_chunk(&mf -> cm, 0, info.freeram / 2, &ch, &tmp);
-       	//mf -> prev_ch = ch;
-       }
+
+	struct rlimit rl;
+	struct sysinfo sys;
+	if (!getrlimit(RLIMIT_AS, &rl) && !sysinfo(&sys)) {
+		off_t tmp;
+		struct chunk *ch = NULL;
+		if (rl.rlim_cur == RLIM_INFINITY)
+			chunk_manager_gen_chunk(&mf -> lcm.cm, 0, sys.freeram / 2, &ch, &tmp);
+		else
+			chunk_manager_gen_chunk(&mf -> lcm.cm, 0, MIN(rl.rlim_cur, sys.freeram) / 2, &ch, &tmp);
+	}
+	//TODO: Logics on setting chunks
+	//int thr;
+	//for (thr = 0; thr < MAX_NUM_THREADS; thr++)
+	//	mf -> prev_ch_by_thread[thr] = ch;
+
 	return (mf_handle_t) mf;
 }
 
@@ -62,7 +80,7 @@ int mf_close(mf_handle_t mf){
 	assert(mf);
 
 	struct _mf * _mf = (struct _mf *) mf;
-  	chunk_manager_finalize(&_mf -> cm);
+  	local_chunk_manager_finalize(&_mf -> lcm);
 	close(_mf -> fd);
 
 #ifdef MEMORY_DEBUG
@@ -83,40 +101,16 @@ void mf_write_itfunc(struct chunk *ch, size_t ch_size, off_t ch_offset, void *bu
 }
 
 
-ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t offset,
+ssize_t mf_iterator(struct local_chunk_manager* lcm, off_t offset,
                     size_t size, void *buf, void (*itfunc)(struct chunk *, size_t, off_t, void *)){
 	struct chunk *ch = NULL;
 	ssize_t read_bytes = 0;
 
-	//This if tries to use chunk from previous iters: prev_ch
-	/*if (ch){
-		size_t ch_size = ch -> length;
-		off_t ch_offset = ch -> offset;
-		LOG(DEBUG, "Got prev chunk of size %ld\n", ch_size);
-		//Check if prev chunk is good for this task: offset lays in chunk
-		if (ch_offset <= offset && offset < ch_offset + ch_size){
-			ch_offset = offset - ch_offset;
-			 If we use chunk not from beginning but from relative offset
-			  then we only can read av_chunk_size. We believe, that
-			  itfunc actually read from chunk
-
-			size_t av_chunk_size = ch_size - ch_offset;
-			LOG(DEBUG, "Using chunk prev chunk of av_size %d\n", av_chunk_size);
-			size_t read_size = MIN(av_chunk_size, size);
-			itfunc(ch, read_size, ch_offset, buf);
-			buf += read_size;
-			offset += read_size;
-			read_bytes += read_size;
-
-			size -= read_size;
-		}
-	}
-	if (size <= 0)
-		return read_bytes;*/
-
+	struct local_chunk * local_ch;
 	//Nearly the same approach is used here for getting new chunk
 	off_t ch_offset = 0;
-	size_t av_chunk_size = chunk_manager_gen_chunk(cm, offset, size, &ch, &ch_offset);
+	size_t av_chunk_size = local_chunk_manager_gen_chunk(lcm, offset, size, &local_ch, &ch_offset);
+	ch = local_ch -> chunk;
 	if (!ch)
 		return read_bytes;
 	LOG(DEBUG, "Got chunk of size %d\n", av_chunk_size);
@@ -124,11 +118,7 @@ ssize_t mf_iterator(struct chunk_manager* cm, struct chunk ** prev_ch, off_t off
 	itfunc(ch, read_size, ch_offset, buf);
 	read_bytes += read_size;
 
-	//After iterations set new prev chunk
-	//*prev_ch = ch;
-	__atomic_fetch_sub(&ch -> ref_cnt, 1, 0);
-       //ch -> ref_cnt--;
-	return read_bytes;
+       return read_bytes;
 }
 
 ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset){
@@ -139,18 +129,18 @@ ssize_t mf_read(mf_handle_t mf, void *buf, size_t size, off_t offset){
 	size = MIN(size, _mf -> size - offset);
   	if (_mf -> size <= offset)
 		return 0;
-	return mf_iterator(&_mf -> cm, &_mf -> prev_ch, offset, size, buf, mf_read_itfunc);
+	return mf_iterator(&_mf -> lcm, offset, size, buf, mf_read_itfunc);
 }
 
 ssize_t mf_write(mf_handle_t mf, const void *buf, size_t size, off_t offset){
 	LOG(INFO, "mf_write called\n");
 	assert(mf); assert(buf);
 	struct _mf * _mf = (struct _mf *) mf;
-	return mf_iterator(&_mf -> cm, &_mf -> prev_ch, offset, size, (void *)buf, mf_write_itfunc);
+	return mf_iterator(&_mf -> lcm, offset, size, (void *)buf, mf_write_itfunc);
 }
 
 void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle){
-	LOG(INFO, "mf_map called\n");
+	LOG(INFO, "[%d] mf_map called, off %ld, size %ld\n", GET_THREAD_INDEX(), offset, size);
 	assert(mf); assert(mapmem_handle);
 
 	struct _mf * _mf = (struct _mf *) mf;
@@ -159,27 +149,21 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 		errno = EINVAL;
 		return NULL;
 	}
-	//Map works nearly the same as r/w: firstly we try prev_ch
-  	struct chunk *ch = NULL;
-	off_t ch_offset = 0;
-  	/*if (ch && ch -> offset <= offset && offset < ch -> offset + ch -> length){
-		//Chunk is OK, we have to set relative chunk offset
-		//LOG(DEBUG, "Get chunk from cache\n");
-		ch_offset = offset - ch -> offset;
-	}else{*/
-		//Elsewhere we generate a new one
-		//LOG(DEBUG, "Gen new chunk\n");
-	size_t av_chunk_size = chunk_manager_gen_chunk(&_mf -> cm, offset, size, &ch, &ch_offset);
+
+	struct local_chunk * local_ch;
+	off_t ch_offset;
+	size_t av_chunk_size = local_chunk_manager_gen_chunk(&_mf -> lcm, offset, size, &local_ch, &ch_offset);
 	if (av_chunk_size == -1){
 		errno = EAGAIN;
 		return NULL;
 	}
-	//}
 
-	//ch -> ref_cnt++; - it is done by gen_chunk already
+	struct chunk *ch = local_ch -> chunk;
 	// We use chunk as mapmem handle because we only need to decrease ref_cnt
 	// when unmap is called
-	*mapmem_handle = ch;
+
+	local_ch -> local_ref_cnt++;
+	*mapmem_handle = local_ch;
 	return ch -> addr + ch_offset;
 }
 
@@ -187,8 +171,7 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle){
 	LOG(INFO, "mf_unmap called\n");
 	assert(mf); assert(mapmem_handle);
 
-	__atomic_fetch_sub(&(((struct chunk *)mapmem_handle) -> ref_cnt), 1, 0);
-	//((struct chunk *)mapmem_handle) -> ref_cnt--;
+	((struct local_chunk *)mapmem_handle) -> local_ref_cnt--;
 	return 0;
 }
 

@@ -103,7 +103,7 @@ ssize_t chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t 
 
 	//off_t relative_offset = offset - cur_ch -> offset;
 	//ssize_t relative_size = size;
-	LOG(DEBUG, "Found nice chunk %p\n", cur_ch);
+	//LOG(DEBUG, "Found nice chunk %p\n", cur_ch);
 	if (cur_ch != NULL) LOG(DEBUG, "Closest chunk is offset %lld, size %lld\n", cur_ch -> offset, cur_ch -> size);
 	if (cur_ch == NULL ||
 	    offset + size > cur_ch -> size + cur_ch -> offset ) {
@@ -131,7 +131,7 @@ ssize_t chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t 
 	  	/* We can make adding to rbtree O(1) if we use offset that we already
 		 * found to make less tree traversals
 		 */
-		LOG(DEBUG, "Adding offset %lld to rbtree\n", new_chunk -> offset);
+		//LOG(DEBUG, "Adding offset %lld to rbtree\n", new_chunk -> offset);
 		if (cur_ch && cur_ch -> offset == new_chunk -> offset && cur_ch -> rbnode){
 			cur_ch -> rbnode -> Data = new_chunk;
 			cur_ch -> rbnode = NULL;
@@ -143,7 +143,7 @@ ssize_t chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t 
 		*chunk_offset = offset - new_chunk -> offset;
 		return new_chunk -> size - offset + new_chunk -> offset;
 	}else{
-		LOG(DEBUG, "Rbtree lookup success!, %ld %ld %ld\n", cur_ch -> size, poffset - cur_ch -> offset, psize);
+		//LOG(DEBUG, "Rbtree lookup success!, %ld %ld %ld\n", cur_ch -> size, poffset - cur_ch -> offset, psize);
 		*chunk_offset = offset - cur_ch -> offset;
 		*ret_ch = cur_ch;
 		return cur_ch -> size - offset + cur_ch -> offset;

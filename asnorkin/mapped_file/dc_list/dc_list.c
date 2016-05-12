@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include "logger/logger.h"
+#include "../logger/logger.h"
 
 
 
@@ -105,6 +105,48 @@ int dcl_del_first(dclist_t *list)
 
 
 
+int dcl_del_by_value(dclist_t *list, lvalue_t value)
+{
+    if(!list)
+        return EINVAL;
+    log_write(INFO, "dcl_del_by_value: started");
+
+
+    dcl_item_t *curr_item = list->head;
+    if(curr_item->value == value)
+        return dcl_del_first(list);
+
+
+    while(curr_item->next)
+    {
+        if(curr_item->value == value)
+            break;
+
+        curr_item = curr_item->next;
+    }
+
+
+    if(curr_item->value == value)
+    {
+        if(curr_item->next)
+        {
+            curr_item->next->prev = curr_item->prev;
+            curr_item->prev->next = curr_item->next;
+        }
+        else
+            curr_item->prev->next = NULL;
+
+        free(curr_item);
+        return 0;
+    }
+
+
+    log_write(INFO, "dcl_del_by_value: finished");
+    return ENOKEY;
+}
+
+
+
 int dcl_deinit(dclist_t *list)
 {
     if(!list)
@@ -139,14 +181,3 @@ void dcl_print(dclist_t *list)
 
     return;
 }
-
-
-
-
-
-
-
-
-
-
-

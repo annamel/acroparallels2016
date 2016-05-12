@@ -38,7 +38,7 @@ void *test_ladder(void *num){
 		     mf_unmap(file, loc_handle);
               }
 	}
-	printf("Errors: %ld\n", err_count);
+	//printf("Errors: %ld\n", err_count);
 
 	long unit = SAMPLESIZE / num_threads;
 	long buf_offset = unit * thread_num;

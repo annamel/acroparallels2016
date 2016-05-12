@@ -388,6 +388,8 @@ uint32_t hashtable_delete (hashtable_t *hashtable, hkey_t key) {
       hashtable->arr[i] = current_pair->next;
     } else {
       current_pair->prev->next = current_pair->next;
+    }
+    if (current_pair->next != NULL) {
       current_pair->next->prev = current_pair->prev;
     }
     free(current_pair);

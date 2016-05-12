@@ -9,9 +9,13 @@
 
 
 
+#include <stdio.h>
+
+
+
 #define BUFF_SIZE 256
 #define DEFAULT_LOGFILE "logfile.txt"
-#define DEFAULT_LOGLEVEL DEBUG
+#define DEFAULT_LOGLEVEL WARNING
 #define CALL_STACK_SIZE 256
 
 

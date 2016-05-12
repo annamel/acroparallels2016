@@ -28,8 +28,6 @@ void *test_ladder(void *num){
 	long start = FILESIZE - unit_map * thread_num - unit_map;
 	long end = FILESIZE - unit_map * thread_num;
 
-	printf("%ld: %ld %ld\n", thread_num, start, end);
-
 	for (it = start; it < end; it += 222){
 		mf_mapmem_handle_t loc_handle;
 		void *loc_ptr = mf_map(file, 0, it, &loc_handle);
@@ -42,7 +40,7 @@ void *test_ladder(void *num){
 			mf_unmap(file, loc_handle);
               }
 	}
-	printf("Errors: %ld:%ld\n",thread_num, err_count);
+	//printf("Errors: %ld:%ld\n",thread_num, err_count);
 
 	long unit = SAMPLESIZE / num_threads;
 	long buf_offset = unit * thread_num;

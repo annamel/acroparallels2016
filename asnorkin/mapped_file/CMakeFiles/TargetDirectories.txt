@@ -1,0 +1,2 @@
+/home/parapapapam/Developer/BeautyCode/mapped_file/mapped_file/CMakeFiles/mappedfile.dir
+/home/parapapapam/Developer/BeautyCode/mapped_file/mapped_file/CMakeFiles/tester.dir

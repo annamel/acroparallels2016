@@ -108,21 +108,21 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
         write_log_to_file(Error,"mf_map: size of mapping = 0!\n");
 		return NULL;
 	}
-	off_t index = offset/get_chunk_size(1);
+	off_t index = offset/DEFAULT_PAGE_SIZE;
    // write_log_to_file(Debug,"mf_map: index is calculated!\n");
 	off_t length = 0;
 
-	if((offset + size)%get_chunk_size(1) != 0) {
-       // write_log_to_file(Debug,"mf_map: (offset + size)%get_chunk_size(1) != 0\n");
-		length = (offset + size)/get_chunk_size(1) - index + 1;
+	if((offset + size)%DEFAULT_PAGE_SIZE != 0) {
+       // write_log_to_file(Debug,"mf_map: (offset + size)%DEFAULT_PAGE_SIZE != 0\n");
+		length = (offset + size)/DEFAULT_PAGE_SIZE - index + 1;
 	} else {
-        write_log_to_file(Debug,"mf_map: (offset + size)%get_chunk_size(1) = 0\n");
-        length = (offset + size)/get_chunk_size(1) - index;
+        write_log_to_file(Debug,"mf_map: (offset + size)%DEFAULT_PAGE_SIZE = 0\n");
+        length = (offset + size)/DEFAULT_PAGE_SIZE - index;
 	}
 	ch_pool_t* ch_pool = (ch_pool_t *)mf;
 	chunk_t** chunk = (chunk_t**)mapmem_handle;
 
-	*chunk = find_in_range(ch_pool -> h_table, offset, size);
+	*chunk = take_value_ptr(ch_pool -> h_table, index, length);
 	if ((*chunk) == NULL) {
         write_log_to_file(Debug,"mf_map: t is no chunk, which contains needed range of bytes. The next step - init of such chunk!\n");
 		int res_code = ch_init(index, length, ch_pool);
@@ -134,7 +134,7 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 		*chunk = take_value_ptr(ch_pool -> h_table, index, length);
 	}
     void* ptr = NULL;
-	ptr = ((*chunk) -> data) + offset - ((*chunk) -> index)*get_chunk_size(1);
+	ptr = ((*chunk) -> data) + offset - ((*chunk) -> index)*DEFAULT_PAGE_SIZE;
 	if(ptr == MF_MAP_FAILED) {
         write_log_to_file(Error,"mf_map: pointer to memory is NULL!\n");
 		return MF_MAP_FAILED;
@@ -173,19 +173,19 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {
 		return -1;
 	}
 
-	off_t index = offset/get_chunk_size(1);
+	off_t index = offset/DEFAULT_PAGE_SIZE;
   //  write_log_to_file(Debug,"mf_read: index is calculated!\n");
 	off_t length = 0;
 
-    if((offset + count)%get_chunk_size(1) != 0) {
-       // write_log_to_file(Debug,"mf_read: (offset + size)%get_chunk_size(1) != 0\n");
-        length = (offset + count)/get_chunk_size(1) - index + 1;
+    if((offset + count)%DEFAULT_PAGE_SIZE != 0) {
+       // write_log_to_file(Debug,"mf_read: (offset + size)%DEFAULT_PAGE_SIZE != 0\n");
+        length = (offset + count)/DEFAULT_PAGE_SIZE - index + 1;
 	} else {
-       // write_log_to_file(Debug,"mf_read: (offset + size)%get_chunk_size(1) = 0\n");
-        length = (offset+ count)/get_chunk_size(1) - index;
+       // write_log_to_file(Debug,"mf_read: (offset + size)%DEFAULT_PAGE_SIZE = 0\n");
+        length = (offset+ count)/DEFAULT_PAGE_SIZE - index;
 	}
 
-	chunk_t* chunk_ptr = find_in_range(ch_pool -> h_table, offset, count);
+	chunk_t* chunk_ptr = take_value_ptr(ch_pool -> h_table, index, length);
 	if(chunk_ptr == NULL) {
        // write_log_to_file(Debug,"mf_read: there is no chunk, which contains needed range of bytes. The next step - init of such chunk!\n");
         res_code = ch_init(index, length, ch_pool);
@@ -196,7 +196,7 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {
 		}
 		chunk_ptr = take_value_ptr(ch_pool -> h_table, index, length);
 	}
-    buf = memcpy(buf,(const void*)((chunk_ptr -> data) + offset - (chunk_ptr -> index) * get_chunk_size(1)), count);
+    buf = memcpy(buf,(const void*)((chunk_ptr -> data) + offset - (chunk_ptr -> index) * DEFAULT_PAGE_SIZE), count);
     // write_log_to_file(Info,"mf_read: finished!\n");
 	return count;
 }
@@ -222,19 +222,19 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
 
 	ch_pool_t* ch_pool = (ch_pool_t*)mf;
 
-	off_t index = offset/get_chunk_size(1);
+	off_t index = offset/DEFAULT_PAGE_SIZE;
    // write_log_to_file(Debug,"mf_write: index is calculated!\n");
 	off_t length = 0;
 
-    if((offset + count)%get_chunk_size(1) != 0) {
-       // write_log_to_file(Debug,"mf_write: (offset + size)%get_chunk_size(1) != 0\n");
-        length = (offset + count)/get_chunk_size(1) - index + 1;
+    if((offset + count)%DEFAULT_PAGE_SIZE != 0) {
+       // write_log_to_file(Debug,"mf_write: (offset + size)%DEFAULT_PAGE_SIZE != 0\n");
+        length = (offset + count)/DEFAULT_PAGE_SIZE - index + 1;
 	} else {
-       // write_log_to_file(Debug,"mf_write: (offset + size)%get_chunk_size(1) != 0\n");
-        length = (offset+ count)/get_chunk_size(1) - index;
+       // write_log_to_file(Debug,"mf_write: (offset + size)%DEFAULT_PAGE_SIZE != 0\n");
+        length = (offset+ count)/DEFAULT_PAGE_SIZE - index;
 	}
 
-	chunk_t* chunk_ptr = find_in_range(ch_pool -> h_table, offset, count);
+	chunk_t* chunk_ptr = take_value_ptr(ch_pool -> h_table, index, length);
 	if(chunk_ptr == NULL) {
        // write_log_to_file(Debug,"mf_write: there is no chunk, which contains needed range of bytes. The next step - init of such chunk!\n");
         res_code = ch_init(index, length, ch_pool);
@@ -244,7 +244,7 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
 		}
         chunk_ptr = take_value_ptr(ch_pool -> h_table, index, length);
 	}
-    memcpy((void*)((char*)(chunk_ptr -> data) + offset - (chunk_ptr -> index) * get_chunk_size(1)), buf, count);
+    memcpy((void*)((char*)(chunk_ptr -> data) + offset - (chunk_ptr -> index) * DEFAULT_PAGE_SIZE), buf, count);
 	return count;
 }
 
