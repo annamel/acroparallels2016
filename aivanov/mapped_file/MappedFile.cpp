@@ -14,10 +14,8 @@ CMappedFile::CMappedFile(const char* fileName) :
 	desc_(-1),
 	root_(0, 0),
 	entireFile_(NULL),
-	cache_(NULL),
 	size_(0),
-	regionPool_(isUnmappedMoreLikely_),
-	poolSize_(0)
+	cache_(NULL)
 {
 	if (!pageSize)
 		pageSize = sysconf(_SC_PAGE_SIZE);
@@ -47,7 +45,7 @@ CMappedFile::~CMappedFile()
 	close(desc_);
 }
 
-#define REGION_RECT_UNIT (pageSize * 0x1000)
+#define REGION_RECT_UNIT (pageSize * 0x10000)
 
 CFileRegion* CMappedFile::map(off_t offset, off_t size, void** address)
 {
@@ -66,7 +64,11 @@ CFileRegion* CMappedFile::map(off_t offset, off_t size, void** address)
 	
 	if (region == newRegion)
 	{
-		region->map(desc_);
+		do
+		{
+			region->map(desc_);
+			
+		} while (!region->isMapped() && shrinkCache_());
 		
 		if (!region->isMapped())
 		{
@@ -77,10 +79,7 @@ CFileRegion* CMappedFile::map(off_t offset, off_t size, void** address)
 	else
 	{
 		if (!region->isReferenced())
-		{
-			regionPool_.erase(region);
-			poolSize_ -= region->getSize();
-		}
+			regionPool_.erase(region->poolIterator);
 			
 		delete newRegion;
 	}
@@ -110,7 +109,7 @@ ssize_t CMappedFile::fileCopy_(off_t offset, size_t size, uint8_t* to, const uin
 			if (cache_)
 				unmap(cache_);
 				
-			region = cache_= map(offset, CACHE_SIZE_PAGES * sysconf(_SC_PAGE_SIZE), NULL);
+			region = cache_= map(offset, 1, NULL);
 		}
 		
 		assert(region);
@@ -144,16 +143,7 @@ void CMappedFile::unmap(CFileRegion* region)
 	{
 		if (!region->getParent()->isMapped())
 		{
-			regionPool_.insert(region);
-			poolSize_ += region->getSize();
-			
-			while (poolSize_ > MAX_POOL_SIZE)
-			{
-				auto unmapped = regionPool_.begin();
-				poolSize_ -= (*unmapped)->getSize();
-				delete *unmapped;
-				regionPool_.erase(unmapped);
-			}
+			region->poolIterator = regionPool_.insert(regionPool_.end(), region);
 		}
 		else
 		{
@@ -163,20 +153,15 @@ void CMappedFile::unmap(CFileRegion* region)
 	}
 }
 
-bool CMappedFile::isUnmappedMoreLikely_(CFileRegion* a, CFileRegion* b)
+bool CMappedFile::shrinkCache_()
 {
-	//TODO: inmap time
-	assert(!a->isReferenced() && !b->isReferenced());
-	assert(a->isMapped() && b->isMapped());
-	assert(a->getParent() && b->getParent());
+	auto unmapped = regionPool_.begin();
+	if (unmapped == regionPool_.end())
+		return false;	
 	
-	if (a->getParent()->isMapped() && !b->getParent()->isMapped())
-		return true;
-	
-	if (!a->getParent()->isMapped() && b->getParent()->isMapped())
-		return false;
-		
-	return a->getSize() < b->getSize();
+	delete *unmapped;
+	regionPool_.erase(unmapped);
+	return true;
 }
 
 ssize_t CMappedFile::read(off_t offset, size_t size, uint8_t* buf)

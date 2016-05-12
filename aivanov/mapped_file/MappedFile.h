@@ -4,9 +4,6 @@
 #include "FileRegion.h"
 #include <queue>
 
-#define CACHE_SIZE_PAGES 2
-#define MAX_POOL_SIZE (1 << 30)
-
 class CMappedFile
 {
 
@@ -16,13 +13,11 @@ private:
 	int									desc_;
 	CFileRegion							root_;
 	CFileRegion*						entireFile_;
-	CFileRegion*						cache_;
 	off_t								size_;
-	std::set<CFileRegion*, TCompare>	regionPool_;
-	size_t								poolSize_;
+	std::list<CFileRegion*>				regionPool_;
+	CFileRegion*						cache_;
 	
-	static bool isUnmappedMoreLikely_(CFileRegion* a, CFileRegion* b);
-	
+	bool shrinkCache_();
 	ssize_t fileCopy_(off_t offset, size_t size, uint8_t* to, const uint8_t* from);
 	
 public:
