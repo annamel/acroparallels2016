@@ -18,7 +18,6 @@ do														\
 	{													\
 		printf("FAILED (%s) at %d :", #cond, __LINE__);	\
 		printf("\t\"%s\"\n", strerror(errno));			\
-		unlink("test");								\
 		unlink("test0");								\
 		unlink("test1");								\
 		unlink("test2");								\
