@@ -199,8 +199,8 @@ chunk_t* find_in_range(hash_table_t* h_table, off_t offset, size_t size) {
   for(i = 0; i < (h_table -> size); i++) {
     ptr = (h_table -> table)[i];
     while(ptr) {
-      offset_chunk = (ptr -> data -> index) * get_chunk_size(1);
-      size_chunk = (ptr -> data -> length) * get_chunk_size(1);
+      offset_chunk = (ptr -> data -> index) * DEFAULT_PAGE_SIZE;
+      size_chunk = (ptr -> data -> length) * DEFAULT_PAGE_SIZE;
       if((offset_chunk <= offset) && ((offset_chunk + size_chunk) >= (offset + size))) {
         return ptr -> data;
       }
