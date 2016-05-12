@@ -7,6 +7,9 @@
 #include <cstring>
 #include <errno.h>
 
+size_t CMappedFile::pageSize = 0;
+
+
 CMappedFile::CMappedFile(const char* fileName) :
 	desc_(-1),
 	root_(0, 0),
@@ -16,6 +19,9 @@ CMappedFile::CMappedFile(const char* fileName) :
 	regionPool_(isUnmappedMoreLikely_),
 	poolSize_(0)
 {
+	if (!pageSize)
+		pageSize = sysconf(_SC_PAGE_SIZE);
+
 	desc_ = open(fileName, O_RDWR | O_CREAT, 0755);
 	
 	if (isValid())
@@ -41,11 +47,12 @@ CMappedFile::~CMappedFile()
 	close(desc_);
 }
 
+#define REGION_RECT_UNIT (pageSize * 0x1000)
+
 CFileRegion* CMappedFile::map(off_t offset, off_t size, void** address)
 {
-	long pageSize = sysconf(_SC_PAGE_SIZE);
-	off_t mapOffset = (offset / pageSize) * pageSize;
-	size_t memoryRegionSize = ((size + (offset - mapOffset) + pageSize - 1) / pageSize) * pageSize;
+	off_t mapOffset = (offset / REGION_RECT_UNIT) * REGION_RECT_UNIT;
+	size_t memoryRegionSize = ((size + (offset - mapOffset) + REGION_RECT_UNIT - 1) / REGION_RECT_UNIT) * REGION_RECT_UNIT;
 	size_t mapSize = std::min(memoryRegionSize, size_t(size_ - mapOffset));
 	
 	if (!mapSize)

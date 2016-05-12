@@ -4,7 +4,6 @@
 #include "FileRegion.h"
 #include <queue>
 
-#define MAX_ENTIRELY_MAPPED_SIZE (1 << 27)
 #define CACHE_SIZE_PAGES 2
 #define MAX_POOL_SIZE (1 << 30)
 
@@ -27,6 +26,8 @@ private:
 	ssize_t fileCopy_(off_t offset, size_t size, uint8_t* to, const uint8_t* from);
 	
 public:
+	static size_t						pageSize; //better place?
+
 	CMappedFile(const char* fileName);
 	~CMappedFile();
 
