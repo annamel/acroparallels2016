@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
 	char buf1[11] = {0};
 	int size = pread(fd, buf1, 10, 40);
 	if(size == 10) {
-		err =  chunk_get_mem(chunk, 40, (void **)&buf);
+		err =  chunk_get_mem(chunk, 40, (void **)&buf, NULL);
 		int corruption = 0;
 		for(int i = 0; i < 10; i++)
 			if( buf[i] != buf1[i] || buf[i] != 'a' ) corruption = 1;
@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) {
 
 	size = pread(fd, buf1, 10, 5000);
 	if(size == 10) {
-		err =  chunk_get_mem(chunk, 5000, (void **)&buf);
+		err =  chunk_get_mem(chunk, 5000, (void **)&buf, NULL);
 		int corruption = 0;
 		for(int i = 0; i < 10; i++)
 			if( buf[i] != buf1[i] || buf[i] != 'a' ) corruption = 1;

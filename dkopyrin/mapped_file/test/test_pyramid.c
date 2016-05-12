@@ -1,4 +1,18 @@
 #include "../../../include/mapped_file.h"
+/*
+ * Test Pyramid
+ * This test generates pyramidic chunk structure
+ *                   CCCCCC
+ *               CCCCCCCCCCCC
+ *           CCCCCCCCCCCCCCCCCCCCC       |
+ *        CCCCCCCCCCCCCCCCCCCCCCCCCCCC   V
+ *    CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+ * CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+ * Such structure might generate a lot of failed lookups if algrorithm
+ * has low granularity. After generating such structure read from end of file
+ * is made. This way test checks whether algrorithm find right chunk to use
+ * from pyramid, the biggest one.
+ */
 
 #include <fcntl.h>
 #include <unistd.h>

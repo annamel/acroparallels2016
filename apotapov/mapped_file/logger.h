@@ -33,6 +33,7 @@ typedef struct logger
 } logger_t;
 
 logger_t *created_logger;
+static int is_initialized = 0;
 
 logger_t* logger_init(char *filename);
 void logger_deinit();
@@ -43,4 +44,6 @@ int write_log(log_type_t log_type, char *message);
 int write_log_to_file(log_type_t log_type, char *message);
 
 #endif 
+
+
 

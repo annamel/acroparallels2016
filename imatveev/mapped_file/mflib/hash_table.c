@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <errno.h>
 
+const size_t DEFAULT_SIZE_TABLE = 11;
+
 size_t BPhash(size_t value)
 {
     unsigned int hash = 0;
@@ -27,26 +29,8 @@ size_t new_hash_func(size_t x){
     x = ((x >> 16) ^ x);
     return x;
 }
-HashTable *init_hash_table(size_t size){
-    HashTable *table = malloc(sizeof(HashTable));
-    if (table == NULL){
-        errno = ENOMEM;
-        return NULL;
-    }
-    table->array = malloc(size * sizeof(List));
-    if (table->array == NULL){
-        free(table);
-        errno = ENOMEM;
-        return NULL;
-    }
-    int i;
-    for (i = 0; i < size; i++)
-        init_empty_list(&table->array[i]);
-    table->size = size;
-    table->hash_func = new_hash_func;
-    return table;
-}
-int _init_hash_table(HashTable *table, size_t size){
+int init_hash_table(HashTable *table, size_t size){
+    size = (size) ? size : DEFAULT_SIZE_TABLE;
     table->array = malloc(size * sizeof(List));
     if (table->array == NULL){
         errno = ENOMEM;

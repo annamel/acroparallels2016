@@ -2,6 +2,7 @@
 #define common_types_h
 
 #define DEFAULT_HASH_TABLE_SIZE 1024
+#define DEFAULT_PAGE_SIZE 4096
 #define DEFAULT_ARRAY_SIZE 1024
 #define LOG_FILE_BY_DEFAULT "log.txt"
 #define AMOUNT_OF_OPTIONS 5

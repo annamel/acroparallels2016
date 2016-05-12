@@ -1,4 +1,18 @@
 #include "../../../include/mapped_file.h"
+/*
+ * Test Stairs
+ * -----------
+ * This test generate the following chunk structure:
+ * CCCCCC
+ * CCCCCCCCCCC
+ * CCCCCCCCCCCCCCCC         |
+ * CCCCCCCCCCCCCCCCCCCCCC   V
+ * CCCCCCCCCCCCCCCCCCCCCCCCCCC
+ * CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+ * This tests check if algorithm can rewrite chunk with the same offset without
+ * heavy slowdown at double lookups. When structure is generated test reads end
+ * of file to check if algorithm is able to find correct chunk to read from.
+ */
 
 #include <fcntl.h>
 #include <unistd.h>

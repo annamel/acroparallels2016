@@ -7,7 +7,7 @@
 struct chunk {
 	void * addr;
 	rbnode_t *rbnode;
-	size_t length;
+	size_t size;
 	off_t offset;
 	int ref_cnt;
 };

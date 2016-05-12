@@ -178,6 +178,7 @@ int ht_del_item_by_key(htable_t *ht, hkey_t key)
             ht->table[index]->next == NULL)
     {
         free(ht->table[index]);
+        ht->table[index] = NULL;
         return 0;
     }
 
@@ -188,7 +189,7 @@ int ht_del_item_by_key(htable_t *ht, hkey_t key)
         item_t *delPtr = ht->table[index];
         ht->table[index] = ht->table[index]->next;
         ht->table[index]->prev = NULL;
-        free(delPtr);
+        free(delPtr);        
         return 0;
     }
 

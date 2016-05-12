@@ -17,16 +17,6 @@ int ilist_is_empty(iList *list){
     else
         return (list->first_inode == NULL) ? 1 : 0;
 }
-iList *_init_empty_ilist(void){
-    iList *list = malloc(sizeof(iList));
-    if (list == NULL){
-        errno = ENOMEM;
-        return NULL;
-    }
-    list->first_inode = NULL;
-    list->last_inode = NULL;
-    return list;
-}
 int init_empty_ilist(iList *list){
     if (list == NULL)
         return -1;
@@ -38,18 +28,14 @@ int ilist_append(iList *list, Node *new_node){
     if (list == NULL || new_node == NULL)
         return -1;
     iNode *new_inode = inode_from_node(new_node);
+    new_inode->prev = NULL;
+    new_inode->next = list->first_inode;
     if (list->first_inode == NULL){
-        list->first_inode = new_inode;
         list->last_inode = new_inode;
-        new_inode->next = NULL;
-        new_inode->prev = NULL;
     } else {
-        iNode *inode = list->first_inode;
-        inode->prev = new_inode;
-        new_inode->next = inode;
-        new_inode->prev = NULL;
-        list->first_inode = new_inode;
+        list->first_inode->prev = new_inode;
     }
+    list->first_inode = new_inode;
     return 0;
 }
 int ilist_remove(iList *list, Node *node){
@@ -74,7 +60,7 @@ int ilist_remove(iList *list, Node *node){
     }
     return 0;
 }
-iNode *ilist_get_first(iList *list){
+iNode *ilist_remove_first(iList *list){
     if (list == NULL || list->first_inode == NULL)
         return NULL;
     iNode *inode = list->first_inode;
@@ -85,7 +71,7 @@ iNode *ilist_get_first(iList *list){
         list->last_inode = NULL;
     return inode;
 }
-iNode *ilist_get_last(iList *list){
+iNode *ilist_remove_last(iList *list){
     if (list == NULL || list->last_inode == NULL)
         return NULL;
     iNode *inode = list->last_inode;

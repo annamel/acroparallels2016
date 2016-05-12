@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include "ChunkManager.h"
-#include "mf_lib/mapped_file.h"
+#include "../chunk_manager/chunk_manager.h"
+#include "../mapped_file/mapped_file.h"
 
 int main(void)
 {

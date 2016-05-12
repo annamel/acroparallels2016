@@ -2,6 +2,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include "hashtable.h"
 #include "log.h"

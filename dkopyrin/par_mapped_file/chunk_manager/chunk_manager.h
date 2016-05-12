@@ -24,5 +24,6 @@ int chunk_manager_init (struct chunk_manager *cm, int fd, int mode);
 int chunk_manager_finalize (struct chunk_manager *cm);
 
 long int chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t length, struct chunk ** ret_ch, off_t *chunk_offset);
+long int chunk_manager_force_gen_chunk (struct chunk_manager *cm, off_t offset, size_t length, struct chunk ** ret_ch, off_t *chunk_offset);
 
 #endif

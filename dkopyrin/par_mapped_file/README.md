@@ -55,6 +55,17 @@ If one use any profiling tool on __test_ladder.c__(generating continuous interse
 see that hotspot is rbtree lookup. As scenario of continuous read is common storing last
 used chunk might save from rbtree lookup that takes O(1) unlike lookup O(log n).
 
+# Parallel rbtree problem
+
+It is very hard to use rbtree in parallel program as it is not efficient. That is why rbtree was replaced with 
+parallel lock-free skiplist which gives nearly the same performance as rbtree.
+
+# Parallel chunk pool
+
+Chunk pool is made as ring buffer which can be easily made lock-free. Making pointer to next chunk in chunk pool
+atomic is nearly enough to make ring buffer lock-free as one thread works simultaneously with one chunk.
+Another variable that must be atomic is reference counter that dictates whether current chunk might be freed.
+
 # References
 
-rbtree - Copyright 2004 The FreeRADIUS server project
+nbds - Non-Blocking Data Structure code.google.com/p/nbds

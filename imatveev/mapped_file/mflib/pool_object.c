@@ -15,7 +15,7 @@ const size_t INIT_QUANTITY_ARRAYS = 10;
 const size_t SIZE_FIRST_ARRAY = 10;
 extern size_t mempagesize;
 
-int _init_pool_object(PoolObject *pool, size_t size_table){
+int init_pool_object(PoolObject *pool, size_t size_table){
     pool->arrays.used = 0;
     pool->arrays.alloced_ptr = INIT_QUANTITY_ARRAYS;
     pool->arrays.arr = malloc(INIT_QUANTITY_ARRAYS * sizeof(Array_inode));
@@ -24,31 +24,19 @@ int _init_pool_object(PoolObject *pool, size_t size_table){
         return -1;
     }
     init_empty_list(&pool->free_list);
-    if (_init_hash_table(&pool->table, size_table) < 0){
+    init_empty_ilist(&pool->list_zero);
+    if (init_hash_table(&pool->table, size_table) < 0){
         free(pool->arrays.arr);
         errno = ENOMEM;
         return -1;
     }
     return 0;
 }
-PoolObject *init_pool_object(size_t size_table){
-    PoolObject *pool = malloc(sizeof(PoolObject));
-    if (pool == NULL){
-        errno = ENOMEM;
-        return NULL;
-    }
-    _init_pool_object(pool, size_table);
-    return pool;
-}
 void _deinit_pool_object(PoolObject *pool){
     int i;
     for (i = 0; i < pool->arrays.used; i++)
         free(pool->arrays.arr[i].array);
     free(pool->arrays.arr);
-}
-void deinit_pool_object(PoolObject *pool){
-    _deinit_pool_object(pool);
-    free(pool);
 }
 int append_array(PoolObject *pool){
     if (pool == NULL){
@@ -57,7 +45,7 @@ int append_array(PoolObject *pool){
     size_t N = pool->arrays.used;
     if (N >= pool->arrays.alloced_ptr){
         pool->arrays.alloced_ptr *= 2;
-        Array_inode *arr = realloc(pool->arrays.arr, pool->arrays.alloced_ptr);
+        Array_inode *arr = realloc(pool->arrays.arr, pool->arrays.alloced_ptr*sizeof(Array_inode));
         if (arr == NULL){
             errno = ENOMEM;
             return -1;
@@ -83,7 +71,7 @@ Node *pool_append(PoolObject *pool, Data data){
     if (list_is_empty(&pool->free_list))
         if (append_array(pool) < 0)
             return NULL;
-    Node *node = list_get_first(&pool->free_list);
+    Node *node = list_remove_first(&pool->free_list);
     node->value = data;
     hash_table_append(&pool->table, node);
     if (data.counter == 0){
@@ -103,7 +91,7 @@ int pool_free_space(PoolObject *pool){
     int i;
     iNode *inode;
     for (i = 0; i < size_list_zero/2; i++){
-        inode = ilist_get_last(&pool->list_zero);
+        inode = ilist_remove_last(&pool->list_zero);
         if (inode == NULL)
             return -1;
         hash_table_remove(&pool->table, &inode->node);

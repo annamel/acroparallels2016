@@ -14,22 +14,28 @@ struct mf_iter_private {
 
 static int mf_iter_step(struct mf_iter *it) {
 	struct mf_iter_private *it_private = (struct mf_iter_private *)it->private;
+	off_t border;
+	size_t page_size = chpool_page_size(it_private->cpool);
 
-	if(it_private->chunk) {
-		int err = chunk_release(it_private->chunk);
-		if( unlikely(err) ) {
-			return err;
-		}
-	}
-	int err = chunk_find(it_private->cpool, it->offset, chpool_page_size(it_private->cpool) - 1,  &it_private->chunk);
+	chunk_release(it_private->chunk);
+
+	int err = chunk_find(it_private->cpool, it->offset, page_size - 1,  &it_private->chunk);
 	switch(err) {
-		case 0:
-			return chunk_get_mem(it_private->chunk, it->offset, &it->ptr);
-			break;
 		case ENOKEY:
-			it_private->chunk = NULL;
+			err = chunk_acquire(it_private->cpool, it->offset, page_size, &it_private->chunk);
+			if(unlikely(err)) {
+				return err;
+			}
+			/*it_private->chunk = NULL;
 			it->ptr = NULL;
-			return 0;
+			it->step_size = min(it_private->size, page_size - (it->offset % page_size));
+			break;*/
+		case 0:
+			err = chunk_get_mem(it_private->chunk, it->offset, &it->ptr, &border);
+			if(unlikely(err)) {
+				return err;
+			}
+			it->step_size = min(it_private->size, border - it->offset);
 			break;
 		default:
 			it_private->chunk = NULL;
@@ -49,8 +55,6 @@ int mf_iter_init(chpool_t *cpool, off_t offset, size_t size, struct mf_iter *it)
 	it_private->chunk = NULL;
 	it_private->size = size;
 	it->offset = offset;
-	size_t page_size = chpool_page_size(it_private->cpool);
-	it->step_size = min(size, page_size - (offset % page_size));
 	return mf_iter_step(it);
 }
 
@@ -63,7 +67,6 @@ int mf_iter_next(struct mf_iter *it) {
 	struct mf_iter_private *it_private = (struct mf_iter_private *)it->private;
 	it->offset += it->step_size;
 	it_private->size -= it->step_size;
-	it->step_size = min(it_private->size, chpool_page_size(it_private->cpool));
 	return mf_iter_step(it);
 }
 

@@ -1,0 +1,23 @@
+./logger[0x401589]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0xf5)[0x7fe34cb0aec5]
+./logger[0x4007b9]
+Stack overflow
+Application failed with FATAL ERROR.
+Call trace is represented above.
+Other saved logs available below in order from the earliest to the latest log
+info: Func swap() return 0x0
+info: Running func code_gen()
+warning: Func code_gen() exited with the code 0x7
+warning: Address: 0x80000, offset: 0x8, number of bytes: 24
+info: Function sets errno to EINVAL
+info: Func round_up() returns number of bytes: 8
+warning: Number of free chunks 0x8
+warning: Address: 0xda0c715, offset: 0x3, number of bytes: 19
+info: Func swap() return 0x0
+info: Running func code_gen()
+warning: Func code_gen() exited with the code 0x7
+warning: Address: 0x80000, offset: 0x8, number of bytes: 24
+info: Function sets errno to EINVAL
+info: Func round_up() returns number of bytes: 8
+warning: Number of free chunks 0x8
+warning: Address: 0xda0c715, offset: 0x3, number of bytes: 19
