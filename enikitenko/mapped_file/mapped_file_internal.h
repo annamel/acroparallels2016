@@ -20,6 +20,7 @@ typedef struct mapped_chunk
 	size_t size;
 	off_t offset;
 	int ref_count;
+	struct mapped_chunk* prev;
 	struct mapped_chunk* next;
 
 } mapped_chunk_t;

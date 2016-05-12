@@ -306,6 +306,13 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
 
 	if (chunk)
 	{
+		if (chunk->ref_count == 0)
+		{
+			if (chunk->prev)
+				chunk->prev->next = chunk->next;
+			if (chunk->next)
+				chunk->next->prev = chunk->prev;
+		}
 		chunk->ref_count++;
 		*mapmem_handle = (mf_mapmem_handle_t) chunk;
 		void* data = (void*) (&((char*) chunk->data)[offset_delta]);
@@ -372,6 +379,9 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle)
 	if (chunk->ref_count == 0)
 	{
 		chunk->next = file->free_chunks;
+		chunk->prev = NULL;
+		if (file->free_chunks)
+			file->free_chunks->prev = chunk;
 		file->free_chunks = chunk;
 	}
 
