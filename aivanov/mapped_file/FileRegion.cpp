@@ -64,14 +64,19 @@ void CFileRegion::map(int fd)
 		long pageSize = sysconf(_SC_PAGE_SIZE);
 	
 		uint8_t* address = (uint8_t*) mmap(NULL, memoryRegionSize + 2 * pageSize, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
-		assert(address != MAP_FAILED);
+		if (address == MAP_FAILED)
+		{
+			address_ = NULL;
+			return;
+		}
 	
 		address_ = (uint8_t*) mmap(address + pageSize, size_, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, region->offset_);
 	#else
 		address_ = (uint8_t*) mmap(NULL, size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset_);
 	#endif
 
-	assert(address_ != MAP_FAILED);
+	if (address_ == MAP_FAILED)
+		address_ = NULL;
 }
 
 void CFileRegion::unmap_()
@@ -92,7 +97,7 @@ void CFileRegion::adopt_(CFileRegion* child)
 {
 	assert(!child->parent_);
 	
-	children_.insert(child);
+	child->iteratorInParent_ = children_.insert(child).first;
 	child->parent_ = this;
 }
 
@@ -100,7 +105,7 @@ void CFileRegion::orphan_()
 {
 	assert(parent_);
 	
-	parent_->children_.erase(this);
+	parent_->children_.erase(iteratorInParent_);
 	parent_ = NULL;
 }
 
@@ -186,5 +191,9 @@ size_t CFileRegion::getSizeAfter(off_t offset)
 	return size_ - (offset - offset_);
 }
 
+bool CFileRegion::isMapped()
+{
+	return !!address_;
+}
 
 

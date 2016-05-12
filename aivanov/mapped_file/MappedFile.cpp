@@ -24,7 +24,7 @@ CMappedFile::CMappedFile(const char* fileName) :
 		
 		root_ = CFileRegion(0, size_);
 		
-		if (size_ && size_ <= MAX_ENTIRELY_MAPPED_SIZE)
+		//if (size_ && size_ <= MAX_ENTIRELY_MAPPED_SIZE)
 			entireFile_ = map(0, size_, NULL);
 	}
 }
@@ -57,7 +57,15 @@ CFileRegion* CMappedFile::map(off_t offset, off_t size, void** address)
 	CFileRegion* region = root_.takeChild(newRegion);
 	
 	if (region == newRegion)
+	{
 		region->map(desc_);
+		
+		if (!region->isMapped())
+		{
+			delete region;
+			return NULL;
+		}
+	}
 	else
 		delete newRegion;
 		
