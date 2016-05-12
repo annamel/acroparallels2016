@@ -192,10 +192,11 @@ uint32_t hashtable_add_pair (hashtable_t *hashtable, hashtable_pair_t pair) {
     //i is first found hash of the key.
     uint32_t i = hash(pair.key) % hashtable_size(hashtable);
 
+    hashtable_pair_t *new_pair = (hashtable_pair_t *)malloc(sizeof(hashtable_pair_t));
+    new_pair->key = pair.key;
+    new_pair->value = pair.value;
+
     if (array[i] == NULL) {
-        hashtable_pair_t *new_pair = (hashtable_pair_t *)malloc(sizeof(hashtable_pair_t));
-        new_pair->key = pair.key;
-        new_pair->value = pair.value;
         new_pair->next = NULL;
         new_pair->prev = NULL;
         array[i] = new_pair;
@@ -206,12 +207,9 @@ uint32_t hashtable_add_pair (hashtable_t *hashtable, hashtable_pair_t pair) {
             prev_pair = current_pair;
             current_pair = current_pair->next;
         }
-        current_pair = (hashtable_pair_t *)malloc(sizeof(hashtable_pair_t));
-        current_pair->key = pair.key;
-        current_pair->value = pair.value;
-        current_pair->next = NULL;
-        current_pair->prev = prev_pair;
-        prev_pair->next = current_pair;
+        new_pair->next = NULL;
+        new_pair->prev = prev_pair;
+        prev_pair->next = new_pair;
     }
 
     hashtable->count ++;
@@ -388,10 +386,12 @@ uint32_t hashtable_delete (hashtable_t *hashtable, hkey_t key) {
       hashtable->arr[i] = current_pair->next;
     } else {
       current_pair->prev->next = current_pair->next;
+        if (current_pair->next != NULL) {
+            current_pair->next->prev = current_pair->prev;
+            current_pair->next = NULL;
+        }
     }
-    if (current_pair->next != NULL) {
-      current_pair->next->prev = current_pair->prev;
-    }
+
     free(current_pair);
 	  hashtable->count --;
     #if defined DEBUG
