@@ -7,7 +7,7 @@
 #include <stdbool.h>
 
 size_t get_chunk_size(off_t multiplier) {
-    return multiplier * sysconf(_SC_PAGESIZE);
+    return multiplier * 4096;
 }
 
 int ch_init(off_t index, off_t length, ch_pool_t *ch_pool) {
@@ -193,6 +193,7 @@ int ch_pool_deinit(ch_pool_t* ch_pool) {
        // write_log_to_file (Error, "ch_pool_deinit: deinit of list of chunks with reference counter = 0 failed!\n");
         return res_code;
     }
+    //print_num_of_elem(ch_pool -> h_table);
     res_code = hash_table_deinit(ch_pool -> h_table);
     int i = 0;
     int j = 0;

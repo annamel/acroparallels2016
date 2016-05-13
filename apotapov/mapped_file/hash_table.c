@@ -13,32 +13,32 @@
 
 #include "hash_table.h"
 
-#define DEFAULT_HASH_TABLE_SIZE 1024
+//#define DEFAULT_HASH_TABLE_SIZE 1024
 
 //=================HASH FUNCTION======================
 
 hash_key_t hash_func (value_key_t key)
 {
-  return (key  % DEFAULT_HASH_TABLE_SIZE);
-  /*const uint32_t m = 0x5bd1e995;
-  const uint32_t seed = 0;
-  const int r = 24;
+    //return (key  % DEFAULT_HASH_TABLE_SIZE);
+    const uint32_t m = 0x5bd1e995;
+    const uint32_t seed = 0;
+    const int r = 24;
 
-  uint32_t h = seed ^ 4;
-  uint32_t k = (uint32_t)key;
+    uint32_t h = seed ^ 4;
+    uint32_t k = (uint32_t)key;
 
-  k *= m;
-  k ^= k >> r;
-  k *= m;
+    k *= m;
+    k ^= k >> r;
+    k *= m;
 
-  h *= m;
-  h ^= k;
+    h *= m;
+    h ^= k;
 
-  h ^= h >> 13;
-  h *= m;
-  h ^= h >> 15;
+    h ^= h >> 13;
+    h *= m;
+    h ^= h >> 15;
 
-  return h;*/
+    return h;
 }
 //===================================================
 
@@ -57,10 +57,10 @@ hash_table_t* hash_table_init(unsigned int size) {
   int i = 0;
   buf -> table = (list_element**)calloc(size, sizeof(list_element*));
   buf -> size = size;
-  for(i = 0; i < (buf -> size); i++) {
+  /*for(i = 0; i < (buf -> size); i++) {
     (buf -> table)[i] = NULL;
   }
-  buf -> is_initialized = 1;
+  buf -> is_initialized = 1;*/
   return buf;
 }
 
@@ -91,15 +91,17 @@ int hash_table_deinit(hash_table_t* h_table) {
 }
 
 int add_element(chunk_t* chunk) {
-  //hash_key_t key_hash = hash_func(chunk -> index);
-  //unsigned int place = key_hash % (chunk -> ch_pool -> h_table -> size);
-  unsigned int place = (unsigned int)hash_func(chunk -> index);
+  hash_key_t key_hash = hash_func(chunk -> index);
+  unsigned int place = key_hash % (chunk -> ch_pool -> h_table -> size);
+
+  //unsigned int place = (unsigned int)hash_func(chunk -> index);
+
   list_element* elem = (list_element*)calloc(1, sizeof(list_element));
   elem -> next = NULL;
   elem -> prev = NULL;
   elem -> data = chunk;
   list_element* ptr = (chunk -> ch_pool -> h_table -> table) [place];
-  if(ptr == NULL) {
+  if(!ptr) {
     (chunk -> ch_pool -> h_table -> table) [place] = elem;
   } else {
     while(ptr -> next) {
@@ -115,11 +117,13 @@ int add_element(chunk_t* chunk) {
 }
 
 int remove_element(hash_table_t* h_table, off_t index, off_t length) {
-  //hash_key_t key_hash = hash_func(index);
-  //unsigned int place = key_hash % (h_table -> size);
-  unsigned int place = (unsigned int)hash_func(index);
+  hash_key_t key_hash = hash_func(index);
+  unsigned int place = key_hash % (h_table -> size);
+
+  //unsigned int place = (unsigned int)hash_func(index);
+
   list_element* ptr = (h_table -> table)[place];
-  if(ptr == NULL) {
+  if(!ptr) {
     return 1;
   } else {
     while(ptr) {
@@ -149,9 +153,11 @@ int remove_element(hash_table_t* h_table, off_t index, off_t length) {
 }
 
 int find_value(hash_table_t* h_table, off_t index, off_t length) {
-  //hash_key_t key_hash = hash_func(index);
-  //unsigned int place = key_hash % (h_table -> size);
-  unsigned int place = (unsigned int)hash_func(index);
+  hash_key_t key_hash = hash_func(index);
+  unsigned int place = key_hash % (h_table -> size);
+
+  //unsigned int place = (unsigned int)hash_func(index);
+
   list_element* ptr = (h_table -> table)[place];
   while(ptr) {
     if(((ptr -> data -> index) == index) && ((ptr -> data -> length) == length)) {
@@ -164,9 +170,11 @@ int find_value(hash_table_t* h_table, off_t index, off_t length) {
 }
 
 chunk_t* take_value_ptr(hash_table_t* h_table, off_t index, off_t length) {
-  //hash_key_t key_hash = hash_func(index);
-  //unsigned int place = key_hash % (h_table -> size);
-  unsigned int place = (unsigned int)hash_func(index);
+  hash_key_t key_hash = hash_func(index);
+  unsigned int place = key_hash % (h_table -> size);
+
+  //unsigned int place = (unsigned int)hash_func(index);
+
   list_element* ptr = (h_table -> table)[place];
   while(ptr) {
     if(((ptr -> data -> index) == index) && ((ptr -> data -> length) == length)) {
@@ -178,9 +186,11 @@ chunk_t* take_value_ptr(hash_table_t* h_table, off_t index, off_t length) {
 }
 
 chunk_t* find_by_index(hash_table_t* h_table, off_t index) {
-  //hash_key_t key_hash = hash_func(index);
-  //unsigned int place = key_hash % (h_table -> size);
-  unsigned int place = (unsigned int)hash_func(index);
+  hash_key_t key_hash = hash_func(index);
+  unsigned int place = key_hash % (h_table -> size);
+
+  //unsigned int place = (unsigned int)hash_func(index);
+
   list_element* ptr = (h_table -> table)[place];
   while(ptr) {
     if((ptr -> data -> index) == index) {
@@ -199,8 +209,8 @@ chunk_t* find_in_range(hash_table_t* h_table, off_t offset, size_t size) {
   for(i = 0; i < (h_table -> size); i++) {
     ptr = (h_table -> table)[i];
     while(ptr) {
-      offset_chunk = (ptr -> data -> index) * DEFAULT_PAGE_SIZE;
-      size_chunk = (ptr -> data -> length) * DEFAULT_PAGE_SIZE;
+      offset_chunk = (ptr -> data -> index) * get_chunk_size(1);
+      size_chunk = (ptr -> data -> length) * get_chunk_size(1);
       if((offset_chunk <= offset) && ((offset_chunk + size_chunk) >= (offset + size))) {
         return ptr -> data;
       }
@@ -209,5 +219,4 @@ chunk_t* find_in_range(hash_table_t* h_table, off_t offset, size_t size) {
   }
   return NULL;
 }
-
 
