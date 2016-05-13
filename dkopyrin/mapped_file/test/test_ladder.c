@@ -50,8 +50,10 @@ int main(){
 	if (buf == NULL)
 		return 2;
 	long ret = mf_read(file, buf, SAMPLESIZE, FILESIZE - SAMPLESIZE - 1);
-	if (ret != SAMPLESIZE)
+	if (ret != SAMPLESIZE){
+		printf("Was only able to read %lg", (double)ret / (double)MB);
 		return 3;
+	}
 	free(buf);
 
 	mf_close(file);

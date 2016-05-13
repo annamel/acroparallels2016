@@ -7,13 +7,19 @@
 #include <cstring>
 #include <errno.h>
 
+size_t CMappedFile::pageSize = 0;
+
+
 CMappedFile::CMappedFile(const char* fileName) :
 	desc_(-1),
 	root_(0, 0),
 	entireFile_(NULL),
-	cache_(NULL),
-	size_(0)
+	size_(0),
+	cache_(NULL)
 {
+	if (!pageSize)
+		pageSize = sysconf(_SC_PAGE_SIZE);
+
 	desc_ = open(fileName, O_RDWR | O_CREAT, 0755);
 	
 	if (isValid())
@@ -24,27 +30,27 @@ CMappedFile::CMappedFile(const char* fileName) :
 		
 		root_ = CFileRegion(0, size_);
 		
-		if (size_ && size_ <= MAX_ENTIRELY_MAPPED_SIZE)
-			entireFile_ = map(0, size_, NULL);
+		entireFile_ = map(0, size_, NULL);
 	}
 }
 
 CMappedFile::~CMappedFile()
 {
 	if (entireFile_)
-		entireFile_->removeReference();
-		
+		unmap(entireFile_);
+	
 	if (cache_)
-		cache_->removeReference();
+		unmap(cache_);
 		
 	close(desc_);
 }
 
+#define REGION_RECT_UNIT (pageSize * 0x10000)
+
 CFileRegion* CMappedFile::map(off_t offset, off_t size, void** address)
 {
-	long pageSize = sysconf(_SC_PAGE_SIZE);
-	off_t mapOffset = (offset / pageSize) * pageSize;
-	size_t memoryRegionSize = ((size + (offset - mapOffset) + pageSize - 1) / pageSize) * pageSize;
+	off_t mapOffset = (offset / REGION_RECT_UNIT) * REGION_RECT_UNIT;
+	size_t memoryRegionSize = ((size + (offset - mapOffset) + REGION_RECT_UNIT - 1) / REGION_RECT_UNIT) * REGION_RECT_UNIT;
 	size_t mapSize = std::min(memoryRegionSize, size_t(size_ - mapOffset));
 	
 	if (!mapSize)
@@ -57,9 +63,26 @@ CFileRegion* CMappedFile::map(off_t offset, off_t size, void** address)
 	CFileRegion* region = root_.takeChild(newRegion);
 	
 	if (region == newRegion)
-		region->map(desc_);
+	{
+		do
+		{
+			region->map(desc_);
+			
+		} while (!region->isMapped() && shrinkCache_());
+		
+		if (!region->isMapped())
+		{
+			delete region;
+			return NULL;
+		}
+	}
 	else
+	{
+		if (!region->isReferenced())
+			regionPool_.erase(region->poolIterator);
+			
 		delete newRegion;
+	}
 		
 	region->addReference();
 	
@@ -84,14 +107,9 @@ ssize_t CMappedFile::fileCopy_(off_t offset, size_t size, uint8_t* to, const uin
 		if (!region)
 		{
 			if (cache_)
-			{
-				cache_->removeReference();
+				unmap(cache_);
 				
-				if (!cache_->isReferenced())
-					delete cache_;
-			}
-			
-			region = cache_ = map(offset, CACHE_SIZE_PAGES * sysconf(_SC_PAGE_SIZE), NULL);
+			region = cache_= map(offset, 1, NULL);
 		}
 		
 		assert(region);
@@ -111,6 +129,39 @@ ssize_t CMappedFile::fileCopy_(off_t offset, size_t size, uint8_t* to, const uin
 	}
 	
 	return bytesProcessed;
+}
+
+void CMappedFile::unmap(CFileRegion* region)
+{
+	assert(region);
+	assert(region->isMapped());
+	assert(region->getParent());
+	
+	region->removeReference();
+
+	if (!region->isReferenced())
+	{
+		if (!region->getParent()->isMapped())
+		{
+			region->poolIterator = regionPool_.insert(regionPool_.end(), region);
+		}
+		else
+		{
+			printf("deleting %p\n", region);
+			delete region;
+		}
+	}
+}
+
+bool CMappedFile::shrinkCache_()
+{
+	auto unmapped = regionPool_.begin();
+	if (unmapped == regionPool_.end())
+		return false;	
+	
+	delete *unmapped;
+	regionPool_.erase(unmapped);
+	return true;
 }
 
 ssize_t CMappedFile::read(off_t offset, size_t size, uint8_t* buf)

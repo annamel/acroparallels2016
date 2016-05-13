@@ -13,6 +13,10 @@
 #include <sys/sysinfo.h>
 #define MIN(x,y) ((x>y) ? y: x)
 
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <sys/sysinfo.h>
+
 //We will not use previous chunk every time because it is ref_cnt sub/add is
 //bottleneck. So let's make new chunk with probability 1/USE_PROB
 //657
@@ -53,15 +57,15 @@ mf_handle_t mf_open(const char *pathname){
 		return NULL;
 	}
 
-       struct chunk *ch = NULL;
-	struct sysinfo info;
-	if (sysinfo(&info) == 0) {
-       	off_t tmp;
-#ifdef DEBUG
-       	chunk_manager_force_gen_chunk(&mf -> lcm.cm, 0, 1, &ch, &tmp);
-#else
-		chunk_manager_force_gen_chunk(&mf -> lcm.cm, 0, info.freeram / 2, &ch, &tmp);
-#endif
+	struct rlimit rl;
+	struct sysinfo sys;
+	if (!getrlimit(RLIMIT_AS, &rl) && !sysinfo(&sys)) {
+		off_t tmp;
+		struct chunk *ch = NULL;
+		if (rl.rlim_cur == RLIM_INFINITY)
+			chunk_manager_gen_chunk(&mf -> lcm.cm, 0, sys.freeram / 2, &ch, &tmp);
+		else
+			chunk_manager_gen_chunk(&mf -> lcm.cm, 0, MIN(rl.rlim_cur, sys.freeram) / 2, &ch, &tmp);
 	}
 	//TODO: Logics on setting chunks
 	//int thr;
@@ -102,36 +106,11 @@ ssize_t mf_iterator(struct local_chunk_manager* lcm, off_t offset,
 	struct chunk *ch = NULL;
 	ssize_t read_bytes = 0;
 
-	//This if tries to use chunk from previous iters: prev_ch
-	if (ch){
-		size_t ch_size = ch -> length;
-		off_t ch_offset = ch -> offset;
-		LOG(DEBUG, "Got prev chunk of size %ld\n", ch_size);
-		//Check if prev chunk is good for this task: offset lays in chunk
-		if (ch_offset <= offset && offset < ch_offset + ch_size){
-			ch_offset = offset - ch_offset;
-			 /*If we use chunk not from beginning but from relative offset
-			  then we only can read av_chunk_size. We believe, that
-			  itfunc actually read from chunk*/
-
-			size_t av_chunk_size = ch_size - ch_offset;
-			LOG(DEBUG, "Using chunk prev chunk of av_size %d\n", av_chunk_size);
-			size_t read_size = MIN(av_chunk_size, size);
-			itfunc(ch, read_size, ch_offset, buf);
-			buf += read_size;
-			offset += read_size;
-			read_bytes += read_size;
-
-			size -= read_size;
-		}
-	}
-	if (size <= 0)
-		return read_bytes;
-
 	struct local_chunk * local_ch;
 	//Nearly the same approach is used here for getting new chunk
 	off_t ch_offset = 0;
 	size_t av_chunk_size = local_chunk_manager_gen_chunk(lcm, offset, size, &local_ch, &ch_offset);
+	ch = local_ch -> chunk;
 	if (!ch)
 		return read_bytes;
 	LOG(DEBUG, "Got chunk of size %d\n", av_chunk_size);

@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
 int ptest_1(const char* filename) {
     mf_handle_t handle = mf_open(filename);
     size_t size = (size_t)mf_file_size(handle);
-    size_t bufsize = 1024;
+    size_t bufsize = 32768;
     void *buf = malloc(bufsize);
 
     int counter = 1337 + 8; // number of ones (1) exists in file

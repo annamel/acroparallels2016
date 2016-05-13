@@ -9,8 +9,8 @@
 #include "mallocs.h"
 #include "hashtable/hashtable.h"
 
-#define HTBL_SIZE 1024
-#define DEFAULT_CPOOL_SIZE 8192
+#define HTBL_SIZE 10240
+#define DEFAULT_CPOOL_SIZE 20480
 
 struct Chunk {
 	cpool_t *cpool;
@@ -61,7 +61,7 @@ int cpool_fd(cpool_t *cpool);
 
 /* ----- */ /* -CODE- */ /* ----- */
 static size_t get_ch_size(off_t count) {
-	return (size_t)count * sysconf(_SC_PAGESIZE) << 10;
+	return (size_t)count * sysconf(_SC_PAGESIZE) << 5;
 }
 
 static int ch_init(off_t idx, off_t len, cpool_t *cpool, chunk_t *ch) {
@@ -292,7 +292,7 @@ int ch_get_mem(chunk_t *ch, off_t offset, void **buf) {
 
 	if (offset < left || offset > right) return EINVAL;
 
-	*buf = ch->payload + offset - left;
+	*buf = (char *)ch->payload + offset - left;
 	return 0;
 }
 
