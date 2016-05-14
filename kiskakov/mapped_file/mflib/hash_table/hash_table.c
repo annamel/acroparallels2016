@@ -1,6 +1,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/errno.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdio.h>
 
 #include "hash_table.h"
 #include "hash_table_debug.h"
@@ -43,7 +48,6 @@ ret_code_t _hash_table_find_in_list_and_act(hash_table_t * hash_table, size_t ha
 
 ret_code_t hash_table_construct(hash_table_t ** hash_table_ptr, size_t size)
         {
-        printf("SUCCESS");
         if (!hash_table_ptr || size <= 0)
                 {
                 return WRONG_ARGUMENTS;
@@ -57,7 +61,7 @@ ret_code_t hash_table_construct(hash_table_t ** hash_table_ptr, size_t size)
                 }
 
         new_hash_table->size = size;
-        sleep(1000);
+        DEL(size);
 
         new_hash_table->entry = (hash_table_elem_t **) calloc(new_hash_table->size, sizeof(hash_table_elem_t *));
         if (!new_hash_table->entry)
@@ -248,6 +252,51 @@ ret_code_t hash_table_get(hash_table_t * hash_table, void * key, size_t key_s, v
         return ERROR;
         }
 
+chunk_handle_t * hash_table_find_chunk(hash_table_t * hash_table, off_t page_offset, size_t page_size, size_t key_s)
+        {
+        off_t key = page_offset;
+        size_t hash = _hash(hash_table, &key, key_s);
+        printf("Received: %d Hash: %d\n", (int)page_offset, (int)hash);
+        if (hash >= hash_table->size)
+                {
+                DEBUG_LOG_ARGS("invalid hash: %zu", hash);
+                return NULL;
+                }
+
+        if (!hash_table->entry[hash])
+                {
+                DEBUG_LOG("element with such key was not found");
+                return NULL;
+                }
+
+        hash_table_elem_t * temp_elem = hash_table->entry[hash];
+        while (temp_elem)
+                {
+                while (temp_elem && (temp_elem->key_s != key_s))
+                        {
+                        temp_elem = temp_elem->next;
+                        }
+
+                if (temp_elem)
+                        {
+                        if (*(off_t *)temp_elem->key == page_offset)
+                                {
+                                chunk_handle_t * chunk = (chunk_handle_t *)temp_elem->value;
+                                if (chunk->page_offset <= page_offset && chunk->page_size + chunk->page_offset >= page_size + page_offset)
+                                        {
+                                        return chunk;
+                                        }
+                                }
+                        else
+                                {
+                                temp_elem = temp_elem->next;
+                                }
+                        }
+                }
+
+        return NULL;
+        }
+
 
 ret_code_t hash_table_remove(hash_table_t * hash_table, void * key, size_t key_s)
         {
@@ -290,7 +339,10 @@ void hash_table_print(hash_table_t * hash_table)
                 hash_table_elem_t * temp_elem = hash_table->entry[i];
                 while(temp_elem)
                         {
-                        printf("(%zu, %p) ", *(size_t *)temp_elem->key, *(void **)temp_elem->value);
+                        chunk_handle_t * chunk = (chunk_handle_t *)temp_elem->value;
+                        // printf("(%d, %zu) ", (int)*(off_t *)temp_elem->key, chunk->page_size);
+                        printf("(%d, %zu) ", (int)chunk->page_offset, chunk->page_size);
+
                         temp_elem = temp_elem->next;
                         }
                 printf("\n");
@@ -299,7 +351,7 @@ void hash_table_print(hash_table_t * hash_table)
 
 size_t _hash(hash_table_t * hash_table, void * key_ptr, size_t key_s) // Implement this function for your data type
         {
-        size_t key = *(size_t *)key_ptr;
+        off_t key = *(off_t *)key_ptr;
         return (size_t)(key % hash_table->size);
         }
 
