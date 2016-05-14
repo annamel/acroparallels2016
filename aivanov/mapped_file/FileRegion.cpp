@@ -1,5 +1,6 @@
 #include "FileRegion.h"
 #include <sys/mman.h>
+#include "MappedFile.h"
 
 
 CFileRegion::CFileRegion(off_t offset, size_t size) :
@@ -64,16 +65,15 @@ CFileRegion* CFileRegion::maxAt(off_t offset)
 void CFileRegion::map(int fd)
 {	
 	#ifdef REGION_PROTECTION
-		long pageSize = sysconf(_SC_PAGE_SIZE);
 	
-		uint8_t* address = (uint8_t*) mmap(NULL, memoryRegionSize + 2 * pageSize, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+		uint8_t* address = (uint8_t*) mmap(NULL, memoryRegionSize + 2 * CMappedFile::pageSize, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 		if (address == MAP_FAILED)
 		{
 			address_ = NULL;
 			return;
 		}
 	
-		address_ = (uint8_t*) mmap(address + pageSize, size_, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, region->offset_);
+		address_ = (uint8_t*) mmap(address + CMappedFile::pageSize, size_, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, region->offset_);
 	#else
 		address_ = (uint8_t*) mmap(NULL, size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset_);
 	#endif
@@ -87,8 +87,7 @@ void CFileRegion::unmap_()
 	if (address_)
 	{
 		#ifdef REGION_PROTECTION
-			long pageSize = sysconf(_SC_PAGE_SIZE);
-			munmap(address_ - pageSize, ((size_ + pageSize - 1) / pageSize + 2) * pageSize);
+			munmap(address_ - CMappedFile::pageSize, ((size_ + CMappedFile::pageSize - 1) / CMappedFile::pageSize + 2) * CMappedFile::pageSize);
 		#else
 			
 			munmap(address_, size_);

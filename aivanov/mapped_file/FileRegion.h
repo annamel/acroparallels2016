@@ -6,6 +6,7 @@
 #include <set>
 #include <functional>
 #include <stdint.h>
+#include <list>
 
 class CFileRegion
 {
@@ -18,6 +19,7 @@ private:
 	std::set<CFileRegion*, TCompare>			children_;
 	CFileRegion*								parent_;
 	uint8_t*									address_;
+	
 	std::set<CFileRegion*, TCompare>::iterator	iteratorInParent_;
 
 	static bool isOffsetLess_(CFileRegion* a, CFileRegion* b);
@@ -28,6 +30,8 @@ private:
 	void unmap_();
 	
 public:
+	std::list<CFileRegion*>::iterator			poolIterator;
+	
 	CFileRegion(off_t offset, size_t size);
 	~CFileRegion();
 	
@@ -48,6 +52,7 @@ public:
 	CFileRegion* getParent();
 	
 	void map(int fd);
+	
 };
 
 #endif

@@ -17,15 +17,18 @@
 #include "logger.h"
 
 /* PRIVATE FUNCTIONS */
+
 // finds propriate file to write logs
-uint32_t _find_log_file(char *dst) {
+static uint32_t _find_log_file(char *dst) {
   uint32_t current_file_number = 0;
-  char flag = 1;
+  char current_file_already_exists = 1;
+
   // 10 is the length of the UINT32 max integer: 4294967295
   // 9 is for "logs/" + ".txt" + 7 for "logger/"
+  int file_name_size = 10 + 9 + 7;
 
-  char *current_file_name = (char *)calloc(10 + 9 + 7, sizeof(char));
-  while (flag) {
+  char *current_file_name = (char *)calloc(file_name_size, sizeof(char));
+  while (current_file_already_exists) {
     sprintf(current_file_name, "%s/logs/%u.txt", PATH_TO_LOGGER_FOLDER, current_file_number);
     if (access(current_file_name, F_OK) != -1) {
       // Log file exists, move to another number
@@ -34,11 +37,11 @@ uint32_t _find_log_file(char *dst) {
       // File doesn't exists -> exit cycle
       FILE *output = fopen(current_file_name, "a");
       fclose(output);
-      flag = 0;
+      current_file_already_exists = 0;
     }
   }
-  // printf("%s", current_file_name);
-  memcpy(dst, current_file_name, (10 + 9 + 7) * sizeof(char));
+
+  memcpy(dst, current_file_name, (file_name_size) * sizeof(char));
   free(current_file_name);
   return 0;
 }
@@ -63,11 +66,10 @@ logger_t *logger_init() {
     return NULL;
   }
 
-  // set properties:
-  logger->buffer->size    = 0;
   // 10 is the length of the UINT32 max integer: 4294967295
   // 9 is for "logs/" + ".txt" + 7 for "logger/"
-  logger->log_file_name = (char *)calloc(10 + 9 + 7, sizeof(char));
+  int file_name_size = 10 + 9 + 7;
+  logger->log_file_name = (char *)calloc(file_name_size, sizeof(char));
   if (logger->log_file_name == NULL) {
     perror("Log file name data memory allocation error.\n");
     return NULL;
@@ -79,6 +81,8 @@ logger_t *logger_init() {
     perror("Message memory allocation error.\n");
     return NULL;
   }
+
+  logger->buffer->size = 0;
   return logger;
 }
 
@@ -87,9 +91,11 @@ uint32_t logger_flush(logger_t *logger) {
   if (logger->buffer->size == 0) {
     return 0;
   }
+
   #ifdef ECHO
     printf("LOGGER:  Flushing into %s\n", logger->log_file_name);
   #endif
+
   FILE *output = fopen(logger->log_file_name, "a");
   if (output == 0) {
     printf("Can't open file %s\n", logger->log_file_name);
@@ -111,17 +117,20 @@ uint32_t logger_flush(logger_t *logger) {
 uint32_t logger_log(logger_t *logger, char *msg) {
   assert (logger != NULL);
   assert (msg != NULL);
+
   #ifdef ECHO
-    printf("LOGGER:  %s\n", msg);
+    printf("LOGMSG:  %s\n", msg);
   #endif
+
   uint32_t current_size = logger->buffer->size;
-  // i letf last element in buffer for \0
+
   if (current_size + (uint32_t)strlen(msg) >= BUFFERSIZE) {
     if (logger_flush(logger)) {
       printf("Can't flush.\n");
       return 1;
     }
   }
+
   int count = sprintf(&logger->buffer->data[current_size], "%s\n", msg);
 
   logger->buffer->size += count;
@@ -130,9 +139,7 @@ uint32_t logger_log(logger_t *logger, char *msg) {
 
 uint32_t logger_deinit(logger_t *logger) {
   assert (logger != NULL);
-  if (logger_flush(logger)) {
-    printf("Can't flush while destruct");
-  }
+  if (logger_flush(logger)) printf("Can't flush while destruct.\n");
   free(logger->buffer->data);
   free(logger->buffer);
   free(logger->log_file_name);
@@ -141,6 +148,7 @@ uint32_t logger_deinit(logger_t *logger) {
   return 0;
 }
 
+// destruct logger automatically
 void cleanUp (void) __attribute__ ((destructor));
 
 void cleanUp (void) {
