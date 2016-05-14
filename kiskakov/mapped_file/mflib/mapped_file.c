@@ -9,7 +9,8 @@
 #include "mapped_file.h"
 #include "hash_table/hash_table.h"
 
-#define HASH_TABLE_SIZE 1000
+#define HASH_TABLE_SIZE 5
+#define CHUNK_N 1024
 
 size_t mem_page_size_g = 0;
 
@@ -19,10 +20,12 @@ typedef struct file_handle_t
         size_t size;
 
         hash_table_t * hash_table;
+        chunk_handle_t * chunks;
 
         void * whole_file_ptr;
 } file_handle_t;
 
+int search_chunk_idx(file_handle_t * file, off_t offset, size_t count, int calced);
 /*
  * Returns NULL on failure.
  */
@@ -46,16 +49,32 @@ mf_handle_t mf_open(const char * file_path)
                 return MF_OPEN_FAILED;
                 }
 
+        file->chunks = malloc(CHUNK_N * sizeof(chunk_handle_t));
+        if (!file->chunks)
+                {
+                return MF_OPEN_FAILED;
+                }
+        int i = 0;
+        for (i = 0; i < CHUNK_N; i++)
+                {
+                file->chunks[i].ptr = NULL;
+
+                file->chunks[i].page_offset = -1;
+                file->chunks[i].page_size = -1;
+
+                file->chunks[i].ref_counter = 0;
+                }
 
         file->size = lseek(file->fd, 0, SEEK_END);
         void * whole_file_ptr = mmap(NULL, file->size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, 0);
+        // whole_file_ptr = MAP_FAILED; // DELETE IT
         if (whole_file_ptr != MAP_FAILED)
                 {
                 file->whole_file_ptr = whole_file_ptr;
                 return file;
                 }
 
-        HASH_TABLE_INIT(file->hash_table);
+        //HASH_TABLE_INIT(file->hash_table);
 
         file->whole_file_ptr = NULL;
         // size_t size_table = file->size / (mem_page_size_g * MIN_SIZE_CHANK);
@@ -70,6 +89,24 @@ mf_handle_t mf_open(const char * file_path)
                 }
 
         return file;
+}
+
+void print(mf_handle_t mf, int n)
+{
+
+        file_handle_t * file = (file_handle_t *)mf;
+        int i = 0;
+        for (i = 0; i < n; i++)
+                {
+                chunk_handle_t * chunks = file->chunks;
+                printf("===== %d =====\n", i);
+                printf("ptr = %p\n", chunks[i].ptr);
+                printf("page_offset = %d\n", (int)chunks[i].page_offset);
+                printf("page_size = %d\n", (int)chunks[i].page_size);
+                printf("ref = %d\n", (int)chunks[i].ref_counter);
+
+                printf("=====\n");
+                }
 }
 
 /*
@@ -99,6 +136,7 @@ int mf_close(mf_handle_t mf)
 
         close(file->fd);
 
+        free(file->chunks);
         free(file);
 
         return 0;
@@ -133,16 +171,92 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset)
                 return count;
                 }
 
-        // printf("Not the whole file is mapped\n");
+        int chunk_idx = 0;
+        chunk_idx = search_chunk_idx(file, offset, count, 0);
+        if (chunk_idx == -1)
+                {
+                errno = ENOMEM;
+                return -1;
+                }
 
-        // Node *node = find_chank(file, offset, count);
-        // if (node == NULL)
-        //     return -1;
-        // void *ptr = node->value.ptr + offset - node->value.number_first_page*mempagesize;
-        // memcpy(buf, ptr, count);
-        // }
-        // return count;
+        memcpy(buf, file->chunks[chunk_idx].ptr + offset - file->chunks[chunk_idx].page_offset * mem_page_size_g, count);
+
+        return count;
 }
+
+int search_chunk_idx(file_handle_t * file, off_t offset, size_t count, int calced)
+{
+
+        int page_offset = offset;
+        int page_size = count;
+
+        if (calced == 0)
+        {
+                page_offset = offset / mem_page_size_g;
+                page_size = (offset + count) / mem_page_size_g - page_offset + 1;
+        }
+
+
+        chunk_handle_t chunk;
+        chunk.ptr = NULL;
+
+        int i = 0;
+        for (i = 0; i < CHUNK_N; i++)
+                {
+                chunk_handle_t current_chunk = file->chunks[i];
+                if (page_offset == current_chunk.page_offset)
+                        {
+                        if (current_chunk.page_offset <= page_offset && current_chunk.page_size + current_chunk.page_offset >= page_size + page_offset)
+                                {
+                                // memcpy(&chunk, &current_chunk, sizeof(chunk_handle_t));
+                                return i;
+                                }
+                        }
+                }
+
+
+        chunk.ref_counter = 0;
+
+        chunk.page_offset = page_offset;
+        chunk.page_size = page_size;
+
+        off_t new_offset = page_offset * mem_page_size_g;
+        size_t new_size = page_size * mem_page_size_g;
+
+        chunk.ptr = mmap(NULL, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, new_offset);
+
+        int free_idx = -1;
+        for (i = 0; i < CHUNK_N; i++)
+        {
+        if (file->chunks[i].ptr == NULL)
+                {
+                free_idx = i;
+                break;
+                }
+        }
+
+        if (free_idx != -1)
+                {
+                memcpy(&file->chunks[free_idx], &chunk, sizeof(chunk_handle_t));
+                return free_idx;
+                }
+        else
+                {
+                for (i = 0; i < CHUNK_N; i++)
+                        {
+                        if (file->chunks[i].ref_counter == 0)
+                                {
+                                munmap(file->chunks[i].ptr, file->chunks[i].page_size);
+                                memcpy(&file->chunks[i], &chunk, sizeof(chunk_handle_t));
+                                return i;
+                                break;
+                                }
+                        }
+                }
+
+        return -1;
+}
+
 
 /*
  * Returns -1 on failure
@@ -173,15 +287,16 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset)
                 return count;
                 }
 
-        // printf("Not the whole file is mapped\n");
+        int chunk_idx = search_chunk_idx(file, offset, count, 0);
+        if (chunk_idx == -1)
+                {
+                errno = ENOMEM;
+                return -1;
+                }
 
-        // Node *node = find_chank(file, offset, count);
-        // if (node == NULL)
-        //     return -1;
-        // void *ptr = node->value.ptr + offset - node->value.number_first_page*mempagesize;
-        // memcpy(buf, ptr, count);
-        // }
-        // return count;
+        memcpy(file->chunks[chunk_idx].ptr + offset - file->chunks[chunk_idx].page_offset * mem_page_size_g, buf, count);
+
+        return count;
 }
 
 /*
@@ -208,16 +323,18 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
                 return file->whole_file_ptr + offset;
                 }
 
-        // printf("Not the whole file is mapped\n");
-        // Node *node = find_chank(file, offset, size);
-        // if (node == NULL){
-        //     return NULL;
-        // }
-        // // удаляем из списка чанков с нулевым counter
-        // if (++node->value.counter == 1)
-        //     ilist_remove(&file->pool.list_zero, node);
-        // *mapmem_handle = node;
-        // return node->value.ptr + offset - node->value.number_first_page * mempagesize;
+        int chunk_idx = search_chunk_idx(file, offset, size, 0);
+        if (chunk_idx == -1)
+                {
+                errno = ENOMEM;
+                return NULL;
+                }
+
+        file->chunks[chunk_idx].ref_counter++;
+
+        // chunk_handle_t * ret_chunk = (chunk_handle_t *)mapmem_handle;
+        memcpy((chunk_handle_t *)mapmem_handle, &file->chunks[chunk_idx], sizeof(chunk_handle_t));
+        return file->chunks[chunk_idx].ptr + offset - file->chunks[chunk_idx].page_offset * mem_page_size_g;
 }
 
 /*
@@ -236,16 +353,15 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle)
                 {
                 return 0;
                 }
+        chunk_handle_t * chunk = (chunk_handle_t *)&mapmem_handle;
+        int chunk_idx = search_chunk_idx(file, chunk->page_offset, chunk->page_size, 1);
+        if (chunk_idx == -1)
+                {
+                return -1;
+                }
 
-        // printf("Not the whole file is mapped\n");
-        // check_to_NULL(mapmem_handle, -1);
-        // Node *node = mapmem_handle;
-        // // добавляем в список чанков с нулевым counter
-        // if (--node->value.counter == 0){
-        //     ilist_append(&file->pool.list_zero, node);
-        // }
-
-        // return 0;
+        file->chunks[chunk_idx].ref_counter--;
+        return 0;
 }
 
 /*
