@@ -10,7 +10,6 @@
 #include "hash_table/hash_table.h"
 
 #define HASH_TABLE_SIZE 1000
-#define TIME_DELAY 1000
 
 size_t mem_page_size_g = 0;
 
@@ -56,7 +55,7 @@ mf_handle_t mf_open(const char * file_path)
                 return file;
                 }
 
-        sleep(TIME_DELAY);
+        HASH_TABLE_INIT(file->hash_table);
 
         file->whole_file_ptr = NULL;
         // size_t size_table = file->size / (mem_page_size_g * MIN_SIZE_CHANK);
