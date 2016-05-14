@@ -7,7 +7,7 @@
 
 #define TEST_SIZE 10000000
 #define MAX_TOTAL_SIZE (10LL << 39)
-#define MAX_MEMORY 0x8000000
+#define MAX_MEMORY 0x80000000
 #define INITIAL_REGIONS_NUM 1024
 
 int main()
