@@ -80,8 +80,8 @@ INCLUDE_DIR="$PWD/../include"
 
 
 
-MF_SUFFIX="mapped_file"
-TEST_SUFFIX="test_par"
+MF_SUFFIX="par_mapped_file"
+TEST_SUFFIX="test"
 LIBMAKE_SUFFIX="."
 LIBOUT_SUFFIX="out"
 TEST_BUILD=""
