@@ -2,15 +2,14 @@
 #define CHUNK_MANAGE
 
 #include <sys/types.h>
-// #include <pthread.h>		// parallel version
 #include <semaphore.h>	
 
 #define INIT_CHUNKS_NUM 100
 #define INIT_POOL_LENGTH 10
-#define MAX_MAPPED_MEM  0x040000000
-#define DEF_PAGE_NUM	4096              						
-#define DEF_CHUNK_SIZE  (DEF_PAGE_NUM*4096)
-#define POWER			24
+#define MAX_MAPPED_MEM  0x14000000F			
+#define DEF_PAGE_NUM 	8192                          						
+#define DEF_CHUNK_SIZE  33554432 
+#define POWER			25					
 
 #define TABLE_SIZE 997
 
@@ -62,7 +61,6 @@ typedef struct file_handle
 	long long file_size;
 	long long page_size;
 	int is_mapped;
-//	pthread_mutex_t lock_map;
 	sem_t lock_map;
 
 } file_handle_t;
