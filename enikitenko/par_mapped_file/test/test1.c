@@ -40,9 +40,9 @@ int main(int argc, const char* argv[])
 	mf_handle_t mf = mf_open("testfile");
 	CHECK(mf != MF_OPEN_FAILED);
 
-	pthread_t* threads = malloc(num_threads);
+	pthread_t* threads = malloc(num_threads * sizeof (pthread_t));
 	assert(threads);
-	thread_data_t* threads_data = malloc(num_threads);
+	thread_data_t* threads_data = malloc(num_threads * sizeof (thread_data_t));
 	assert(threads_data);
 
 	int i;
@@ -62,6 +62,7 @@ int main(int argc, const char* argv[])
 	}
 
 	free(threads);
+	free(threads_data);
 
 	CHECK(!mf_close(mf));
 
