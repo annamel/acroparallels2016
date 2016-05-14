@@ -94,9 +94,35 @@
 	}
 #endif
 
+#ifndef max
+    #define max(a,b) ((a) > (b) ? (a) : (b))
+#endif
+
 #ifndef ALIGN
 	#define ALIGN(val,size) (((val) + (size) - 1)& (~((size) - 1)))
 #endif // ALIGN
+
+#ifdef MULTITHREADING
+	#define LOCK_READ(name)											\
+	do																\
+	{																\
+		CHECK(!pthread_rwlock_wrlock(&file->rwlock_ ## name));		\
+	} while (0)
+	#define LOCK_WRITE(name)										\
+	do																\
+	{																\
+		CHECK(!pthread_rwlock_wrlock(&file->rwlock_ ## name));		\
+	} while (0)
+	#define UNLOCK(name)											\
+	do																\
+	{																\
+		CHECK(!pthread_rwlock_unlock(&file->rwlock_ ## name));		\
+	} while (0)
+#else
+	#define LOCK_READ(name)
+	#define LOCK_WRITE(name)
+	#define UNLOCK(name)
+#endif // MULTITHREADING
 
 static void invalidate_data(void* data, size_t size)
 {
@@ -171,8 +197,6 @@ static int mapmem_destroy(uint64_t key, void* value, void* data)
 	chunk->ref_count--;
 
 	mapped_file_t* file = (mapped_file_t*) data;
-
-	file->mapped_memory_usage -= chunk->size;
 		
 	unmap_internal(chunk->data, chunk->offset, chunk->size, file->page_size, file->file_size);
 
@@ -232,7 +256,6 @@ mf_handle_t mf_open(const char* pathname)
 		RETURN_ERRNO(EINVAL, MF_OPEN_FAILED);
 	}
 
-	file->mapped_memory_usage = 0;
 	file->free_chunks = NULL;
 
 	file->data = map_internal(0, file->file_size, file->fd, file->page_size, file->file_size);
@@ -241,6 +264,11 @@ mf_handle_t mf_open(const char* pathname)
 		errno = 0;
 		file->fully_mapped = 0;
 		file->data = NULL;
+
+#ifdef MULTITHREADING
+		CHECK(!pthread_rwlock_init(&file->rwlock_map, NULL));
+		CHECK(!pthread_rwlock_init(&file->rwlock_readwrite, NULL));
+#endif // MULTITHREADING
 	}
 	else
 	{
@@ -252,7 +280,7 @@ mf_handle_t mf_open(const char* pathname)
 	RETURN((mf_handle_t) file);
 }
 
-int mf_close(mf_handle_t mf)
+int mf_close(mf_handle_t mf) // this function must be called after all multithread work
 {
 	GET_MAPPED_FILE(-1)
 
@@ -266,6 +294,11 @@ int mf_close(mf_handle_t mf)
 		if (unmap_internal(file->data, file->offset, file->size, file->page_size, file->file_size) == -1)
 			RETURN_FAIL(-1);
 	}
+
+#ifdef MULTITHREADING
+	CHECK(!pthread_rwlock_destroy(&file->rwlock_map));
+	CHECK(!pthread_rwlock_destroy(&file->rwlock_readwrite));
+#endif // MULTITHREADING
 
 	invalidate_data(file, sizeof (mapped_file_t));
 	free(file);
@@ -301,6 +334,8 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
 	if (size % file->chunk_size != 0)
 		aligned_size += file->chunk_size;
 
+	LOCK_READ(map);
+
 	uint64_t key = TO_KEY(aligned_offset, aligned_size);
 	mapped_chunk_t* chunk = hashtable_get(&file->chunks, key);
 
@@ -316,11 +351,13 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
 		chunk->ref_count++;
 		*mapmem_handle = (mf_mapmem_handle_t) chunk;
 		void* data = (void*) (&((char*) chunk->data)[offset_delta]);
+		UNLOCK(map);
 		RETURN(data);
 	}
-
-	file->mapped_memory_usage += size;
 	
+	UNLOCK(map);
+	LOCK_WRITE(map);
+
 	void* pointer;
 	while ((pointer = map_internal(aligned_offset, aligned_size, file->fd, file->page_size, file->file_size)) == MAP_FAILED)
 	{
@@ -336,6 +373,7 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
 		{
 			invalidate_data(chunk, sizeof (mapped_chunk_t));
 			free(chunk);
+			UNLOCK(map);
 			RETURN_ERRNO(EINVAL, MF_MAP_FAILED);
 		}
 	}
@@ -344,6 +382,7 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
 	if (!chunk)
 	{
 		CHECK(unmap_internal(pointer, aligned_offset, aligned_size, file->page_size, file->file_size));
+		UNLOCK(map);
 		RETURN_ERRNO(EINVAL, MF_MAP_FAILED);
 	}
 
@@ -356,6 +395,7 @@ void* mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t* mapm
 	hashtable_add(&file->chunks, key, chunk);
 
 	*mapmem_handle = (mf_mapmem_handle_t) chunk;
+	UNLOCK(map);
 	RETURN(data);
 }
 
@@ -373,6 +413,7 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle)
 			RETURN_ERRNO(EINVAL, -1);
 	}
 
+	LOCK_WRITE(map);
 	mapped_chunk_t* chunk = (mapped_chunk_t*) mapmem_handle;
 
 	chunk->ref_count--;
@@ -385,6 +426,8 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle)
 		file->free_chunks = chunk;
 	}
 
+	UNLOCK(map);
+
 	RETURN(0);
 }
 
@@ -392,8 +435,13 @@ static int map_for_read_write(mf_handle_t mf, off_t offset, size_t size)
 {
 	GET_MAPPED_FILE(-1)
 
+	LOCK_READ(readwrite);
 	if (file->data && offset >= file->offset && offset + size <= file->offset + file->size)
+	{
 		RETURN(0);
+	}
+
+	LOCK_WRITE(readwrite);
 
 	if (file->data)
 		CHECK(unmap_internal(file->data, file->offset, file->size, file->page_size, file->file_size));
@@ -435,6 +483,7 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset)
 		CHECK(unmap_internal(file->data, file->offset, file->size, file->page_size, file->file_size));
 		file->data = NULL;
 	}
+	UNLOCK(readwrite);
 
 	RETURN(count);
 }
@@ -458,6 +507,7 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset)
 		CHECK(unmap_internal(file->data, file->offset, file->size, file->page_size, file->file_size));
 		file->data = NULL;
 	}
+	UNLOCK(readwrite);
 
 	RETURN(count);
 }

@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <assert.h>
+#include <pthread.h>
 
 long long time_ms()
 {
@@ -25,7 +27,7 @@ long long time_ms()
     #define min(a,b) (((a) < (b)) ? (a) : (b))
 #endif
 
-#define CHECK(cond) 									\
+#define CHECK_RET(cond,val,work)						\
 do														\
 {														\
 	if (!(cond))										\
@@ -33,6 +35,10 @@ do														\
 		printf("FAILED %s at %s:%d (%s):", #cond, 		\
 			__FILE__, __LINE__, __FUNCTION__);			\
 		printf(" %s\n", strerror(errno));				\
-		return -1;										\
+		work;											\
+		return val;										\
 	}													\
 } while (0)
+
+#define CHECK(cond) CHECK_RET(cond, -1, 42)
+#define CHECK_THREAD(cond) CHECK_RET(cond, NULL, thread_data->fail = 1)
