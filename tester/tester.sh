@@ -131,7 +131,7 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo '        resarr[$i]=-1' >> $test_file
 				echo "    done" >> $test_file
 				echo '    (>&4 echo "")' >> $test_file
-				echo "    (>&4 echo '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c)')" >> $test_file
+				#echo "    (>&4 echo '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c)')" >> $test_file
 				echo "    set -x" >> $test_file
 				echo "    set +e" >> $test_file
 				echo "    timeout 10 $PREC '$test_out_name' '$PWD/gpl.txt' '$PWD/out.txt' 2>&4 1>&4" >> $test_file
@@ -157,7 +157,7 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo '    (>&3 echo ${resarr[*]})' >> $test_file
 				echo '    (>&4 echo ${resarr[*]})' >> $test_file
 				#echo '    (>&3 echo "")' >> $test_file
-				echo '    (>&4 echo "")' >> $test_file
+				#echo '    (>&4 echo "")' >> $test_file
 				echo "}" >> $test_file
 				echo "" >> $test_file
 			fi

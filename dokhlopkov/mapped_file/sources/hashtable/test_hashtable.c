@@ -1,13 +1,14 @@
-#include "../sources/hashtable/hashtable.h"
+#include "hashtable.h"
 #include <stdio.h>
-
+#include <assert.h>
 int main () {
-	uint64_t size = 10;
+	uint64_t size = 10000;
 	hashtable_t *tbl = hashtable_construct (size);
 
 	//////////////// ------ ////////////////
 	for (int i = 0; i < size * 2; i++) {
-    	hashtable_add (tbl, i, &i);
+        printf("main: would add elem key = %d val = %p\n", i, NULL);
+    	hashtable_add (tbl, i, NULL);
 	}
 	int count = hashtable_count (tbl);
 	if (count != size * 2) {
@@ -16,7 +17,8 @@ int main () {
 		return 1;
 	}
 
-	hashtable_delete (tbl, size / 2);
+	int result = hashtable_delete (tbl, size / 2);
+	assert(result == 0);
 	count -= hashtable_count (tbl);
 	if (count != 1) {
 		printf ("\n\nERROR: Test on deletion and value counts was failed.\n");

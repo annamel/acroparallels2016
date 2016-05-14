@@ -2,6 +2,7 @@
 #define __MAPPED_FILE_INTERNAL__
 
 #include <mapped_file.h>
+#include <pthread.h>
 #include "../logger/log.h"
 #include "hashtable.h"
 
@@ -31,21 +32,21 @@ typedef struct mapped_file
 	size_t page_size;
 	size_t chunk_size;
 	size_t file_size;
-	hashtable_t chunks;
-
-	mapped_chunk_t* free_chunks;
-	int mapped_memory_usage;
-
 	int fully_mapped;
+
+	hashtable_t chunks;
+	mapped_chunk_t* free_chunks;
+
 	void* data;
 	size_t size;
 	off_t offset;
 
-} mapped_file_t;
+#ifdef MULTITHREADING
+	pthread_rwlock_t rwlock_map;
+	pthread_rwlock_t rwlock_readwrite;
+#endif // MULTITHREADING
 
-#ifndef max
-    #define max(a,b) ((a) > (b) ? (a) : (b))
-#endif
+} mapped_file_t;
 
 #define CHUNKS_HASHTABLE_SIZE 40009
 #define READ_WRITE_MIN_SIZE (4*1024*1024)
