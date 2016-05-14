@@ -65,7 +65,7 @@ mf_handle_t mf_open(const char *pathname){
 		if (rl.rlim_cur == RLIM_INFINITY)
 			chunk_manager_gen_chunk(&mf -> cm, 0, sys.freeram / 2, &ch, &tmp);
 		else
-			chunk_manager_gen_chunk(&mf -> cm, 0, MIN(rl.rlim_cur, sys.freeram / 2), &ch, &tmp);
+			chunk_manager_gen_chunk(&mf -> cm, 0, MIN(rl.rlim_cur / 2, sys.freeram / 2), &ch, &tmp);
 		mf -> prev_ch = ch;
 	}
 	return (mf_handle_t) mf;
