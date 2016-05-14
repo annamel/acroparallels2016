@@ -131,7 +131,7 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset)
                 return count;
                 }
 
-        printf("Not the whole file is mapped\n");
+        // printf("Not the whole file is mapped\n");
 
         // Node *node = find_chank(file, offset, count);
         // if (node == NULL)
@@ -171,7 +171,7 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset)
                 return count;
                 }
 
-        printf("Not the whole file is mapped\n");
+        // printf("Not the whole file is mapped\n");
 
         // Node *node = find_chank(file, offset, count);
         // if (node == NULL)
@@ -206,7 +206,7 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
                 return file->whole_file_ptr + offset;
                 }
 
-        printf("Not the whole file is mapped\n");
+        // printf("Not the whole file is mapped\n");
         // Node *node = find_chank(file, offset, size);
         // if (node == NULL){
         //     return NULL;
@@ -235,7 +235,7 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle)
                 return 0;
                 }
 
-        printf("Not the whole file is mapped\n");
+        // printf("Not the whole file is mapped\n");
         // check_to_NULL(mapmem_handle, -1);
         // Node *node = mapmem_handle;
         // // добавляем в список чанков с нулевым counter
