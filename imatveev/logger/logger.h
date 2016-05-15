@@ -135,7 +135,6 @@ void log_deinit(void) {
 }
 
 int LOG( LogOption option, const char *string ) {
-        printf("begin LOG\n");
         static CircleArray buffer;
         if (quantity_log == 0) {
                 log_init(&buffer);
