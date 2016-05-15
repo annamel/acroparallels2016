@@ -29,5 +29,6 @@ int main(){
 	
 	mf_close(mf);
 	printf("5\n");
+	remove("osamara.txt");
 	return 0;
 }
