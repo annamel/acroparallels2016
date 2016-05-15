@@ -25,6 +25,7 @@ void chunk_free_node(void *ptr){
 int chunk_manager_init (struct chunk_manager *cm, int fd, int mode){
 	LOG(INFO, "chunk_manager_init called\n");
 	assert(cm);
+	cm -> cur_chunk_size = DEFAULT_CHUNK_SIZE;
 	cm -> fd = fd;
 	int i;
 	for (i = 0; i < POOL_SIZE; i++){
@@ -89,9 +90,11 @@ ssize_t chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t 
 	assert(cm);
 	assert(ret_ch);
 	assert(chunk_offset);
-	//All chunks are aligned by CHUNK_MASK to improve search perfomance
-	off_t poffset = offset & CHUNK_MASK;
-	size_t psize = ((offset + size) & CHUNK_MASK) + MIN_CHUNK_SIZE - poffset;
+	//All chunks are aligned by cur_chunk_mask to improve search perfomance
+	//cur_chunk_size might change it's size during execution to fit changing
+	//conditions like failed to map so big chunk size
+	off_t poffset = offset & MASK(cm -> cur_chunk_size);
+	size_t psize = ((offset + size) & MASK(cm -> cur_chunk_size)) + cm -> cur_chunk_size - poffset;
 
 	search_chunk.offset = poffset;
 	struct chunk *cur_ch = (struct chunk *)rbtree_finddata(cm -> rbtree, &search_chunk);
@@ -108,26 +111,24 @@ ssize_t chunk_manager_gen_chunk (struct chunk_manager *cm, off_t offset, size_t 
 	if (cur_ch == NULL ||
 	    offset + size > cur_ch -> size + cur_ch -> offset ) {
 		LOG(DEBUG, "No chunk found - making new one of size %ld\n", psize);
-#ifdef DANGER_MMAP
-		LOG(DEBUG, "Try remap to %ld\n", psize);
-		//We are tring to expand existing mmap - maybe it will succeed
-		if (cur_ch != NULL && cur_ch -> offset == poffset){
-			if (mremap(cur_ch -> addr, cur_ch -> size, size, 0) != MAP_FAILED){
-	   			LOG(DEBUG, "remap success!\n", psize);
-				cur_ch -> size = psize;
-				//mremap success!
-				*chunk_offset = offset - cur_ch -> offset;
-				*ret_ch = cur_ch;
-				return cur_ch -> size - offset + cur_ch -> offset;
-			}
-		}
-#endif
 		struct chunk *new_chunk = chunk_manager_get_av_chunk_from_pool(cm);
 		if (new_chunk == NULL)
 			return -1;
 
-		if (chunk_init (new_chunk, psize, poffset, cm -> fd))
-			return -1; //TODO: lmk
+		while (1){
+			LOG(DEBUG, "Trying size %ld\n", cm -> cur_chunk_size);
+			poffset = offset & MASK(cm -> cur_chunk_size);
+			psize = ((offset + size) & MASK(cm -> cur_chunk_size)) + cm -> cur_chunk_size - poffset;
+
+			if (!chunk_init (new_chunk, psize, poffset, cm -> fd))
+				break;
+			cm -> cur_chunk_size >>= 1;
+			if (cm -> cur_chunk_size <= MIN_CHUNK_SIZE)
+				return -1;
+		}
+		if (cm -> cur_chunk_size < MAX_CHUNK_SIZE){
+			cm -> cur_chunk_size <<= 1;
+		}
 	  	/* We can make adding to rbtree O(1) if we use offset that we already
 		 * found to make less tree traversals
 		 */

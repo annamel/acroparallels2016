@@ -6,10 +6,14 @@
 
 #define POOL_SIZE 2048
 #define LOG_POOL_SIZE 11
-#define MIN_CHUNK_SIZE 64LL*1024LL*1024LL
-#define CHUNK_MASK ~(MIN_CHUNK_SIZE-1)
+#define DEFAULT_CHUNK_SIZE 64LL*1024LL*1024LL
+#define MIN_CHUNK_SIZE 4096LL
+#define MAX_CHUNK_SIZE 1024LL*1024LL*1024LL
+
+#define MASK(size) (~(size-1))
 
 struct chunk_manager {
+	size_t cur_chunk_size;
 	int fd;
 	struct chunk chunk_pool[POOL_SIZE];
 	struct rbtree_t *rbtree;
