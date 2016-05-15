@@ -23,6 +23,7 @@ size_t mempagesize = 0;
 typedef struct File{
     int id;
     size_t size;
+    int flag_mmap_all_try;
     int flag_mmap_all;      // удалось ли заммапить весь файл (0 если нет)
     void *ptr_all;          // указатель на весь отображенный файл
     PoolObject pool;
@@ -43,16 +44,11 @@ mf_handle_t mf_open(const char *pathname){
     File *file = malloc(sizeof(File));
     file->id = id;
     file->size = lseek(id, 0, SEEK_END);
-    void * ptr = mmap(NULL, file->size, PROT_READ | PROT_WRITE, MAP_SHARED, id, 0);
-    if (ptr != (void *)(-1)){
-        file->flag_mmap_all = 1;
-        file->ptr_all = ptr;
-    } else {
-        file->flag_mmap_all = 0;
-        size_t size_table = file->size / (mempagesize * MIN_SIZE_CHANK);
-        if (init_pool_object(&file->pool, size_table) < 0)
-            return MF_OPEN_FAILED;
-    }
+    file->flag_mmap_all = 0;
+    file->flag_mmap_all_try = 0;
+    size_t size_table = file->size / (mempagesize * MIN_SIZE_CHANK);
+    if (init_pool_object(&file->pool, size_table) < 0)
+        return MF_OPEN_FAILED;
     return file;
 }
 int mf_close(mf_handle_t mf){
@@ -114,9 +110,22 @@ Node * find_chank(File *file, off_t offset, size_t size){
             return (ret_val);     \
         }                         \
     } while(0);
+void check_to_map_all(File *file){
+    if (!file || file->flag_mmap_all_try)
+        return;
+    else {
+        file->flag_mmap_all_try = 1;
+        void * ptr = mmap(NULL, file->size, PROT_READ | PROT_WRITE, MAP_SHARED, file->id, 0);
+        if (ptr != (void *)(-1)){
+            file->flag_mmap_all = 1;
+            file->ptr_all = ptr;
+        }
+    }
+}
 void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle){
     check_to_NULL(mf, NULL);
     File *file = mf;
+    check_to_map_all(file);
     if (file->flag_mmap_all){
         if (offset > file->size){
             errno = EINVAL;
@@ -158,6 +167,7 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset){
         return -1;
     if (offset + count > file->size)
         count = file->size - offset;
+    check_to_map_all(file);
     if (file->flag_mmap_all){
         void *ptr = file->ptr_all + offset;
         memcpy(buf, ptr, count);
@@ -177,6 +187,7 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset){
         return -1;
     if (offset + count > file->size)
         count = file->size - offset;
+    check_to_map_all(file);
     if (file->flag_mmap_all){
         void *ptr = file->ptr_all + offset;
         memcpy(ptr, buf, count);
