@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 #include "../hash_table/hash_table.h"
 #include "../List/list.h"
+#include "../mapped_file/mapped_file.h"
 
 #define min(a,b) \
    ({ __typeof__ (a) _a = (a); \
@@ -24,6 +25,10 @@ struct ChunkPool {
     chunk_t** loafs;
     unsigned loafs_count;
     htable_t* hash;
+    int is_mapped;
+    off_t file_size;
+    int pg_size;
+    chunk_t* last_used;
 };
 
 struct Chunk {
