@@ -8,7 +8,7 @@ TESTDIRS := $(DIRS:%=test-%)
 ifdef DEBUG
 #CFLAGS +=  -DDEBUG_LOG -DDEBUG_STDERRLOG -DMEMORY_DEBUG
 else
-CFLAGS += -O3 -s -std=c99 #-DNDEBUG
+CFLAGS += -Ofast -s -std=c99 #-DNDEBUG
 endif
 export CFLAGS MAKE_DIR
 
