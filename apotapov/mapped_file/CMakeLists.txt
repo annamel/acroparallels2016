@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.3)
 project(mf)
 
-set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -std=c99")
+set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -std=c99 -Ofast -DNDEBUG")
 
 list (APPEND SOURCES chunkmanager.c hash_table.c lists.c logger.c mapped_file.c)
 

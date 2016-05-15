@@ -2,7 +2,7 @@
 #define common_types_h
 
 #define DEFAULT_HASH_TABLE_SIZE 1024
-#define DEFAULT_PAGE_SIZE 4096
+#define DEFAULT_PAGE_SIZE 1024
 #define DEFAULT_ARRAY_SIZE 1024
 #define LOG_FILE_BY_DEFAULT "log.txt"
 #define AMOUNT_OF_OPTIONS 5
@@ -30,6 +30,7 @@ struct chunk {
     unsigned int ref_counter;
     void *data;
     ch_pool_t *ch_pool;
+    size_t chunk_size_min;
 };
 
 struct ch_pool {
@@ -40,11 +41,15 @@ struct ch_pool {
     hash_table_t *h_table;
     list_t *list_zero_ref_count;
     list_t *list_of_free_chunks;
+    off_t file_size;
+    size_t chunk_size_min;
+    int fdd;
 };
 
 struct hash_table {
     unsigned int size;
     unsigned is_initialized;
+    size_t chunk_size_min;
     list_element** table;
 };
 
@@ -67,3 +72,4 @@ struct list {
 };
 
 #endif
+
