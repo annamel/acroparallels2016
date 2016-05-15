@@ -76,7 +76,7 @@ int ss_find(sset_t *sset, off_t index, off_t len, chunk_t **chunk);
 //  - RETURNED VALUE
 //      all is good => 0
 //      sset pointer is NULL => EINVAL
-int ss_print(sset_t *sset);
+int ss_print(sset_t *sset, unsigned int from, unsigned int to);
 
 
 

@@ -17,7 +17,7 @@
 
 static int mf_get_ial(off_t offset, size_t size, off_t* index, off_t* len)
 {
-    off_t pa_offset = offset & ~(sysconf(_SC_PAGESIZE) - 1);
+    off_t pa_offset = offset & ~(get_chunk_size(1) - 1);
     off_t new_size = size + offset - pa_offset;
 
     *index = pa_offset / get_chunk_size(1);
@@ -37,7 +37,7 @@ mf_handle_t mf_open(const char *pathname)
         log_write(ERROR, "mf_open: bad filename");
         errno = EINVAL;
         return MF_OPEN_FAILED;
-    }
+    }    
 
 
     int fd = open(pathname, O_RDWR, 0666);
@@ -110,25 +110,16 @@ ssize_t mf_read(mf_handle_t mf, void *buf, size_t count, off_t offset)
     }
     log_write(INFO, "mf_read: started");
 
+    count = MIN(count, file_size - offset);
 
     off_t index, len;
     mf_get_ial(offset, count, &index, &len);
 
 
-    chunk_t *read_chunk;
-    int error = chp_find((chpool_t *)mf, index, len, &read_chunk);
-    if(error == ENOKEY)
+    chunk_t *read_chunk = ch_init(index, len, (chpool_t *)mf);
+    if(!read_chunk)
     {
-        read_chunk = ch_init(index, len, (chpool_t *)mf);
-        if(!read_chunk)
-        {
-            log_write(ERROR, "mf_read: can't init new chunk for read");
-            return -1;
-        }
-    }
-    else if(error)
-    {
-        log_write(ERROR, "mf_read: chp_find returns error=%d", error);
+        log_write(ERROR, "mf_read: can't init new chunk for read");
         return -1;
     }
 
@@ -136,6 +127,9 @@ ssize_t mf_read(mf_handle_t mf, void *buf, size_t count, off_t offset)
     void *src = (void *)(((off_t)(read_chunk->data))
                     + (offset - read_chunk->index * get_chunk_size(1)));
     buf = memcpy(buf, src, count);
+
+
+    ch_release(read_chunk);
 
 
     log_write(INFO, "mf_read: finished");
@@ -162,25 +156,16 @@ ssize_t mf_write(mf_handle_t mf, const void *buf, size_t count, off_t offset)
     }
     log_write(DEBUG, "mf_write: started");
 
+    count = MIN(count, file_size - offset);
 
     off_t index, len;
     mf_get_ial(offset, count, &index, &len);
 
 
-    chunk_t *write_chunk;
-    int error = chp_find((chpool_t *)mf, index, len, &write_chunk);
-    if(error == ENOKEY)
+    chunk_t *write_chunk = ch_init(index, len, (chpool_t *)mf);
+    if(!write_chunk)
     {
-        write_chunk = ch_init(index, len, (chpool_t *)mf);
-        if(!write_chunk)
-        {
-            log_write(ERROR, "mf_write: can't init new chunk for read");
-            return -1;
-        }
-    }
-    else if(error)
-    {
-        log_write(ERROR, "mf_write: chp_find returns error=%d", error);
+        log_write(ERROR, "mf_write: can't init new chunk for read");
         return -1;
     }
 
@@ -188,6 +173,9 @@ ssize_t mf_write(mf_handle_t mf, const void *buf, size_t count, off_t offset)
     void *dst = (void *)(((off_t)(write_chunk->data))
                 + (offset - write_chunk->index * get_chunk_size(1)));
     dst = memcpy(dst, buf, count);
+
+
+    ch_release(write_chunk);
 
 
     log_write(INFO, "mf_write: finished");
@@ -199,7 +187,8 @@ ssize_t mf_write(mf_handle_t mf, const void *buf, size_t count, off_t offset)
 void *mf_map(mf_handle_t mf, off_t offset, size_t size,
              mf_mapmem_handle_t *mapmem_handle)
 {
-    if(mf == MF_OPEN_FAILED || offset < 0 || offset + size > mf_file_size(mf))
+    off_t file_size = mf_file_size(mf);
+    if(mf == MF_OPEN_FAILED || offset < 0 || offset + size > file_size)
     {
         errno = EINVAL;
         log_write(ERROR, "mf_map: bad input");
@@ -211,30 +200,19 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size,
     if(!size)
         return NULL;
 
+    size = MIN(size, file_size - offset);
 
     off_t index, len;
     mf_get_ial(offset, size, &index, &len);
 
 
-    chunk_t **chunk = (chunk_t **)mapmem_handle;
-    int error = chp_find((chpool_t *)mf, index, len, chunk);
-    if(error == ENOKEY)
+    chunk_t **chunk = (chunk_t **)mapmem_handle;    
+    *chunk = ch_init(index, len, (chpool_t *)mf);
+    if(!(*chunk))
     {
-        *chunk = ch_init(index, len, (chpool_t *)mf);
-        if(!(*chunk))
-        {
-            log_write(ERROR, "mf_map: can't init new chunk");
-            return NULL;
-        }        
-    }
-    else if(error)
-    {
-        log_write(ERROR, "mf_map: chp_find returns error=%d", error);
+        log_write(ERROR, "mf_map: can't init new chunk");
         return NULL;
     }
-
-
-    (*chunk)->rc ++;
 
 
     log_write(INFO, "mf_map: finished");

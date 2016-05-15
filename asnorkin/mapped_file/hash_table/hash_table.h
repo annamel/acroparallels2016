@@ -10,11 +10,7 @@
 
 
 #include "hash_funcs.h"
-
-
-
-typedef struct item item_t;
-typedef struct hash_table htable_t;
+#include "../typedefs.h"
 
 
 
@@ -83,7 +79,7 @@ int ht_deinit(htable_t *ht);
 //      this key already exist => EKEYREJECTED
 //      can't allocate the memory => ENOMEM
 //      something else => -1
-int ht_add_item(htable_t *ht, hkey_t key, hvalue_t value);
+int ht_add(htable_t *ht, hkey_t key, hvalue_t value);
 
 
 
@@ -120,6 +116,8 @@ int ht_find_by_key(htable_t *ht, const hkey_t key, item_t **item);
 //      can't allocate memory for item => ENOMEM;
 int ht_find_by_kav(htable_t *ht, hkey_t key, hvalue_t *value, item_t **item);
 
+int ht_find(htable_t *ht, hkey_t key, off_t len, chunk_t **chunk);
+
 
 
 //  This func deleted item by the key if exist
@@ -151,6 +149,7 @@ int ht_del_item_by_key(htable_t *ht, hkey_t key);
 //      list by key is empty => ENOKEY
 int ht_del_item_by_kav(htable_t *ht, hkey_t key, hvalue_t value);
 
+int ht_del(htable_t *ht, hkey_t key, off_t len);
 
 
 //  This func prints the array of hash table and

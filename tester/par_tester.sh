@@ -134,12 +134,11 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				#echo '        resarr[$i]=-1' >> $test_file
 				#echo "    done" >> $test_file
 				echo '    (>&4 echo "")' >> $test_file
-				#echo "    (>&4 echo '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c)')" >> $test_file
-				echo "    set +e" >> $test_file
 
-				#echo '    for num_thr in 1 2 4 8 16 32 64; do' >> $test_file
 				echo "    set -x" >> $test_file
-				echo "    timeout 9 $PREC '$test_out_name' \$num_thr 2>&4 1>&4" >> $test_file
+				echo "    set +e" >> $test_file
+				echo "    timeout 10 $PREC '$test_out_name' 1 2>&4 1>&4" >> $test_file
+
 				echo '    ret=$?' >> $test_file
 				echo "    { set +x; } 2>/dev/null" >> $test_file
 				echo "    set -e" >> $test_file
@@ -152,8 +151,7 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo '       exit $ret' >> $test_file
 				echo "    fi" >> $test_file
 
-				#echo "    done" >> $test_file
-
+				echo "    set -e" >> $test_file
 				echo '    (>&4 echo "")' >> $test_file
 				#echo "    (>&3 echo -n '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c) $num_thr')" >> $test_file
 
@@ -163,11 +161,9 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo '    for i in `seq 0 '"$LOOPS"'`; do' >> $test_file
 				echo "        rm -rf ./times" >> $test_file
 				echo '        start=$(date +"%s.%N")' >> $test_file
-if [ -n "$DEBUG_TESTER" ]; then echo '        (>&4 echo "$num_thr")' >> $test_file; fi
-				echo "        set -x" >> $test_file
+
+
 				echo "        $PREC '$test_out_name' \$num_thr" >> $test_file
-				echo "        { set +x; } 2>/dev/null" >> $test_file		
-								
 				echo '        end=$(date +"%s.%N")' >> $test_file
 				echo '        resarr[$j]=$(echo "$end-$start" | bc | sed "s/^\./0./")' >> $test_file
 				echo "        (>&3 echo -n '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c) $num_thr ') " >> $test_file

@@ -9,19 +9,20 @@
 
 
 #include "../dc_list/dc_list.h"
-#include "../sorted_set/sorted_set.h"
+#include "../hash_table/hash_table.h"
 #include "../typedefs.h"
 
 
 
 #define DEFAULT_ARRAY_SIZE 1024
+#define DEFAULT_HT_SIZE 1024
 
 
 
-#define max(a,b) \
+#define MIN(a,b) \
    ({ __typeof__ (a) _a = (a); \
       __typeof__ (b) _b = (b); \
-      _a > _b ? _a : _b; })
+      _a < _b ? _a : _b; })
 
 
 
@@ -43,6 +44,7 @@ struct chunk
 //
 //      fd - descriptor of file
 //      prot - desired memory protection
+//      arrays_cnt - number of loafs
 //      sset - sorted set of chunks for finding
 //      zero_list - list of chunks with zero ref counter
 //      free_list - list of free chunks
@@ -54,7 +56,7 @@ struct chpool
     int prot;
     size_t arrays_cnt;
     chunk_t **pool;
-    sset_t *sset;
+    htable_t *ht;
     dclist_t *zero_list;
     dclist_t *free_list;
 };

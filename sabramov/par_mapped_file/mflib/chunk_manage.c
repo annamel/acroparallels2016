@@ -41,14 +41,12 @@ void chunk_reuse(chunk_t* chunk, off_t offset, long long pg_round_down_off, void
 int chunk_find(mf_handle_t mf, chunk_t** chunk, void** addr, off_t offset, size_t size)
 {
 	file_handle_t* fh = mf;
-//	pthread_mutex_lock(&(fh->lock_map));
 
 	if (fh->is_mapped)
 	{	
 		*chunk = (chunk_t*)(intptr_t)table_lookup(0, fh);
 		(*chunk)->ref_count += 1;
 		*addr = (*chunk)->addr + offset; 
-//		pthread_mutex_unlock(&(fh->lock_map));
 		return 0;
 	}
 	else
@@ -65,7 +63,6 @@ int chunk_find(mf_handle_t mf, chunk_t** chunk, void** addr, off_t offset, size_
 			fh->free_chunks->ref_count += 1;
 			push_chunk(0, &(fh->free_chunks), &fh);
 			*addr = (*chunk)->addr + offset;
-//			pthread_mutex_unlock(&(fh->lock_map));
 			return 0;
 		}		
 	}
@@ -97,8 +94,7 @@ int chunk_find(mf_handle_t mf, chunk_t** chunk, void** addr, off_t offset, size_
 		if (is_chunk_reusable(*chunk, chunk_size))
 		{
 			chunk_reuse(*chunk, offset, pg_round_down_off, addr);
-			(*chunk)->ref_count += 1;
-//			pthread_mutex_unlock(&(fh->lock_map));			
+			(*chunk)->ref_count += 1;			
 			return 0;
 		}
 	}		
@@ -109,10 +105,7 @@ int chunk_find(mf_handle_t mf, chunk_t** chunk, void** addr, off_t offset, size_
 	void* map_addr = mmap(NULL, chunk_size, PROT_READ | PROT_WRITE, MAP_SHARED, fh->fd, pg_round_down_off);
 	
 	if (map_addr == (void*)(-1))
-	{	
-//		pthread_mutex_unlock(&(fh->lock_map));
 		return -1;
-	}
 
 	*addr = (uint8_t*)map_addr + (offset - pg_round_down_off);	    		
 		
@@ -125,8 +118,7 @@ int chunk_find(mf_handle_t mf, chunk_t** chunk, void** addr, off_t offset, size_
 	*chunk = fh->free_chunks;
 	fh->free_chunks->ref_count += 1;
 	push_chunk(pg_round_down_off, &(fh->free_chunks), &fh);		
-//	pthread_mutex_unlock(&(fh->lock_map));	
-
+	
 	return 0;			
 }
 

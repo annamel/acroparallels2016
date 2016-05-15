@@ -170,15 +170,16 @@ roundup_summarize() {
             passed=$(expr $passed + 1)
             printf "  %-48s " "$name:"
             printf "$grn[PASS]$clr\n"
-            cat "$roundup_tmp/($name)2"
-            #roundup_trace < "$roundup_tmp/($name)1"
+
+            roundup_trace < "$roundup_tmp/($name)2"
+            roundup_trace < "$roundup_tmp/($name)1"
             ;;
         f)
             ntests=$(expr $ntests + 1)
             failed=$(expr $failed + 1)
             printf "  %-48s " "$name:"
             printf "$red[FAIL]$clr\n"
-            cat "$roundup_tmp/($name)2"
+            roundup_trace < "$roundup_tmp/($name)2"
             roundup_trace < "$roundup_tmp/$name"
             ;;
         d)

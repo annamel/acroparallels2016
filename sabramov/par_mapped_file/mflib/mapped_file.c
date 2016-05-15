@@ -23,18 +23,17 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 {
 	if (mf == MF_OPEN_FAILED || offset < 0 || size <= 0 || mapmem_handle == NULL)
 	{	
+		errno = EINVAL;
 		*mapmem_handle = NULL;
 		return MF_MAP_FAILED;
 	}
 
 	file_handle_t* fh = mf;
-//	pthread_mutex_lock(&(fh->lock_map));
 	sem_wait(&(fh->lock_map));
 
 	if (offset > fh->file_size)
 	{	
 		*mapmem_handle = NULL;
-//		pthread_mutex_unlock(&(fh->lock_map));
 		sem_post(&(fh->lock_map));
 		return MF_MAP_FAILED;
 	}
@@ -48,7 +47,6 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 	else
 	{			
 		*mapmem_handle = NULL;
-//		pthread_mutex_unlock(&(fh->lock_map));
 		sem_post(&(fh->lock_map));	
 		return MF_MAP_FAILED;
 	}
@@ -67,21 +65,17 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset)
 	}
 
 	file_handle_t* fh = mf;
-//	pthread_mutex_lock(&(fh->lock_map));
 	sem_wait(&(fh->lock_map));
 	
 	if (fh->file_size < 0)	
 	{	
-//		pthread_mutex_unlock(&(fh->lock_map));
 		sem_post(&(fh->lock_map));
-		
 		return 0;
 	}
 
 	if (offset > fh->file_size)
 	{	
 		errno = EINVAL;
-//		pthread_mutex_unlock(&(fh->lock_map));
 		sem_post(&(fh->lock_map));
 
 		return 0;
@@ -95,7 +89,6 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset)
 	if ((offset + count) > fh->file_size)
 	{
 		memcpy(buf, addr, fh->file_size - offset);
-//		pthread_mutex_unlock(&(fh->lock_map));
 		sem_post(&(fh->lock_map));
 		
 		return fh->file_size - offset;
@@ -103,7 +96,6 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset)
 	else
 		memcpy(buf, addr, count);
 
-//	pthread_mutex_unlock(&(fh->lock_map));
 	sem_post(&(fh->lock_map));
 
 	return count;
@@ -115,21 +107,17 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset)
 		return 0;
 
 	file_handle_t* fh = mf;
-//	pthread_mutex_lock(&(fh->lock_map));
 	sem_wait(&(fh->lock_map));
 
 	if (fh->file_size < 0)
-	{
-//		pthread_mutex_unlock(&(fh->lock_map));		
+	{		
 		sem_post(&(fh->lock_map));	
-
 		return 0;
 	}
 	
 	if (offset > fh->file_size || (offset + count) > fh->file_size)
 	{
 		errno = EINVAL;
-//		pthread_mutex_unlock(&(fh->lock_map));	
 		sem_post(&(fh->lock_map));
 		
 		return 0;
@@ -140,7 +128,6 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset)
 	chunk_find(mf, &chunk, &addr, offset, count);
 	chunk->ref_count -=1;
 	memcpy(addr, buf, count);
-//	pthread_mutex_unlock(&(fh->lock_map));
 	sem_post(&(fh->lock_map));
 
 	return count;			
@@ -152,16 +139,13 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle)
 		return -1;
 	
 	file_handle_t* fh = mf;
-//	pthread_mutex_lock(&(fh->lock_map));
 	sem_wait(&(fh->lock_map));
 	
 	chunk_t* unmapped_chunk = mapmem_handle;
 	
 	if (unmapped_chunk->ref_count == 0)
-	{	
-//		pthread_mutex_unlock(&(fh->lock_map));		
+	{			
 		sem_post(&(fh->lock_map));	
-
 		return 0;
 	}	
 	
@@ -186,10 +170,8 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle)
 				fh->free_chunks = unmapped_chunk;			
 		}
 	}
-
-//	pthread_mutex_unlock(&(fh->lock_map));	
+	
 	sem_post(&(fh->lock_map));
-
 	return 0;
 }
 
@@ -199,9 +181,7 @@ int mf_close(mf_handle_t mf)
 		return -1;
 
 	file_handle_t* fh = mf;
-//	pthread_mutex_lock(&(fh->lock_map));
 	sem_wait(&(fh->lock_map));
-
 	chunk_t* ch = fh->free_chunks;
 
 	deinit_hash_table(fh->hash_table);	
@@ -209,7 +189,6 @@ int mf_close(mf_handle_t mf)
 	chunk_pool_deinit(fh);	
 	close(fh->fd);
 	free(mf);
-//	pthread_mutex_unlock(&(fh->lock_map));	
 	sem_post(&(fh->lock_map));
 
 	return 0;	
@@ -217,14 +196,12 @@ int mf_close(mf_handle_t mf)
 
 off_t mf_file_size(mf_handle_t mf)
 {
-	file_handle_t* fh = mf;
-//	pthread_mutex_lock(&(fh->lock_map));	
+	file_handle_t* fh = mf;	
 	sem_wait(&(fh->lock_map));
 
 	if (mf == MF_OPEN_FAILED)
 	{
 		errno = EINVAL;
-//		pthread_mutex_unlock(&(fh->lock_map));
 		sem_post(&(fh->lock_map));
 		
 		return -1;
@@ -232,16 +209,13 @@ off_t mf_file_size(mf_handle_t mf)
 
 	if (fh->fd == -1)
 	{
-		errno = EBADF;
-//		pthread_mutex_unlock(&(fh->lock_map));	
+		errno = EBADF;	
 		sem_post(&(fh->lock_map));
 		
 		return -1;
 	}
 	
-//	pthread_mutex_unlock(&(fh->lock_map));
 	sem_post(&(fh->lock_map));
-
 	return lseek(fh->fd, 0, SEEK_END);
 }
 
