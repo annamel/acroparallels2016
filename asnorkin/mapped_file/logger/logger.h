@@ -15,7 +15,7 @@
 
 #define BUFF_SIZE 256
 #define DEFAULT_LOGFILE "logfile.txt"
-#define DEFAULT_LOGLEVEL WARNING
+#define DEFAULT_LOGLEVEL FATAL
 #define CALL_STACK_SIZE 256
 
 

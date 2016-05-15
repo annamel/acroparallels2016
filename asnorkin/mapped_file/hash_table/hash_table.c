@@ -62,13 +62,10 @@ int ht_deinit(htable_t *ht)
 
 
 
-int ht_add_item(htable_t *ht, hkey_t key, hvalue_t value)
+int ht_add(htable_t *ht, hkey_t key, hvalue_t value)
 {
     if(!ht)
-        return EINVAL;
-
-    if(ht_find_by_kav(ht, key, value, NULL) != ENOKEY)
-        return EKEYREJECTED;
+        return EINVAL;    
 
     hkey_t index = ht->hash_func(key, HASH_CONST_2) % ht->size;
 
@@ -78,22 +75,21 @@ int ht_add_item(htable_t *ht, hkey_t key, hvalue_t value)
 
     new_item_ptr->key = key;
     new_item_ptr->value = value;
-    new_item_ptr->next = NULL;
+    new_item_ptr->prev = NULL;
 
     if(!ht->table[index])
     {
         ht->table[index] = new_item_ptr;
-        ht->table[index]->prev = NULL;
+        ht->table[index]->next = NULL;
         return 0;
     }
     else
     {
         item_t *ptr = ht->table[index];
-        while(ptr->next)
-            ptr = ptr->next;
+        ht->table[index] = new_item_ptr;
 
-        ptr->next = new_item_ptr;
-        ptr->next->prev = ptr;
+        ptr->prev = new_item_ptr;
+        ptr->prev->next = ptr;
 
         return 0;
     }
@@ -147,6 +143,35 @@ int ht_find_by_kav(htable_t *ht, hkey_t key, hvalue_t *value, item_t **item)
         if(item_ptr->key == key && item_ptr->value == value)
         {
             *item = item_ptr;
+            return 0;
+        }
+        else
+        {
+            item_ptr = item_ptr->next;
+            continue;
+        }
+    }
+
+    return ENOKEY;
+}
+
+
+
+int ht_find(htable_t *ht, hkey_t key, off_t len, chunk_t **chunk)
+{
+    if(!ht)
+        return EINVAL;
+
+    hkey_t index = ht->hash_func(key, HASH_CONST_2) % ht->size;
+    item_t *item_ptr = ht->table[index];
+    if(!item_ptr)
+        return ENOKEY;
+
+    while(item_ptr)
+    {
+        if(item_ptr->key == key && ((chunk_t *)(item_ptr->value))->len >= len)
+        {
+            *chunk = (chunk_t *)item_ptr->value;
             return 0;
         }
         else
@@ -279,6 +304,57 @@ int ht_del_item_by_kav(htable_t *ht, hkey_t key, hvalue_t value)
 
 
 
+int ht_del(htable_t *ht, hkey_t key, off_t len)
+{
+    if(!ht)
+        return EINVAL;
+
+    hkey_t index = ht->hash_func(key, HASH_CONST_2) % ht->size;
+
+    //Case 0 - bucket is empty
+    if(!ht->table[index])
+        return ENOKEY;
+
+    //Case 1 - match is located in the first item in the bucket
+    else if(ht->table[index]->key == key &&
+            ((chunk_t *)ht->table[index]->value)->len == len)
+    {
+        item_t *delPtr = ht->table[index];
+        ht->table[index] = ht->table[index]->next;
+        free(delPtr);
+        delPtr = NULL;
+        return 0;
+    }
+
+    //Case 2 - bucket contains items but first item is not a match
+    else
+    {
+        item_t *ptr1 = ht->table[index]->next;
+        item_t *ptr2 = ht->table[index];
+
+        while(ptr1 != NULL &&
+              (ptr1->key != key ||
+               (ptr1->key == key && ((chunk_t *)ptr1->value)->len != len) ) )
+        {
+            ptr2 = ptr1;
+            ptr1 = ptr1->next;
+        }
+        //Case 3.1 : no match
+        if(ptr1 == NULL)
+            return ENOKEY;
+        //Case 3.2 : match is found
+        else
+        {
+            ptr2->next = ptr1->next;
+            free(ptr1);
+            ptr1 = NULL;
+            return 0;
+        }
+    }
+}
+
+
+
 void ht_print_table(htable_t *ht)
 {
     if(!ht)
@@ -287,28 +363,12 @@ void ht_print_table(htable_t *ht)
         return;
     }
 
-    int i = 0;
-    for(i = 0; i < ht->size; i++)
-    {
-        if(ht->table[i] == NULL)
-        {
-            printf("----------------\n");
-            printf("index = %u\n", i);
-            printf("key : empty\n");
-            printf("value : empty\n");
-            printf("----------------\n");
-        }
-        else
-        {
-            printf("----------------\n");
-            printf("index = %u\n", i);
-            printf("key : %llu\n", ht->table[i]->key);
-            printf("value : %u\n", ht->table[i]->value);
-            printf("# of items = %d\n",
-                   ht_number_of_items_in_index(ht, i));
-            printf("----------------\n");
-        }
-    }
+
+    printf("\n************************************");
+    printf("\n**********   Hash table   **********");
+    printf("\n************************************\n");
+    for(int i = 0; i < ht->size; i++)
+        ht_print_list_in_index(ht, i);
 }
 
 
@@ -321,30 +381,26 @@ int ht_print_list_in_index(htable_t *ht, int index)
     item_t *curr_item_ptr = (item_t *)calloc(1, sizeof(item_t));
     curr_item_ptr = ht->table[index];
 
-    printf("****************\n");
-    printf("Row %d ", index);
 
     if(curr_item_ptr == NULL)
     {
-        printf("is empty\n");
+        printf("Row [%d] is empty\n", index);
         printf("****************\n");
         return 0;
     }
     else
     {
-        printf("\n****************\n");
-        int i = 0;
-
         while(curr_item_ptr != NULL)
-        {
-            printf("****************\n");
-            printf("sequence number = %d\n", i++);
-            printf("key: %llu\n", curr_item_ptr->key);
-            printf("value: %u\n", curr_item_ptr->value);
-            printf("****************\n");
+        {            
+            printf("[%d]", index);
+            printf("key: %llu, ", curr_item_ptr->key);
+            printf("len: %u, ", ((chunk_t *)(curr_item_ptr->value))->len);
+            printf("chunk: %u, ", curr_item_ptr->value);
+            printf("data: %u, \n", ((chunk_t *)(curr_item_ptr->value))->data);
 
             curr_item_ptr = curr_item_ptr->next;
         }
+        printf("****************\n");
 
         return 0;
     }
