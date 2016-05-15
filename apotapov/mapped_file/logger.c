@@ -6,16 +6,16 @@
 void *buffer_for_stack [SIZE];
 
 logger_t* logger_init(char *filename) {
-    if(is_initialized == 1) {
+    if(is_initialized) {
         return created_logger;
     }
 
     created_logger = (logger_t*)calloc(1, sizeof(logger_t));
-    if(created_logger == NULL) {
+    if(!created_logger) {
         perror("Initialization of logger failed!\n");
         return NULL;
     }
-    if(filename == NULL) {
+    if(filename) {
         filename = LOG_FILE_BY_DEFAULT;
     }
     created_logger -> file_pointer = fopen(filename, "w");
@@ -97,7 +97,7 @@ int write_log(log_type_t log_type, char *message) {
     if (log_type < Debug) {
         return -4;
     }
-
+    
     if (log_type == Fatal) {
         int i = 0;
         if(created_logger -> buffer -> num_of_circules == 0) {

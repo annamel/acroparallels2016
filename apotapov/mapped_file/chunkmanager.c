@@ -71,6 +71,7 @@ int ch_init(off_t index, off_t length, ch_pool_t *ch_pool) {
     buf -> length = length;
     buf -> index = index;
     buf -> chunk_size_min = chunk_size_min;
+    ch_pool -> last_chunk = buf;
     int res_code = add_element(buf);
     if(res_code) {
         write_log_to_file(Error, "ch_init: add_element function returned error value!\n");

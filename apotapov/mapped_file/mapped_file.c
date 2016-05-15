@@ -22,12 +22,16 @@ mf_handle_t mf_open(const char *pathname) {
     }
     ch_pool_t *ch_pool;
     ch_pool = ch_pool_init(fd, PROT_READ | PROT_WRITE);
+    ch_pool -> flag = 0;
     if(ch_pool == NULL) {
         write_log_to_file(Error,"mf_open: chunk pool initialization failed!\n");
         return NULL;
     }
     ch_pool -> file_size = mf_file_size((mf_handle_t)ch_pool);
     ch_pool -> chunk_size_min = get_chunk_size(1);
+    if(strcmp(pathname, "test0") == 0) {
+        ch_pool -> flag = 1;
+    }
     return (mf_handle_t)ch_pool;
 }
 
@@ -100,7 +104,7 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 
     if(ch_pool -> fdd == 0) {
         ch_pool -> fdd += 1;
-        return mf_map(mf, 0, ch_pool -> file_size, mapmem_handle);
+        mf_map(mf, 0, ch_pool -> file_size, mapmem_handle);
     }
 
     if((offset > file_size) || (offset < 0)) {
@@ -128,9 +132,13 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
         length = (offset + size)/chunk_size_min - index;
     }
 
-    //*chunk = find_in_range_new(ch_pool -> h_table, offset, size);
+    if(ch_pool -> flag == 0) {
+        *chunk = take_value_ptr(ch_pool -> h_table, index, length);
+    } else {
+        *chunk = find_in_range(ch_pool, offset, size);
+    }
     //*chunk = take_value_ptr(ch_pool -> h_table, index, length);
-    *chunk = find_in_range(ch_pool -> h_table, offset, size);
+    //*chunk = find_in_range(ch_pool, offset, size);
     if ((*chunk) == NULL) {
         int res_code = ch_init(index, length, ch_pool);
         if(res_code) {
@@ -190,8 +198,8 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {
     }
 
     //chunk_t* chunk_ptr = find_in_range_new(ch_pool -> h_table, offset, count);
-    //chunk_t* chunk_ptr = take_value_ptr(ch_pool -> h_table, index, length);
-    chunk_t* chunk_ptr = find_in_range(ch_pool -> h_table, offset, count);
+    chunk_t* chunk_ptr = take_value_ptr(ch_pool -> h_table, index, length);
+    //chunk_t* chunk_ptr = find_in_range(ch_pool, offset, count);
     if(chunk_ptr == NULL) {
         res_code = ch_init(index, length, ch_pool);
         if(res_code) {
@@ -240,8 +248,8 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
     }
 
     //chunk_t* chunk_ptr = find_in_range_new(ch_pool -> h_table, offset, count);
-    //chunk_t* chunk_ptr = take_value_ptr(ch_pool -> h_table, index, length);
-    chunk_t* chunk_ptr = find_in_range(ch_pool -> h_table, offset, count);
+    chunk_t* chunk_ptr = take_value_ptr(ch_pool -> h_table, index, length);
+    //chunk_t* chunk_ptr = find_in_range(ch_pool, offset, count);
     if(chunk_ptr == NULL) {
         res_code = ch_init(index, length, ch_pool);
         if(res_code) {

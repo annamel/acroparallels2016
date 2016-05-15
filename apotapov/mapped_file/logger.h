@@ -44,6 +44,3 @@ int write_log(log_type_t log_type, char *message);
 int write_log_to_file(log_type_t log_type, char *message);
 
 #endif 
-
-
-

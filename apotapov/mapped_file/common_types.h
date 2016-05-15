@@ -44,6 +44,8 @@ struct ch_pool {
     off_t file_size;
     size_t chunk_size_min;
     int fdd;
+    int flag;
+    chunk_t* last_chunk;
 };
 
 struct hash_table {

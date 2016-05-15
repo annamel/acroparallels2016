@@ -182,12 +182,23 @@ chunk_t* find_by_index(hash_table_t* h_table, off_t index) {
   return NULL;
 }
 
-chunk_t* find_in_range(hash_table_t* h_table, off_t offset, size_t size) {
+chunk_t* find_in_range(ch_pool_t* ch_pool, off_t offset, size_t size) {
   int i = 0;
+
+  hash_table_t* h_table = ch_pool -> h_table;
   list_element* ptr = NULL;
+
   size_t chunk_size_min = h_table -> chunk_size_min;
   off_t offset_chunk =  0;
   off_t size_chunk = 0;
+
+    /*chunk_t* chunk = ch_pool -> last_chunk;
+
+  offset_chunk = (chunk -> index) * chunk_size_min;
+  size_chunk = (chunk -> length) * chunk_size_min;
+  if((offset_chunk <= offset) && ((offset_chunk + size_chunk) >= (offset + size))) {
+    return chunk;
+  }*/
   for(i = 0; i < (h_table -> size); i++) {
     ptr = (h_table -> table)[i];
     while(ptr) {
