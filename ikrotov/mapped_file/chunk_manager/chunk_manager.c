@@ -132,6 +132,13 @@ int chunk_pool_find(chunk_pool_t* cpool, chunk_t** chunk, off_t index, off_t len
     }
     
     hkey_t key = (hkey_t)index;
+
+if(cpool->is_mapped == 1) {
+        *chunk = cpool->last_used;
+ (*chunk)->ref_counter += 1;
+        return 0;
+    }
+
     
     int idx = cpool->hash->hash_func(key, HASH_CONST_2) % cpool->hash->size;
     item_t* item_ptr = cpool->hash->table[idx];
