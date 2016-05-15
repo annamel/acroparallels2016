@@ -65,7 +65,7 @@ off_t mf_file_size(mf_handle_t mf) {
 }
 
 void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle) {
-    if( mf == MF_OPEN_FAILED || mapmem_handle == NULL || offset < 0 || offset + size > mf_file_size(mf) ) {
+    if( mf == MF_OPEN_FAILED || mapmem_handle == NULL || offset < 0) {// || offset + size > mf_file_size(mf) ) {
         errno = EINVAL;
         return NULL;
     }
@@ -205,14 +205,19 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
     mf_get_index_and_length(offset, count, &index, &len, cpool->pg_size);
     
     chunk_t* write_chunk;
-    int err = chunk_pool_find(cpool, index, len, &write_chunk);
-    if(err == ENOKEY) {
-        write_chunk = chunk_init(index, len, cpool);
-        if(!write_chunk) {
+   if(cpool->is_mapped == 1) {
+        write_chunk = cpool->last_used;
+write_chunk->ref_counter += 1;
+    } else {
+        int err = chunk_pool_find(cpool, index, len, &write_chunk);
+        if(err == ENOKEY) {
+            write_chunk = chunk_init(index, len, cpool);
+            if(!write_chunk) {
+                return -1;
+            }
+        } else if (err) {
             return -1;
         }
-    } else if (err) {
-        return -1;
     }
     
     void* dst = (void*)((off_t)(write_chunk->data) + (offset - write_chunk->index*cpool->pg_size));
