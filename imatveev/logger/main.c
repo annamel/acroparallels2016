@@ -7,11 +7,11 @@ int main () {
         #endif
         set_log_level(warning);
         set_log_file("my_file");
-        log_error(debug,   "GAME OVER_1");
-        log_error(info,    "GAME OVER_2");
-        log_error(warning, "GAME OVER_3");
-        log_error(error,   "GAME OVER_4");
-        log_error(fatal,   "GAME OVER_5");
-        log_error(warning, "GAME OVER_6");
+        LOG(debug,   "GAME OVER_1");
+        LOG(info,    "GAME OVER_2");
+        LOG(warning, "GAME OVER_3");
+        LOG(error,   "GAME OVER_4");
+        LOG(fatal,   "GAME OVER_5");
+        LOG(warning, "GAME OVER_6");
         return 0;
 }
