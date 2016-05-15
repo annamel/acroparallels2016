@@ -14,59 +14,75 @@ logger_t* logger_init(char *filename) {
     if(!created_logger) {
         perror("Initialization of logger failed!\n");
         return NULL;
-    }
+    } 
+
     if(filename) {
         filename = LOG_FILE_BY_DEFAULT;
-    }
+    } 
+
     created_logger -> file_pointer = fopen(filename, "w");
     if((created_logger -> file_pointer) == NULL) {
         perror("File initialiation failed!\n");
         free(created_logger);
         return NULL;
     }
+
     if(buff_init() == -2) {
         perror("Initialization of logger failed!\n");
         return NULL;
     }
+
     created_logger -> type_of_log_by_default = Debug;
     is_initialized = 1;
+
     return created_logger;
 }
 
 void logger_deinit() {
+
     if(is_initialized == 0) {
         return;
     }
+
     if(created_logger == NULL) {
         printf("Logger hasn't been initiated!\n");
         return;
     }
+
     fclose(created_logger -> file_pointer);
     buff_deinit();
     free(created_logger);
     is_initialized = 0;
+
     return;
 }
 
 int buff_init() {
     created_logger -> buffer = (buffer_t*)calloc(1, sizeof(buffer_t));
-    if((created_logger -> buffer) == NULL) {
+    buffer_t *buffer = created_logger -> buffer;
+    
+    if(buffer == NULL) {
         perror("The initialization of buffer is failed!\n");
         fclose(created_logger -> file_pointer);
         free(created_logger);
         return -2;
         }
-    created_logger -> buffer -> position_of_last_empty = 0;
-    created_logger -> buffer -> end = 0;
+
+    buffer -> position_of_last_empty = 0;
+    buffer -> end = 0;
+    
     int i = 0;
     for(i = 0; i < BUFFER_SIZE; i++) {
-        created_logger -> buffer -> buffer[i] = NULL;
+        buffer-> buffer[i] = NULL;
     }
-    created_logger -> buffer -> num_of_circules = 0;
+
+    buffer -> num_of_circules = 0;
+    
     return 0;
 }
 
 void buff_deinit() {
+
     return;
 }
 
@@ -97,21 +113,21 @@ int write_log(log_type_t log_type, char *message) {
     if (log_type < Debug) {
         return -4;
     }
-    
+    buffer_t *buffer = created_logger -> buffer;
     if (log_type == Fatal) {
         int i = 0;
-        if(created_logger -> buffer -> num_of_circules == 0) {
-            for (i = 0; i < created_logger -> buffer -> position_of_last_empty; i++) {
-                fputs(created_logger -> buffer -> buffer[i], created_logger -> file_pointer);
-                free(created_logger -> buffer -> buffer[i]);
-                created_logger -> buffer -> buffer[i] = NULL;
+        if(buffer -> num_of_circules == 0) {
+            for (i = 0; i < buffer -> position_of_last_empty; i++) {
+                fputs(buffer -> buffer[i], created_logger -> file_pointer);
+                free(buffer -> buffer[i]);
+                buffer -> buffer[i] = NULL;
 
             }
         } else {
             for (i = 0; i < BUFFER_SIZE; i++) {
-                fputs(created_logger -> buffer -> buffer[i], created_logger -> file_pointer);
-                free(created_logger -> buffer -> buffer[i]);
-                created_logger -> buffer -> buffer[i] = NULL;
+                fputs(buffer -> buffer[i], created_logger -> file_pointer);
+                free(buffer -> buffer[i]);
+                buffer -> buffer[i] = NULL;
             }
         }
         int nptrs = backtrace(buffer_for_stack, SIZE);
@@ -125,16 +141,16 @@ int write_log(log_type_t log_type, char *message) {
     }
 
     if(log_type < Fatal) {
-        if(created_logger -> buffer -> position_of_last_empty == BUFFER_SIZE) {
-            created_logger -> buffer -> position_of_last_empty = 0;
-            created_logger -> buffer -> num_of_circules += 1;
+        if(buffer -> position_of_last_empty == BUFFER_SIZE) {
+            buffer -> position_of_last_empty = 0;
+            buffer -> num_of_circules += 1;
         }
-        if(created_logger -> buffer -> num_of_circules != 0) {
-            free(created_logger -> buffer -> buffer[created_logger -> buffer-> position_of_last_empty]);
-            created_logger -> buffer -> buffer[created_logger -> buffer-> position_of_last_empty] = NULL;
+        if(buffer -> num_of_circules != 0) {
+            free(buffer -> buffer[buffer-> position_of_last_empty]);
+            buffer -> buffer[buffer-> position_of_last_empty] = NULL;
         }
-        created_logger -> buffer -> buffer[created_logger -> buffer-> position_of_last_empty] = formulate_message(log_type, message);
-        created_logger -> buffer -> position_of_last_empty +=1;
+        buffer -> buffer[created_logger -> buffer-> position_of_last_empty] = formulate_message(log_type, message);
+        buffer -> position_of_last_empty +=1;
         return 0;
     }
 }
