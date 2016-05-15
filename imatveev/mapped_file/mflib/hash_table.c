@@ -44,7 +44,7 @@ int init_hash_table(HashTable *table, size_t size){
     return 0;
 }
 size_t key(Node *node){
-    return node->value.number_first_page;
+    return node->value.number_first_page + node->value.size_in_pages;
 }
 int hash_table_append(HashTable *table, Node *new_node){
     size_t hash = table->hash_func(key(new_node)) % table->size;
