@@ -66,11 +66,11 @@ int log_write_in_logfile(log_lvl_t log_level, const char *__restrict message, ..
     if(!LOGGER_SING)
         return EAGAIN;
 
-    if(!message || log_level > FATAL || log_level < DEBUG)
-        return EINVAL;
-
     if(log_level < LOGGER_SING->default_log_level)
         return 0;
+
+    if(!message || log_level > FATAL || log_level < DEBUG)
+        return EINVAL;    
 
     if(fprintf(LOGGER_SING->file, "%s%s\n",
             LOG_LEVELS[log_level], message) < 0)
@@ -100,7 +100,7 @@ int log_write_in_logfile(log_lvl_t log_level, const char *__restrict message, ..
 
 
 int log_write(log_lvl_t log_level, const char *__restrict message, ...)
-{
+{    
     LOGGER_SING = logger_init();
     if(!LOGGER_SING)
         return EAGAIN;
@@ -225,6 +225,8 @@ static char *create_message(char *__restrict message, log_lvl_t log_level)
 {
     char *log_message = (char *)calloc(strlen(message)
                                        + 10, sizeof(char));
+    if(!log_message)
+        return NULL;
     strcat(log_message, LOG_LEVELS[log_level]);
     strcat(log_message, message);
     strcat(log_message, "\n");
@@ -294,6 +296,7 @@ static int buff_fflush()
               LOGGER_SING->file) == EOF)
             return ETXTBSY;
 
+        free(LOGGER_SING->buffer->buffer[i]);
         LOGGER_SING->buffer->buffer[i] = "";
     }
     for(unsigned int i = 0; i < LOGGER_SING->buffer->head; i++)
@@ -302,6 +305,7 @@ static int buff_fflush()
               LOGGER_SING->file) == EOF)
             return ETXTBSY;
 
+        free(LOGGER_SING->buffer->buffer[i]);
         LOGGER_SING->buffer->buffer[i] = "";
     }
 
@@ -318,7 +322,3 @@ static int buff_deinit()
     free(LOGGER_SING->buffer);
     return 0;
 }
-
-
-//Надо ли удалять каждый из элементов в buffer'е и надо ли удалять сообщение в create_message?
-

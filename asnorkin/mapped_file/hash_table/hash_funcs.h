@@ -10,11 +10,8 @@
 
 
 #include <inttypes.h>
-
-
-
-typedef uint32_t hkey_t;
-typedef void * hvalue_t;
+#include "../chunk_manager/chunk_manager.h"
+#include "../typedefs.h"
 
 
 
@@ -29,10 +26,6 @@ typedef unsigned int uint32_t;
 #else
 #include <stdint.h>
 #endif
-
-
-
-typedef hkey_t hfunc_t(const hvalue_t,  uint32_t);
 
 
 

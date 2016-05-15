@@ -16,7 +16,7 @@
 #include <string.h>
 #include <errno.h>
 
-const size_t MIN_SIZE_CHANK = 200;
+const size_t MIN_SIZE_CHANK = 2000;
 const size_t INIT_SIZE_ARRAY_OF_FILES = 10;
 size_t mempagesize = 0;
 
@@ -81,6 +81,9 @@ Node * find_chank(File *file, off_t offset, size_t size){
         size = file->size - offset;
     number_first_page = offset / mempagesize;
     size_in_page = (offset + size) / mempagesize - number_first_page + 1;
+    static Node *old_node = NULL;
+    if (old_node && check_data(old_node->value))
+        return old_node;
     Node * node = pool_find(&file->pool, number_first_page, check_data);
     if (node == NULL){
         Data data;
@@ -101,6 +104,7 @@ Node * find_chank(File *file, off_t offset, size_t size){
         }
         node = pool_append(&file->pool, data);
     }
+    old_node = node;
     return node;
 }
 #define check_to_NULL(mf, ret_val)\

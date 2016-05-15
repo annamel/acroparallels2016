@@ -45,7 +45,7 @@ enum Errors {
 };
 // не влияем на производительность
 #ifndef DEBUG
-int log_error( LogOption option, const char *string ) {
+int LOG( LogOption option, const char *string ) {
         return 0;
 }
 void set_log_level( LogOption option ) {}
@@ -93,6 +93,7 @@ int print_in_file( CircleArray *cir_array ) {
                 return 0;
         FILE *file = fopen(LOGGER_FILE, "a");
         if (!file) {
+                printf("error: can't open file: %s\n", LOGGER_FILE);
                 return CAN_NOT_OPEN_FILE;
         }
         int i = cir_array->end_array;
@@ -133,7 +134,7 @@ void log_deinit(void) {
         print_in_file(global_ptr_on_buf);
 }
 
-int log_error( LogOption option, const char *string ) {
+int LOG( LogOption option, const char *string ) {
         static CircleArray buffer;
         if (quantity_log == 0) {
                 log_init(&buffer);

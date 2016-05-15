@@ -35,8 +35,8 @@ int dcl_add_last(dclist_t *list, lvalue_t value)
 {
     if(!list)
         return EINVAL;
-
     log_write(DEBUG, "dcl_add_last(value=%d): started", value);
+
 
     dcl_item_t *item = (dcl_item_t *)calloc(1, sizeof(dcl_item_t));
     if(!item)
@@ -95,6 +95,7 @@ int dcl_del_first(dclist_t *list)
         dcl_item_t *del_ptr = list->head;
         list->head = list->head->next;
         free(del_ptr);
+        del_ptr = NULL;
         list->head->prev = NULL;
     }
     list->size --;
@@ -109,15 +110,15 @@ int dcl_del_by_value(dclist_t *list, lvalue_t value)
 {
     if(!list)
         return EINVAL;
-    log_write(INFO, "dcl_del_by_value: started");
+    log_write(INFO, "dcl_del_by_value: started");    
 
 
     dcl_item_t *curr_item = list->head;
-    if(curr_item->value == value)
+    if(curr_item && curr_item->value == value)
         return dcl_del_first(list);
 
 
-    while(curr_item->next)
+    while(curr_item && curr_item->next)
     {
         if(curr_item->value == value)
             break;
@@ -126,17 +127,24 @@ int dcl_del_by_value(dclist_t *list, lvalue_t value)
     }
 
 
-    if(curr_item->value == value)
+    if(curr_item && curr_item->value == value)
     {
         if(curr_item->next)
-        {
+        {            
             curr_item->next->prev = curr_item->prev;
             curr_item->prev->next = curr_item->next;
         }
         else
+        {
             curr_item->prev->next = NULL;
+            list->tail = curr_item->prev;
+        }
 
         free(curr_item);
+        curr_item = NULL;
+
+        list->size--;
+        log_write(INFO, "dcl_del_by_value: finished");
         return 0;
     }
 
@@ -164,20 +172,24 @@ int dcl_deinit(dclist_t *list)
 
 
 
-void dcl_print(dclist_t *list)
+void dcl_print(dclist_t *list, int to)
 {
     if(!list)
         printf("Trying to print NULL list\n");
 
+    printf("\n******************************");
+    printf("\n**********   List   **********");
+    printf("\n******************************\n");
     dcl_item_t *curr_item = list->head;
-    for(int i = 0; i < list->size; i++)
-    {
-        printf("----------------\n");
-        printf("index = %d\n", i);
-        printf("value : %d\n", curr_item->value);
-        printf("----------------\n");
+    for(int i = 0; i < to; i++)
+    {        
+        printf("[%d], value: %u\n", i, curr_item->value);
         curr_item = curr_item->next;
     }
+    printf("*** head: %u\n", list->head->value);
+    printf("*** tail: %u\n", list->tail->value);
+    printf("*** size: %u\n", list->size);
+    printf("******************************\n");
 
     return;
 }
