@@ -5,8 +5,14 @@
 #define DEFAULT_ARRAY_SIZE 1024
 
 #include <sys/mman.h>
-#include "hash-table/hash_table.h"
-#include "List/list.h"
+#include "../hash_table/hash_table.h"
+#include "../List/list.h"
+#include "../mapped_file/mapped_file.h"
+#include <semaphore.h>
+#include <sys/types.h>
+#include <sys/sem.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 
 #define min(a,b) \
    ({ __typeof__ (a) _a = (a); \
@@ -24,6 +30,11 @@ struct ChunkPool {
     chunk_t** loafs;
     unsigned loafs_count;
     htable_t* hash;
+    int is_mapped;
+    off_t file_size;
+    int pg_size;
+    chunk_t* last_used;
+    sem_t semaphore;
 };
 
 struct Chunk {
