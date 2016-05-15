@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include "list.h"
 #include <errno.h>
-//#include "ChunkManager/chunk_manager.h"
 
 list_t* list_init() {
 	//log_write(DEBUG, "list_init: start of creation");
@@ -55,10 +54,6 @@ int list_add_last(list_t* list, value_t new_value) {
 		//log_write(DEBUG, "list_add: element added");
 		return 0;
 	}
-}
-
-int list_find(list_t* list, value_t value, list_item_t** item) {
-	//why do we need this func?
 }
 
 int list_delete_first(list_t* list) {

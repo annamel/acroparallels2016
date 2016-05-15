@@ -12,13 +12,10 @@
 
 
 chunk_t* chunk_init(off_t index, off_t len, chunk_pool_t* cpool){
-    //log_write(DEBUG, "chunk_init: start of work);
     if(!cpool) {
         //log_write(ERROR, "chunk_init: invalid args (cpool));
         return NULL;
     }
-    
-    // chunk_t* chunk = (chunk_t*)calloc(1, sizeof(chunk_t));
     
     chunk_t* chunk;
     if(cpool->free_chunks->size == 0) {
@@ -60,9 +57,11 @@ chunk_t* chunk_init(off_t index, off_t len, chunk_pool_t* cpool){
         //log_write(ERROR, "chunk_init: cannot allocate memory);
         return NULL;
     }
+
+    int size = cpool->pg_size;
     
-    chunk->data = mmap(NULL, cpool->pg_size*(len), cpool->protection, MAP_SHARED,
-                       cpool->fd, cpool->pg_size*(index));
+    chunk->data = mmap(NULL, size*len, cpool->protection, MAP_SHARED,
+                       cpool->fd, size*index);
     
     if(chunk->data == MAP_FAILED) {
         return NULL;
@@ -73,7 +72,7 @@ chunk_t* chunk_init(off_t index, off_t len, chunk_pool_t* cpool){
     chunk->ref_counter = 1;
     chunk->cpool = cpool;
     
-    int error = ht_add_item(cpool->hash, (hkey_t)chunk->index, (hvalue_t)chunk);
+    int error = ht_add_item(cpool->hash, chunk->index, chunk);
     if(error) {
         //log_write(ERROR, "chunk_init: cannot add chunk to hash table);
         return error;
@@ -85,10 +84,6 @@ chunk_t* chunk_init(off_t index, off_t len, chunk_pool_t* cpool){
 
 chunk_pool_t* chunk_pool_init(int fd, int prot) {
     //log_write(DEBUG, "chunk_pool_init: start of work);
-    if(fd < 0 || (!(prot & PROT_READ) && !(prot & PROT_WRITE))){
-        //log_write(ERROR, "chunk_pool_init: invalid args);
-        return NULL;
-    }
     
     chunk_pool_t* cpool = (chunk_pool_t*)calloc(1, sizeof(chunk_pool_t));
     if(!cpool) {
@@ -133,13 +128,12 @@ int chunk_pool_find(chunk_pool_t* cpool, chunk_t** chunk, off_t index, off_t len
     
     hkey_t key = (hkey_t)index;
 
-if(cpool->is_mapped == 1) {
+    if(cpool->is_mapped == 1) {
         *chunk = cpool->last_used;
- (*chunk)->ref_counter += 1;
+        (*chunk)->ref_counter += 1;
         return 0;
     }
 
-    
     int idx = cpool->hash->hash_func(key, HASH_CONST_2) % cpool->hash->size;
     item_t* item_ptr = cpool->hash->table[idx];
     if(!item_ptr)
@@ -203,7 +197,7 @@ int chunk_release(chunk_t* chunk) {
     int err = munmap(chunk->data, chunk->cpool->pg_size*(chunk->len));
     if(err == -1) return errno;
     
-    err = ht_del_item_by_kav(chunk->cpool->hash, (hkey_t)chunk->index, (hvalue_t)chunk);
+    err = ht_del_item_by_key_and_value(chunk->cpool->hash, (hkey_t)chunk->index, (hvalue_t)chunk);
     if(err) return err;
     
     chunk->ref_counter = 0;
