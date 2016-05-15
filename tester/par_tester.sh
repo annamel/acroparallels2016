@@ -85,7 +85,7 @@ TEST_SUFFIX="test"
 LIBMAKE_SUFFIX="."
 LIBOUT_SUFFIX="out"
 TEST_BUILD=""
-LOOPS=3
+LOOPS=0
 
 for root_lib_dir  in $ROOT_LIB_DIR  ; do
 	make_dir="$root_lib_dir/$MF_SUFFIX/$LIBMAKE_SUFFIX/"
@@ -118,75 +118,78 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 			fi
 			for test in $root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/*.c ; do
 			if [ -f $test ]; then
-				func_name="it_check_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .c)"
+			for num_thr in `seq 1 64`; do
+				func_name="it_check_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .c)_$num_thr"
 				test_out_name="$out_dir/$(basename $test .c)"
 				test_object_name="$test_out_name.o"
 
 				TEST_BUILD=$TEST_BUILD\;$test_out_name\;$test_object_name
 				echo "$func_name() {" >> $test_file
+				echo "    num_thr=$num_thr" >> $test_file
 				echo "    sleep 1" >> $test_file
 				echo "    $CC $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' '$test' $LDFLAGS" >> $test_file
 				echo "    $CXX $CXXFLAGS -o '$test_out_name' '$test_object_name' -L'$out_dir' $LDFLAGS" >> $test_file
 				echo "    set +x" >> $test_file
-				echo '    for i in `seq 0 '"$((6*$LOOPS))"'`; do' >> $test_file
-				echo '        resarr[$i]=-1' >> $test_file
-				echo "    done" >> $test_file
+				#echo '    for i in `seq 0 '"$(($LOOPS))"'`; do' >> $test_file
+				#echo '        resarr[$i]=-1' >> $test_file
+				#echo "    done" >> $test_file
 				echo '    (>&4 echo "")' >> $test_file
 				#echo "    (>&4 echo '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c)')" >> $test_file
 				echo "    set +e" >> $test_file
 
-				echo '    for num_thr in 1 2 4 8 16 32 64; do' >> $test_file
-if [ -n "$DEBUG_TESTER" ]; then echo '    (>&4 echo "$num_thr")' >> $test_file; fi
+				#echo '    for num_thr in 1 2 4 8 16 32 64; do' >> $test_file
 				echo "    set -x" >> $test_file
-				echo "    timeout 10 $PREC '$test_out_name' \$num_thr 2>&4 1>&4" >> $test_file
-				echo "    { set +x; } 2>/dev/null" >> $test_file		
+				echo "    timeout 9 $PREC '$test_out_name' \$num_thr 2>&4 1>&4" >> $test_file
 				echo '    ret=$?' >> $test_file
+				echo "    { set +x; } 2>/dev/null" >> $test_file
+				echo "    set -e" >> $test_file
 				echo '    if [ $ret -eq 124 ]; then' >> $test_file
-				echo "       (>&3 echo -n '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c) ')" >> $test_file
-				echo '       (>&3 echo ${resarr[*]})' >> $test_file
+				echo "       (>&3 echo -n '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c) $num_thr ') " >> $test_file
+				echo '       (>&3 echo -1)' >> $test_file
 				echo "       exit 124" >> $test_file
 				echo "    fi" >> $test_file
 				echo '    if [ $ret -ne 0 ]; then' >> $test_file
 				echo '       exit $ret' >> $test_file
 				echo "    fi" >> $test_file
 
-				echo "    done" >> $test_file
+				#echo "    done" >> $test_file
 
-				echo "    set -e" >> $test_file
 				echo '    (>&4 echo "")' >> $test_file
-				echo "    (>&3 echo -n '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c) ')" >> $test_file
+				#echo "    (>&3 echo -n '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c) $num_thr')" >> $test_file
 
 				echo '    j=0' >> $test_file
-				echo '    for num_thr in 1 2 4 8 16 32 64; do' >> $test_file
+				#echo '    for num_thr in 1 2 4 8 16 32 64; do' >> $test_file
 
 				echo '    for i in `seq 0 '"$LOOPS"'`; do' >> $test_file
 				echo "        rm -rf ./times" >> $test_file
 				echo '        start=$(date +"%s.%N")' >> $test_file
-if [ -n "$DEBUG_TESTER" ]; then echo '    (>&4 echo "$num_thr")' >> $test_file; fi
+if [ -n "$DEBUG_TESTER" ]; then echo '        (>&4 echo "$num_thr")' >> $test_file; fi
 				echo "        set -x" >> $test_file
 				echo "        $PREC '$test_out_name' \$num_thr" >> $test_file
 				echo "        { set +x; } 2>/dev/null" >> $test_file		
 								
 				echo '        end=$(date +"%s.%N")' >> $test_file
 				echo '        resarr[$j]=$(echo "$end-$start" | bc | sed "s/^\./0./")' >> $test_file
+				echo "        (>&3 echo -n '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c) $num_thr ') " >> $test_file
+				echo '        (>&3 echo ${resarr[$j]})' >> $test_file
 				echo '        j=$(($j+1))' >> $test_file
 				echo "    done" >> $test_file
 
-				echo "    done" >> $test_file
+				#echo "    done" >> $test_file
 
-				echo '    (>&3 echo ${resarr[*]})' >> $test_file
+				#echo '    (>&3 echo ${resarr[*]})' >> $test_file
 				echo '    (>&4 echo ${resarr[*]})' >> $test_file
 				#echo '    (>&3 echo "")' >> $test_file
-				echo '    (>&4 echo "")' >> $test_file
 				echo "}" >> $test_file
 				echo "" >> $test_file
+			done
 			fi
 			done
 		done
 	fi
 done
 
-$PWD/roundup $test_file
+PAR=1 $PWD/roundup $test_file
 
 for root_lib_dir in $ROOT_LIB_DIR  ; do
 	make_dir="$root_lib_dir/$MF_SUFFIX/$LIBMAKE_SUFFIX/"
@@ -212,5 +215,5 @@ PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 rm -f $PWD/out.txt
 
 IFS=$SAVEIFS
-jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True $PWD/test_results.ipynb
+jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True $PWD/par_test_results.ipynb
 python -mwebbrowser file://$PWD/test_results.html
