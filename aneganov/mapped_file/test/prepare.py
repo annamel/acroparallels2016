@@ -11,4 +11,4 @@ class SimpleFileGenerator:
 				max_size -= write_len
 
 gen = SimpleFileGenerator()
-gen.generate("file", 1024 * 1024)
+gen.generate("test_file", 1024 * 1024 * 512)

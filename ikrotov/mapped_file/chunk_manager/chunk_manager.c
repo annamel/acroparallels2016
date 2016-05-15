@@ -6,6 +6,10 @@
 #include <errno.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
+
 
 chunk_t* chunk_init(off_t index, off_t len, chunk_pool_t* cpool){
     //log_write(DEBUG, "chunk_init: start of work);
@@ -57,8 +61,8 @@ chunk_t* chunk_init(off_t index, off_t len, chunk_pool_t* cpool){
         return NULL;
     }
     
-    chunk->data = mmap(NULL, get_chunk_size(len), cpool->protection, MAP_SHARED,
-                       cpool->fd, get_chunk_size(index));
+    chunk->data = mmap(NULL, cpool->pg_size*(len), cpool->protection, MAP_SHARED,
+                       cpool->fd, cpool->pg_size*(index));
     
     if(chunk->data == MAP_FAILED) {
         return NULL;
@@ -100,6 +104,13 @@ chunk_pool_t* chunk_pool_init(int fd, int prot) {
     cpool->loafs = (chunk_t**)calloc(1, sizeof(chunk_t*));
     *cpool->loafs = (chunk_t*)calloc(DEFAULT_ARRAY_SIZE, sizeof(chunk_t));
     cpool->loafs_count = 1;
+    cpool->is_mapped = 0;
+    cpool->pg_size = sysconf(_SC_PAGESIZE);
+
+    struct stat sb = {0};
+    int err = fstat(fd, &sb);
+    cpool->file_size = sb.st_size;
+
     
     int i = 0;
     for(i; i < DEFAULT_ARRAY_SIZE; i++) {
@@ -121,6 +132,13 @@ int chunk_pool_find(chunk_pool_t* cpool, chunk_t** chunk, off_t index, off_t len
     }
     
     hkey_t key = (hkey_t)index;
+
+if(cpool->is_mapped == 1) {
+        *chunk = cpool->last_used;
+ (*chunk)->ref_counter += 1;
+        return 0;
+    }
+
     
     int idx = cpool->hash->hash_func(key, HASH_CONST_2) % cpool->hash->size;
     item_t* item_ptr = cpool->hash->table[idx];
@@ -182,7 +200,7 @@ int chunk_release(chunk_t* chunk) {
         return EINVAL;
     }
     
-    int err = munmap(chunk->data, get_chunk_size(chunk->len));
+    int err = munmap(chunk->data, chunk->cpool->pg_size*(chunk->len));
     if(err == -1) return errno;
     
     err = ht_del_item_by_kav(chunk->cpool->hash, (hkey_t)chunk->index, (hvalue_t)chunk);
