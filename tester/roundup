@@ -32,7 +32,12 @@
 
 # Exit if any following command exits with a non-zero status.
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+if [ -z "$PAR" ]; then
 test_res_file="$PWD/test_result.txt"
+else
+test_res_file="$PWD/par_test_result.txt"
+fi
+echo $test_res_file
 rm -rf $test_res_file
 
 set -e
@@ -165,6 +170,7 @@ roundup_summarize() {
             passed=$(expr $passed + 1)
             printf "  %-48s " "$name:"
             printf "$grn[PASS]$clr\n"
+
             roundup_trace < "$roundup_tmp/($name)2"
             roundup_trace < "$roundup_tmp/($name)1"
             ;;
