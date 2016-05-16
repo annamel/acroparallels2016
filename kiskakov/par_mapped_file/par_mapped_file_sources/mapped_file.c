@@ -184,19 +184,6 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset)
                 count = file->size - offset;
                 }
 
-        if (!file->whole_file_ptr)
-                {
-                void * whole_file_ptr = mmap(NULL, file->size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, 0);
-                if (whole_file_ptr != MAP_FAILED)
-                        {
-                        file->whole_file_ptr = whole_file_ptr;
-                        }
-                else
-                        {
-                        file->whole_file_ptr = NULL;
-                        }
-                }
-
         if (file->whole_file_ptr)
                 {
                 memcpy(buf, file->whole_file_ptr + offset, count);
@@ -318,19 +305,6 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset)
                 count = file->size - offset;
                 }
 
-        if (!file->whole_file_ptr)
-                {
-                void * whole_file_ptr = mmap(NULL, file->size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, 0);
-                if (whole_file_ptr != MAP_FAILED)
-                        {
-                        file->whole_file_ptr = whole_file_ptr;
-                        }
-                else
-                        {
-                        file->whole_file_ptr = NULL;
-                        }
-                }
-
         if (file->whole_file_ptr)
                 {
                 memcpy(file->whole_file_ptr + offset, buf, count);
@@ -373,19 +347,6 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
                 return NULL;
                 }
 
-        if (!file->whole_file_ptr)
-                {
-                void * whole_file_ptr = mmap(NULL, file->size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, 0);
-                if (whole_file_ptr != MAP_FAILED)
-                        {
-                        file->whole_file_ptr = whole_file_ptr;
-                        }
-                else
-                        {
-                        file->whole_file_ptr = NULL;
-                        }
-                }
-
         if (file->whole_file_ptr)
                 {
                 mapmem_handle = NULL;
@@ -424,19 +385,6 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle)
                 }
 
         pthread_mutex_lock(&file->lock);
-
-        if (!file->whole_file_ptr)
-                {
-                void * whole_file_ptr = mmap(NULL, file->size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, 0);
-                if (whole_file_ptr != MAP_FAILED)
-                        {
-                        file->whole_file_ptr = whole_file_ptr;
-                        }
-                else
-                        {
-                        file->whole_file_ptr = NULL;
-                        }
-                }
 
         if (file->whole_file_ptr)
                 {
