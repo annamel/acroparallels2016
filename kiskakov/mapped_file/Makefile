@@ -1,5 +1,5 @@
- MAKED := $(PWD)/out
-DIR := mflib
+MAKED := $(PWD)/out
+DIR := mapped_file_sources
 BUILD := $(DIR:%=build-%)
 CLEAN := $(DIR:%=clean-%)
 
