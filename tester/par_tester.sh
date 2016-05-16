@@ -118,8 +118,7 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 			fi
 			for test in $root_test_dir/$MF_SUFFIX/$TEST_SUFFIX/*.c ; do
 			if [ -f $test ]; then
-			#for num_thr in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 18 20 22 24 26 28 30 32 36 40 44 48 52 56 60 64; do
-				func_name="it_check_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .c)_$num_thr"
+				func_name="it_check_$(basename $root_lib_dir)_by_$(basename $root_test_dir)_$(basename $test .c)"
 				test_out_name="$out_dir/$(basename $test .c)"
 				test_object_name="$test_out_name.o"
 
@@ -129,34 +128,9 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 				echo "    $CC $CFLAGS -I'$PWD/../include' -c -o '$test_object_name' '$test' $LDFLAGS" >> $test_file
 				echo "    $CXX $CXXFLAGS -o '$test_out_name' '$test_object_name' -L'$out_dir' $LDFLAGS" >> $test_file
 				echo "    set +x" >> $test_file
-				#echo '    for i in `seq 0 '"$(($LOOPS))"'`; do' >> $test_file
-				#echo '        resarr[$i]=-1' >> $test_file
-				#echo "    done" >> $test_file
 				echo '    (>&4 echo "")' >> $test_file
-
-			#	echo "    set +e" >> $test_file
-				#echo "    timeout 10 $PREC '$test_out_name' 1 2>&4 1>&4" >> $test_file
-
-			#	echo '    ret=$?' >> $test_file
-			#	echo "    { set +x; } 2>/dev/null" >> $test_file
-			#	echo "    set -e" >> $test_file
-			#	echo '    if [ $ret -eq 124 ]; then' >> $test_file
-			#	echo "       (>&3 echo -n '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c) $num_thr ') " >> $test_file
-			#	echo '       (>&3 echo -1)' >> $test_file
-			#	echo "       exit 124" >> $test_file
-			#	echo "    fi" >> $test_file
-			#	echo '    if [ $ret -ne 0 ]; then' >> $test_file
-			#	echo '       exit $ret' >> $test_file
-			#	echo "    fi" >> $test_file
-
-			#	echo "    set -e" >> $test_file
-				echo '    (>&4 echo "")' >> $test_file
-				#echo "    (>&3 echo -n '$(basename $root_lib_dir) $(basename $root_test_dir) $(basename $test .c) $num_thr')" >> $test_file
 
 				echo '    j=0' >> $test_file
-				#echo '    for num_thr in 1 2 4 8 16 32 64; do' >> $test_file
-
-
 				echo "for num_thr in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 18 20 22 24 26 28 30 32 36 40 44 48 52 56 60 64; do" >> $test_file
 
 				echo '    for i in `seq 0 '"$LOOPS"'`; do' >> $test_file
@@ -179,12 +153,9 @@ for root_lib_dir  in $ROOT_LIB_DIR  ; do
 
 				echo "done" >> $test_file
 
-				#echo '    (>&3 echo ${resarr[*]})' >> $test_file
 				echo '    (>&4 echo ${resarr[*]})' >> $test_file
-				#echo '    (>&3 echo "")' >> $test_file
 				echo "}" >> $test_file
 				echo "" >> $test_file
-			#done
 			fi
 			done
 		done
