@@ -5,6 +5,7 @@
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
+#include <pthread.h>
 
 #include "mapped_file.h"
 #include "hash_table/hash_table.h"
@@ -133,6 +134,7 @@ int mf_close(mf_handle_t mf)
         if (file->whole_file_ptr)
                 {
                 munmap(file->whole_file_ptr, file->size);
+                pthread_mutex_unlock(&file->lock);
                 return 0;
                 }
 
@@ -177,6 +179,7 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset)
                 {
                 memcpy(buf, file->whole_file_ptr + offset, count);
 
+                pthread_mutex_unlock(&file->lock);
                 return count;
                 }
 
@@ -297,6 +300,7 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset)
                 {
                 memcpy(file->whole_file_ptr + offset, buf, count);
 
+                pthread_mutex_unlock(&file->lock);
                 return count;
                 }
 
@@ -337,6 +341,8 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
         if (file->whole_file_ptr)
                 {
                 mapmem_handle = NULL;
+
+                pthread_mutex_unlock(&file->lock);
                 return file->whole_file_ptr + offset;
                 }
 
@@ -373,6 +379,7 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle)
 
         if (file->whole_file_ptr)
                 {
+                pthread_mutex_unlock(&file->lock);
                 return 0;
                 }
         chunk_handle_t * chunk = (chunk_handle_t *)&mapmem_handle;
