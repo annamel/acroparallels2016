@@ -143,7 +143,7 @@ int mf_close(mf_handle_t mf)
 
         free(file->chunks);
 
-        pthread_mutex_ulock(&file->lock);
+        pthread_mutex_unlock(&file->lock);
 
         free(file);
 
