@@ -19,7 +19,7 @@ IP 2016, Parallels, MIPT
 #include "hash_table/hash_table.h"
 
 #define HASH_TABLE_SIZE 5
-#define CHUNK_N 1024
+#define CHUNK_N 16
 
 size_t mem_page_size_g = 0;
 
@@ -76,14 +76,12 @@ mf_handle_t mf_open(const char * file_path)
 
         file->size = lseek(file->fd, 0, SEEK_END);
         void * whole_file_ptr = mmap(NULL, file->size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, 0);
-        // whole_file_ptr = MAP_FAILED; // DELETE IT
         if (whole_file_ptr != MAP_FAILED)
                 {
                 file->whole_file_ptr = whole_file_ptr;
                 return file;
                 }
 
-        //HASH_TABLE_INIT(file->hash_table);
 
         file->whole_file_ptr = NULL;
         // size_t size_table = file->size / (mem_page_size_g * MIN_SIZE_CHANK);
@@ -171,6 +169,19 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset)
         if (offset + count > file->size)
                 {
                 count = file->size - offset;
+                }
+
+        if (!file->whole_file_ptr)
+                {
+                void * whole_file_ptr = mmap(NULL, file->size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, 0);
+                if (whole_file_ptr != MAP_FAILED)
+                        {
+                        file->whole_file_ptr = whole_file_ptr;
+                        }
+                else
+                        {
+                        file->whole_file_ptr = NULL;
+                        }
                 }
 
         if (file->whole_file_ptr)
@@ -289,6 +300,19 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset)
                 count = file->size - offset;
                 }
 
+        if (!file->whole_file_ptr)
+                {
+                void * whole_file_ptr = mmap(NULL, file->size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, 0);
+                if (whole_file_ptr != MAP_FAILED)
+                        {
+                        file->whole_file_ptr = whole_file_ptr;
+                        }
+                else
+                        {
+                        file->whole_file_ptr = NULL;
+                        }
+                }
+
         if (file->whole_file_ptr)
                 {
                 memcpy(file->whole_file_ptr + offset, buf, count);
@@ -326,6 +350,19 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
                 return NULL;
                 }
 
+        if (!file->whole_file_ptr)
+                {
+                void * whole_file_ptr = mmap(NULL, file->size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, 0);
+                if (whole_file_ptr != MAP_FAILED)
+                        {
+                        file->whole_file_ptr = whole_file_ptr;
+                        }
+                else
+                        {
+                        file->whole_file_ptr = NULL;
+                        }
+                }
+
         if (file->whole_file_ptr)
                 {
                 mapmem_handle = NULL;
@@ -356,6 +393,19 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle)
                 {
                 errno = EINVAL;
                 return -1;
+                }
+
+        if (!file->whole_file_ptr)
+                {
+                void * whole_file_ptr = mmap(NULL, file->size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, 0);
+                if (whole_file_ptr != MAP_FAILED)
+                        {
+                        file->whole_file_ptr = whole_file_ptr;
+                        }
+                else
+                        {
+                        file->whole_file_ptr = NULL;
+                        }
                 }
 
         if (file->whole_file_ptr)
