@@ -78,13 +78,12 @@ mf_handle_t mf_open(const char * file_path)
                 }
 
         //HASH_TABLE_INIT(file->hash_table);
-
         file->whole_file_ptr = NULL;
         // size_t size_table = file->size / (mem_page_size_g * MIN_SIZE_CHANK);
         // TODO: Compute better hash table size
         int ret = 0;
 
-
+        printf("%s\n", "Constructing hash table");
         ret = hash_table_construct(&file->hash_table, HASH_TABLE_SIZE);
         if (ret != 0)
                 {
