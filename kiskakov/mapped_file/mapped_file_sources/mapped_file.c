@@ -1,3 +1,12 @@
+/*
+Mapped File by Karim Iskakov, 16 May 2016
+iskakov@phystech.edu
+You can find fresh version on this link: https://github.com/annamel/acroparallels2016/tree/master/kiskakov
+Big thanks to imatveev for helping with program structure and consulting.
+
+IP 2016, Parallels, MIPT
+*/
+
 #include <sys/mman.h>
 #include <stdlib.h>
 #include <fcntl.h>
