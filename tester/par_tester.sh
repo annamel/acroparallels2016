@@ -189,4 +189,4 @@ rm -f $PWD/out.txt
 
 IFS=$SAVEIFS
 jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True $PWD/par_test_results.ipynb
-python -mwebbrowser file://$PWD/test_results.html
+python -mwebbrowser file://$PWD/par_test_results.html

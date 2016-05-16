@@ -35,7 +35,7 @@ PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 if [ -z "$PAR" ]; then
 test_res_file="$PWD/test_result.txt"
 else
-test_res_file="$PWD/par_test_result.txt"
+test_res_file="$PWD/par_test_results.txt"
 fi
 echo $test_res_file
 rm -rf $test_res_file
