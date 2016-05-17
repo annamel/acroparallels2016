@@ -8,7 +8,7 @@
 
 
 size_t get_chunk_size(off_t multiplier) {
-    return multiplier * sysconf(_SC_PAGESIZE);
+    return multiplier * sysconf(_SC_PAGESIZE) * 32;
 }
 
 int ch_init(off_t index, off_t length, ch_pool_t *ch_pool) {
