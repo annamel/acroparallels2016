@@ -61,8 +61,8 @@ mf_handle_t mf_open(const char *pathname)
 
 
     //  Trying to mmap all file
-    if(!mf_map_all(chpool))
-        printf("All file mmap OK!");
+    /*if(!mf_map_all(chpool))
+        printf("All file mmap OK!");*/
 
 
     //log_write(INFO, "mf_open: finished");

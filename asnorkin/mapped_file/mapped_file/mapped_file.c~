@@ -89,7 +89,7 @@ int mf_close(mf_handle_t mf)
 
     if(close(chpool->fd) == -1)
     {
-        /log_write(ERROR, "mf_close: can't close the file");
+        //log_write(ERROR, "mf_close: can't close the file");
         return -1;
     }
     free(chpool);
@@ -205,7 +205,7 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size,
     *chunk = ch_init(index, len, (chpool_t *)mf);
     if(!(*chunk))
     {
-        log_write(ERROR, "mf_map: can't init new chunk");
+        //log_write(ERROR, "mf_map: can't init new chunk");
         return NULL;
     }
 
