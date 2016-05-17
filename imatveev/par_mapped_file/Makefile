@@ -1,8 +1,9 @@
 MAKED := $(PWD)/out
-DIR := mapped_file_sources
+DIR := mapped_file
 BUILD := $(DIR:%=build-%)
 CLEAN := $(DIR:%=clean-%)
 
+CFLAGS += -Ofast
 export CFLAGS MAKED
 
 all: build_all $(BUILD)

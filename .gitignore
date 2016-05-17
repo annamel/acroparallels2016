@@ -1,3 +1,11 @@
 *.o
 tester/test_result.txt
 tester/test_results.html
+
+*.iml
+
+*.xml
+
+*.txt
+
+*.a
