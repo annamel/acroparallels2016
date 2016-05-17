@@ -25,7 +25,8 @@ typedef struct {
 } mapmem_handle_t;
 typedef struct  {
 	int fd;
-	int mapped;
+	long long int mapped;
+	long long int fsize;
 	mapmem_handle_t* r_map;
 } handle_t;
 

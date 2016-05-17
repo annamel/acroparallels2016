@@ -3,12 +3,20 @@
 
 #include <sys/types.h>
 
+/*
 #define INIT_CHUNKS_NUM		100
 #define INIT_POOL_LENGTH 	10
 #define MAX_MAPPED_MEM  	0x14000000F			
 #define DEF_PAGE_NUM 		8192                          						
 #define DEF_CHUNK_SIZE  	33554432 
 #define POWER				25					
+*/
+#define INIT_CHUNKS_NUM 100
+#define INIT_POOL_LENGTH 10
+#define MAX_MAPPED_MEM  0x040000000			
+#define DEF_PAGE_NUM 	4096                          						
+#define DEF_CHUNK_SIZE  (DEF_PAGE_NUM*4096) 
+#define POWER			24					
 
 #define TABLE_SIZE 			997
  
