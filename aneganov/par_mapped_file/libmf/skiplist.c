@@ -16,12 +16,10 @@ current maximum level plus one is used instead.
 #include <limits.h>
 #include <errno.h>
 #include <stdint.h>
-#include <pthread.h>
 
 #include "mf_malloc.h"
 #include "log.h"
 #include "mfdef.h"
-#include "multitreading.h"
 #include "skiplist.h"
 
 typedef struct skiplist_node {
@@ -55,8 +53,6 @@ static uint64_t xorshift128plus() {
 static inline uint64_t sk_random() {
 	return rand();
 }
-
-static struct shared_mutex mutex  = {PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, 0};
 
 int skiplist_construct(int max_lvl, skiplist_t **newlist_ptr) {
 	if(unlikely(newlist_ptr == NULL || max_lvl < 0)) {
@@ -112,7 +108,6 @@ int skiplist_add(skiplist_t *list, skey_t key, val_t val) {
 		return EINVAL;
 	}
 
-	write_exclusive_lock(&mutex);
 	log_write(LOG_DEBUG, "skiplist_add: val = %p\n", val);
 
 	int err = 0;
@@ -130,7 +125,7 @@ int skiplist_add(skiplist_t *list, skey_t key, val_t val) {
 
 	if (q->key == key) {
 		q->val = val;
-		goto end;
+		return 0;
 	};
 
 	k = random_level(list);
@@ -140,7 +135,7 @@ int skiplist_add(skiplist_t *list, skey_t key, val_t val) {
 	};
 
 	if (unlikely((err = mf_malloc(sizeof(node_t) + (k+1) * sizeof(node_t *), (void **)&q)))) {
-		goto end;
+		return err;
 	}
 
 	q->key = key;
@@ -152,18 +147,13 @@ int skiplist_add(skiplist_t *list, skey_t key, val_t val) {
 		p->forward[k] = q;
 	} while(--k >= 0);
 
-end:
-	write_exclusive_unlock(&mutex);
-	return err;
+	return 0;
 }
 
 int skiplist_del(skiplist_t *list, skey_t key) {
 	if(unlikely(list == NULL)) {
 		return EINVAL;
 	}
-
-	int err = 0;
-	write_exclusive_lock(&mutex);
 
 	node_t *p = list->head;
 	node_t *q;
@@ -189,19 +179,15 @@ int skiplist_del(skiplist_t *list, skey_t key) {
 
 		list->lvl = m;
 	}
-	else err = ENOKEY;
+	else return ENOKEY;
 
-	write_exclusive_unlock(&mutex);
-	return err;
+	return 0;
 }
 
 int skiplist_get(const skiplist_t *list, skey_t key, val_t *val_ptr) {
 	if(unlikely(list == NULL || val_ptr == NULL)) {
 		return EINVAL;
 	}
-
-	int err = 0;
-	read_shared_lock(&mutex);
 
 	int k = list->lvl;
 	node_t *p = list->head;
@@ -213,25 +199,18 @@ int skiplist_get(const skiplist_t *list, skey_t key, val_t *val_ptr) {
 		}
 	} while (--k >= 0);
 
-	if (q->key != key) {
-		err = ENOKEY;
-		goto end;
-	}
+	if (q->key != key)
+		return ENOKEY;
 
 	*val_ptr = q->val;
 
-end:
-	read_shared_unlock(&mutex);
-	return err;
+	return 0;
 }
 
 int skiplist_lookup_le(const skiplist_t *list, skey_t key, val_t *val_ptr) {
 	if(unlikely(list == NULL || val_ptr == NULL)) {
 		return EINVAL;
 	}
-
-	int err = 0;
-	read_shared_lock(&mutex);
 
 	int k = list->lvl;
 	node_t *p = list->head;
@@ -245,8 +224,7 @@ int skiplist_lookup_le(const skiplist_t *list, skey_t key, val_t *val_ptr) {
 
 	if (q->key != key) {
 		if(p->key >= key || p->val == NULL) {
-			err = ENOKEY;
-			goto end;
+			return ENOKEY;
 		}
 		else q = p;
 	}
@@ -254,18 +232,13 @@ int skiplist_lookup_le(const skiplist_t *list, skey_t key, val_t *val_ptr) {
 	log_write(LOG_DEBUG, "skiplist_lookup_le: q->val = %p\n", q->val);
 	*val_ptr = q->val;
 
-end:
-	read_shared_unlock(&mutex);
-	return err;
+	return 0;
 }
 
 int skiplist_lookup_ge(const skiplist_t *list, skey_t key, val_t *val_ptr) {
 	if(unlikely(list == NULL || val_ptr == NULL)) {
 		return EINVAL;
 	}
-
-	int err = 0;
-	read_shared_lock(&mutex);
 
 	int k = list->lvl;
 	node_t *p = list->head;
@@ -278,14 +251,11 @@ int skiplist_lookup_ge(const skiplist_t *list, skey_t key, val_t *val_ptr) {
 	} while (--k >= 0);
 
 	if (q->key != key && q->val == NULL) {
-		err = ENOKEY;
-		goto end;
+		return ENOKEY;
 	}
 
 	log_write(LOG_DEBUG, "skiplist_lookup_le: q->val = %p\n", q->val);
 	*val_ptr = q->val;
 
-end:
-	read_shared_unlock(&mutex);
-	return err;
+	return 0;
 }

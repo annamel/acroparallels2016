@@ -10,7 +10,20 @@
 #include "chunk.h"
 #include "map.h"
 
+#define HASHTABLE_SIZE 1024
+
+static inline uint16_t hash(const hkey_t *key) {
+    return key->idx % HASHTABLE_SIZE;
+}
+
+typedef struct elem {
+    hkey_t key;
+    hval_t val;
+    bool valid;
+} elem_t;
+
 struct map {
+    elem_t cache[HASHTABLE_SIZE];
     skiplist_t *skiplist; 
 }; /* map_t */
 
@@ -20,7 +33,12 @@ int map_construct(map_t **map_ptr) {
         return err;
     }
 
-    return skiplist_construct(24, &(*map_ptr)->skiplist);
+    map_t *map = *map_ptr;
+    for(int i = 0; i < HASHTABLE_SIZE; i++ ) {
+        map->cache[i].valid = false;
+    }
+
+    return skiplist_construct(24, &map->skiplist);
 }
 
 int map_destruct(map_t *map) {
@@ -28,10 +46,12 @@ int map_destruct(map_t *map) {
     if(unlikely(map == NULL)) {
         return EINVAL;
     }
+    for(int i = 0; i < HASHTABLE_SIZE; i++ ) {
+        map->cache[i].valid = false;
+    }  
 #endif
 
     skiplist_destruct(map->skiplist);
-    mf_free(map);
     return 0;
 }
 
@@ -48,6 +68,10 @@ int map_add(map_t * map, hkey_t *key, hval_t val) {
     }
 #endif
 
+    unsigned idx = hash(key);
+    map->cache[idx].key.idx = key->idx;
+    map->cache[idx].key.len = key->len;
+
     hval_t oldval;
 
     int err = skiplist_lookup_le(map->skiplist, key->idx, (val_t *)&oldval);
@@ -56,6 +80,8 @@ int map_add(map_t * map, hkey_t *key, hval_t val) {
     }
 
     if(!err && right_cmp(oldval, val) > -1) {
+        map->cache[idx].val = oldval;
+        map->cache[idx].valid = true;
         val->is_indexed = false;
         return EKEYREJECTED;
     }
@@ -75,6 +101,7 @@ int map_add(map_t * map, hkey_t *key, hval_t val) {
                 return err;
             }
             oldval->is_indexed = false;
+            map->cache[hash(&oldval->key)].valid = false;
         }
         else {
             break;
@@ -82,6 +109,8 @@ int map_add(map_t * map, hkey_t *key, hval_t val) {
     }
 
     val->is_indexed = true;
+    map->cache[idx].val = val;
+    map->cache[idx].valid = true;
 
     return skiplist_add(map->skiplist, key->idx, val);
 }
@@ -92,6 +121,13 @@ int map_lookup_le(const map_t * map, hkey_t *key, hval_t *val_ptr) {
         return EINVAL;
 #endif
 
+    elem_t elem = map->cache[hash(key)];
+
+    if(elem.valid && elem.key.idx == key->idx && elem.key.len >= key->len) {
+        *val_ptr = elem.val;
+        return 0;
+    }
+
     return skiplist_lookup_le(map->skiplist, key->idx, (val_t *)val_ptr);
 }
 
@@ -100,6 +136,8 @@ int map_del(map_t *map, hkey_t *key, bool is_indexed) {
     if(unlikely(map == NULL || key == NULL))
         return EINVAL;
 #endif
+
+    map->cache[hash(key)].valid = false;
 
     return is_indexed ? skiplist_del(map->skiplist, key->idx) : 0;
 }
