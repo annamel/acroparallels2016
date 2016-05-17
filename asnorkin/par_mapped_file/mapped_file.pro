@@ -11,8 +11,7 @@ SOURCES += main.c \
     hash_table/hash_table.c \
     logger/logger.c \
     sorted_set/sorted_set.c \
-    mapped_file/mapped_file.c \
-    test/test_pyramid_vac.c
+    mapped_file/mapped_file.c
 
 HEADERS += \
     chunk_manager/chunk_manager.h \
@@ -22,6 +21,5 @@ HEADERS += \
     logger/logger.h \
     sorted_set/sorted_set.h \
     mapped_file/mapped_file.h \
-    test/vac.h \
     typedefs.h
 

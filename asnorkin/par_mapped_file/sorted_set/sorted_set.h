@@ -1,15 +1,6 @@
 #ifndef SORTED_SET_H
 #define SORTED_SET_H
-//  This structure contains chunks in the order of increasing by indexes
-//  and in the order of decreasing by lengths for every index
-//      Example:    index   len
-//                  1       5
-//                  1       3
-//                  6       0
-//                  124     7
-//                  124     4
-//                  124     3
-//                  ..      ..
+
 
 
 #include "../chunk_manager/chunk_manager.h"

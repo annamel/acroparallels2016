@@ -32,7 +32,7 @@ chunk_t *ch_init(off_t index, off_t len, chpool_t *chpool)
 {
     if(!chpool)
         return NULL;
-    //log_write(INFO, "ch_init: started");
+    log_write(INFO, "ch_init: started");
     int error = 0;
 
 
@@ -44,12 +44,12 @@ chunk_t *ch_init(off_t index, off_t len, chpool_t *chpool)
             error = dcl_del_by_value(chpool->zero_list, (lvalue_t)new_chunk);
 
         new_chunk->rc ++;
-        //log_write(INFO, "ch_init: finished");
+        log_write(INFO, "ch_init: finished");
         return new_chunk;
     }
     else if(error && error != ENOKEY)
     {
-        //log_write(ERROR, "ch_init: can't add a chunk to set, error=%d", error);
+        log_write(ERROR, "ch_init: can't add a chunk to set, error=%d", error);
         return NULL;
     }
 
@@ -57,7 +57,7 @@ chunk_t *ch_init(off_t index, off_t len, chpool_t *chpool)
     error = chp_get_free_chptr(chpool, &new_chunk);
     if(error)
     {
-        //log_write(ERROR, "ch_init: can't get free chunk, error=%d", error);
+        log_write(ERROR, "ch_init: can't get free chunk, error=%d", error);
         return NULL;
     }
 
@@ -65,12 +65,12 @@ chunk_t *ch_init(off_t index, off_t len, chpool_t *chpool)
     error = ch_fill(index, len, chpool, new_chunk);
     if(error)
     {
-        //log_write(ERROR, "ch_init: can't fill new chunk, error=%d", error);
+        log_write(ERROR, "ch_init: can't fill new chunk, error=%d", error);
         return NULL;
     }
 
 
-    //log_write(INFO, "ch_init: finished");
+    log_write(INFO, "ch_init: finished");
     return new_chunk;
 }
 
@@ -80,7 +80,7 @@ int ch_deinit(chunk_t *chunk)
 {
     if(!chunk)
         return EINVAL;
-    //log_write(INFO, "ch_deinit: started");
+    log_write(INFO, "ch_deinit: started");
     int error = 0;
 
 
@@ -90,7 +90,7 @@ int ch_deinit(chunk_t *chunk)
 
     if(munmap(chunk->data, get_chunk_size(chunk->len)) == -1)
     {
-        //log_write(WARNING, "ch_deinit: can't unmap memory");
+        log_write(WARNING, "ch_deinit: can't unmap memory");
         return errno;
     }
 
@@ -98,7 +98,7 @@ int ch_deinit(chunk_t *chunk)
     error = ss_del(chunk->chpool->sset, chunk->index, chunk->len);
     if(error)
     {
-        //log_write(WARNING, "ch_deinit: can't delete chunk from set");
+        log_write(WARNING, "ch_deinit: can't delete chunk from set");
         return error;
     }
 
@@ -108,7 +108,7 @@ int ch_deinit(chunk_t *chunk)
         error = dcl_del_by_value(chunk->chpool->zero_list, (lvalue_t)chunk);
         if(error)
         {
-            //log_write(WARNING, "ch_deinit: can't delete chunk from zero list");
+            log_write(WARNING, "ch_deinit: can't delete chunk from zero list");
             return error;
         }
     }
@@ -123,7 +123,7 @@ int ch_deinit(chunk_t *chunk)
     error = dcl_add_last(chunk->chpool->free_list, (lvalue_t)chunk);
     if(error)
     {
-        //log_write(WARNING, "ch_deinit: can't add chunk to free list");
+        log_write(WARNING, "ch_deinit: can't add chunk to free list");
         return error;
     }
 
@@ -151,12 +151,12 @@ int ch_release(chunk_t *chunk)
     error = dcl_add_last(chunk->chpool->zero_list, (lvalue_t)chunk);
     if(error)
     {
-        //log_write(ERROR, "ch_release: can't add chunk to the zero list");
+        log_write(ERROR, "ch_release: can't add chunk to the zero list");
         return error;
     }
 
 
-    //log_write(INFO, "ch_release: finished");
+    log_write(INFO, "ch_release: finished");
     return 0;
 }
 
@@ -201,7 +201,7 @@ static int ch_fill(off_t index, off_t len, chpool_t *chpool, chunk_t *chunk)
         }
         else
         {
-            //log_write(WARNING, "ch_init: no free memory, all chunks are used");
+            log_write(WARNING, "ch_init: no free memory, all chunks are used");
             return ENOMEM;
         }
 
@@ -210,7 +210,7 @@ static int ch_fill(off_t index, off_t len, chpool_t *chpool, chunk_t *chunk)
     }
     if(chunk->data == MAP_FAILED)
     {
-        //log_write(ERROR, "ch_init: mmap failed, errno=%d", errno);
+        log_write(ERROR, "ch_init: mmap failed, errno=%d", errno);
         return errno;
     }
 
@@ -223,7 +223,7 @@ chpool_t *chp_init(int fd, int prot)
 {
     if(fd < 0 || (!(prot & PROT_READ) && !(prot & PROT_WRITE)) )
     {
-        //log_write(ERROR, "chp_init: invaid input");
+        log_write(ERROR, "chp_init: invaid input");
         return NULL;
     }
     log_write(DEBUG, "chp_init: started");
@@ -232,7 +232,7 @@ chpool_t *chp_init(int fd, int prot)
     chpool_t *chpool = (chpool_t *)calloc(1, sizeof(chpool_t));
     if(!chpool)
     {
-        //log_write(ERROR, "chp_init: chpool calloc failed");
+        log_write(ERROR, "chp_init: chpool calloc failed");
         return NULL;
     }
 
@@ -240,12 +240,12 @@ chpool_t *chp_init(int fd, int prot)
     int error = chp_fill(fd, prot, chpool);
     if(error)
     {
-        //log_write(ERROR, "chp_init: can't fill chpool");
+        log_write(ERROR, "chp_init: can't fill chpool");
         return NULL;
     }
 
 
-    //log_write(DEBUG, "chp_init: finished");
+    log_write(DEBUG, "chp_init: finished");
     return chpool;
 }
 
@@ -255,13 +255,13 @@ int chp_deinit(chpool_t *chpool)
 {
     if(!chpool)
         return EINVAL;
-    //log_write(INFO, "chp_deinit: started");
+    log_write(INFO, "chp_deinit: started");
 
 
     int error = loafs_deinit(chpool);
     if(error)
     {
-        //log_write(ERROR, "chp_deinit: can't deinit loafs");
+        log_write(ERROR, "chp_deinit: can't deinit loafs");
         return error;
     }
 
@@ -269,7 +269,7 @@ int chp_deinit(chpool_t *chpool)
     error = dcl_deinit(chpool->zero_list);
     if(error)
     {
-        //log_write(ERROR, "chp_deinit: can't deinit the zero list");
+        log_write(ERROR, "chp_deinit: can't deinit the zero list");
         return error;
     }
 
@@ -277,7 +277,7 @@ int chp_deinit(chpool_t *chpool)
     error = dcl_deinit(chpool->free_list);
     if(error)
     {
-        //log_write(ERROR, "chp_deinit: can't deinit the free list");
+        log_write(ERROR, "chp_deinit: can't deinit the free list");
         return error;
     }
 
@@ -285,12 +285,12 @@ int chp_deinit(chpool_t *chpool)
     error = ss_deinit(chpool->sset);
     if(error)
     {
-        //log_write(ERROR, "chp_deinit: can't deinit the set");
+        log_write(ERROR, "chp_deinit: can't deinit the set");
         return error;
     }
 
 
-    //log_write(INFO, "chp_deinit: finished");
+    log_write(INFO, "chp_deinit: finished");
     return 0;
 }
 
@@ -317,7 +317,7 @@ static int chp_fill(int fd, int prot, chpool_t *chpool)
     if(!chpool->free_list || !chpool->zero_list || !chpool->sset
                           || !chpool->pool || !(*(chpool->pool)))
     {
-        //log_write(ERROR, "chp_init: chunk containing structs init has failed");
+        log_write(ERROR, "chp_init: chunk containing structs init has failed");
         return NULL;
     }
 
@@ -327,6 +327,7 @@ static int chp_fill(int fd, int prot, chpool_t *chpool)
     chpool->prot = prot;
     chpool->file_size = chp_file_size(fd);
     chpool->page_size = sysconf(_SC_PAGESIZE);
+    pthread_mutex_init(&chpool->mutex, NULL);
 
 
     for(int i = 0; i < DEFAULT_ARRAY_SIZE; i++)
@@ -334,7 +335,7 @@ static int chp_fill(int fd, int prot, chpool_t *chpool)
         chunk_t *curr_chunk = &((*chpool->pool)[i]);
         if(dcl_add_last(chpool->free_list, (lvalue_t)curr_chunk))
         {
-            //log_write(ERROR, "chp_init: can't add free chunk to list");
+            log_write(ERROR, "chp_init: can't add free chunk to list");
             return NULL;
         }
     }
@@ -362,7 +363,7 @@ static int chp_get_free_chptr(chpool_t *chpool, chunk_t **chunk)
     int error = chp_add_loaf(chpool);
     if(error)
     {
-        //log_write(ERROR, "chp_get_free_chptr: can't add new loaf");
+        log_write(ERROR, "chp_get_free_chptr: can't add new loaf");
         return error;
     }
 
@@ -378,7 +379,7 @@ static int chp_add_loaf(chpool_t *chpool)
                    (chpool->arrays_cnt + 1) * sizeof(chunk_t *));
     if(!chpool->pool)
     {
-        //log_write(ERROR, "chp_add_loaf: can't reallocate cell for new loaf");
+        log_write(ERROR, "chp_add_loaf: can't reallocate cell for new loaf");
         return ENOMEM;
     }
 
@@ -387,7 +388,7 @@ static int chp_add_loaf(chpool_t *chpool)
                                                                sizeof(chunk_t));
     if(!chpool->pool[chpool->arrays_cnt - 1])
     {
-        //log_write(ERROR, "chp_add_loaf: can't allocate new loaf");
+        log_write(ERROR, "chp_add_loaf: can't allocate new loaf");
         return ENOMEM;
     }
 
@@ -397,7 +398,7 @@ static int chp_add_loaf(chpool_t *chpool)
         chunk_t *curr_chunk = &((*chpool->pool)[i]);
         if(dcl_add_last(chpool->free_list, (lvalue_t)curr_chunk))
         {
-            //log_write(ERROR, "chp_add_loaf: can't add free chunk to the list");
+            log_write(ERROR, "chp_add_loaf: can't add free chunk to the list");
             return -1;
         }
     }
@@ -434,7 +435,7 @@ off_t chp_file_size(int fd)
 {
     if(fd < 0)
     {
-        //log_write(ERROR, "ch_file_size: bad file descriptor");
+        log_write(ERROR, "ch_file_size: bad file descriptor");
         return -1;
     }
 
@@ -443,12 +444,12 @@ off_t chp_file_size(int fd)
     int error = fstat(fd, &sb);
     if(error)
     {
-        //log_write(ERROR, "ch_file_size: fd returns error=%d", error);
+        log_write(ERROR, "ch_file_size: fd returns error=%d", error);
         errno = error;
         return -1;
     }
 
 
-    //log_write(INFO,"ch_file_size: finished");
+    log_write(INFO,"ch_file_size: finished");
     return sb.st_size;
 }

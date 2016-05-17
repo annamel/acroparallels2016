@@ -25,19 +25,19 @@ struct sset_item
 
 sset_t *ss_init()
 {
-    //log_write(INFO, "ss_init: started");
+    log_write(INFO, "ss_init: started");
 
     sset_t *sset = (sset_t *)calloc(1, sizeof(sset_t));
     if(!sset)
     {
-        //log_write(ERROR, "ss_init: can't allocate memory for new sset");
+        log_write(ERROR, "ss_init: can't allocate memory for new sset");
         return NULL;
     }
 
     sset->head = NULL;
     sset->size = 0;
 
-    //log_write(INFO, "ss_init: finished");
+    log_write(INFO, "ss_init: finished");
     return sset;
 }
 
@@ -47,7 +47,7 @@ int ss_deinit(sset_t *sset)
 {
     if(!sset)
         return EINVAL;
-    //log_write(INFO, "ss_deinit: started");
+    log_write(INFO, "ss_deinit: started");
 
     int error = 0;
     while(!error && sset->size)
@@ -56,7 +56,7 @@ int ss_deinit(sset_t *sset)
 
     free(sset);
 
-    //log_write(INFO, "ss_deinit: finished");
+    log_write(INFO, "ss_deinit: finished");
     return 0;
 }
 
@@ -66,13 +66,13 @@ int ss_add(sset_t *sset, chunk_t *chunk)
 {
     if(!sset || !chunk)
         return EINVAL;
-    //log_write(INFO, "ss_add: started");
+    log_write(INFO, "ss_add: started");
 
 
     ss_item_t *item = (ss_item_t *)calloc(1, sizeof(ss_item_t));
     if(!item)
     {
-        //log_write(ERROR, "ss_add: can't allocate memory for new item");
+        log_write(ERROR, "ss_add: can't allocate memory for new item");
         return -1;
     }
     item->chunk = chunk;
@@ -108,8 +108,8 @@ int ss_add(sset_t *sset, chunk_t *chunk)
                 (sitem->next && sitem->next->chunk->len == chunk->len &&
                  sitem->next->chunk->index == chunk->index) )
             {
-                //log_write(WARNING, "ss_add: trying to add existing chunk");
-                //log_write(INFO,"ss_add: finished");
+                log_write(WARNING, "ss_add: trying to add existing chunk");
+                log_write(INFO,"ss_add: finished");
                 return EKEYREJECTED;
             }            
         } //Case 2.2: adding not into the head index group(chunk index
@@ -136,8 +136,8 @@ int ss_add(sset_t *sset, chunk_t *chunk)
                     }
                 else if(sitem->next_index->chunk->len == chunk->len)
                 {
-                    //log_write(WARNING, "ss_add: trying to add existing chunk");
-                    //log_write(INFO,"ss_add: finished");
+                    log_write(WARNING, "ss_add: trying to add existing chunk");
+                    log_write(INFO,"ss_add: finished");
                     return EKEYREJECTED;
                 }
                 else
@@ -150,8 +150,8 @@ int ss_add(sset_t *sset, chunk_t *chunk)
                     if(sitem->next->chunk->len == chunk->len &&
                        sitem->next->chunk->index == chunk->index)
                     {
-                        //log_write(WARNING, "ss_add: trying to add existing chunk");
-                        //log_write(INFO,"ss_add: finished");
+                        log_write(WARNING, "ss_add: trying to add existing chunk");
+                        log_write(INFO,"ss_add: finished");
                         return EKEYREJECTED;
                     }
                 }
@@ -181,7 +181,7 @@ int ss_add(sset_t *sset, chunk_t *chunk)
 
 
     sset->size++;
-    //log_write(INFO, "ss_add: finished");
+    log_write(INFO, "ss_add: finished");
     return 0;
 }
 
@@ -191,7 +191,7 @@ int ss_del(sset_t *sset, off_t index, off_t len)
 {
     if(!sset)
         return EINVAL;
-    //log_write(INFO, "ss_del: started");
+    log_write(INFO, "ss_del: started");
     int error = 0;
 
 
@@ -300,14 +300,38 @@ int ss_del(sset_t *sset, off_t index, off_t len)
 
 end:
     if(error)
-	;
-        //log_write(INFO, "ss_del: trying to delete nonexistent item");
+        log_write(INFO, "ss_del: trying to delete nonexistent item");
     else
         sset->size --;
 
-    //log_write(INFO, "ss_del: finished");
+    log_write(INFO, "ss_del: finished");
     return error;
 }
+
+
+
+/*int ss_find(sset_t *sset, off_t index, off_t len, chunk_t **chunk)
+{
+    if(!sset)
+        return EINVAL;
+    log_write(INFO, "ss_find: started");
+
+    ss_item_t *curr_item = sset->head;
+    while(curr_item && curr_item->chunk->index <= index &&
+          (index - curr_item->chunk->index + len) > curr_item->chunk->len)
+        curr_item = curr_item->next;        
+
+    if(!curr_item || curr_item->chunk->index > index)
+    {
+        log_write(INFO, "ss_del: don't' find needed item");
+        log_write(INFO, "ss_del: finished");
+        return ENOKEY;
+    }
+
+    *chunk = curr_item->chunk;
+    log_write(INFO, "ss_find: finished");
+    return 0;
+}*/
 
 
 
@@ -315,7 +339,7 @@ int ss_find(sset_t *sset, off_t index, off_t len, chunk_t **chunk)
 {
     if(!sset)
         return EINVAL;
-    //log_write(INFO, "ss_find: started");
+    log_write(INFO, "ss_find: started");
     int error = 0;
 
 
@@ -331,12 +355,11 @@ int ss_find(sset_t *sset, off_t index, off_t len, chunk_t **chunk)
 
 
     if(error)
-	;
-        //log_write(INFO, "ss_del: trying to delete nonexistent item");
+        log_write(INFO, "ss_del: trying to delete nonexistent item");
     else
         *chunk = sitem->chunk;
 
-    //log_write(INFO, "ss_del: finished");
+    log_write(INFO, "ss_del: finished");
     return error;
 }
 
@@ -346,7 +369,7 @@ int ss_print(sset_t *sset, unsigned int from, unsigned int to)
 {
     if(!sset)
         return EINVAL;
-    //log_write(INFO, "ss_print: started");
+    log_write(INFO, "ss_print: started");
 
     printf("\n**********************************************");
     printf("\n***************   SORTED SET   ***************");
@@ -367,6 +390,6 @@ int ss_print(sset_t *sset, unsigned int from, unsigned int to)
     }
 
     printf("**********************************************\n");
-    //log_write(INFO, "ss_print: finished");
+    log_write(INFO, "ss_print: finished");
     return 0;
 }

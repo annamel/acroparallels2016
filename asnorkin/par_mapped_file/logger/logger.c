@@ -22,7 +22,7 @@ const char *LOG_LEVELS[COUNT_OF_LOGLEVELS] = {"DEBUG::",
 //************************************************
 //**  GLOBAL CONSTANT !!! SINGLETON !!! LOGGER ***
 //**                                           ***
-         logger_t *LOGGER_SING = NULL;         //*
+         logger_t *LOGGER_SING = NULL;    //*
 //************************************************
 
 

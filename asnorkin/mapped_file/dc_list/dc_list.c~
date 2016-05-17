@@ -41,7 +41,8 @@ int dcl_add_last(dclist_t *list, lvalue_t value)
     dcl_item_t *item = (dcl_item_t *)calloc(1, sizeof(dcl_item_t));
     if(!item)
     {
-        //log_write(ERROR, "dcl_add_last(value=%d): can't allocate memory for item", value);
+        //log_write(ERROR, "dcl_add_last(value=%d): can't allocate memory for item",
+                  value);
         return ENOMEM;
     }
 

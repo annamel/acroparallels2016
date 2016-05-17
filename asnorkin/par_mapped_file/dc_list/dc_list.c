@@ -11,12 +11,12 @@
 
 dclist_t *dcl_init()
 {
-    //log_write(DEBUG, "dcl_init: started");
+    log_write(DEBUG, "dcl_init: started");
 
     dclist_t *list = (dclist_t *)calloc(1, sizeof(dclist_t));
     if(!list)
     {
-        //log_write(ERROR, "dcl_init: can't allocate memory");
+        log_write(ERROR, "dcl_init: can't allocate memory");
         return NULL;
     }
 
@@ -24,7 +24,7 @@ dclist_t *dcl_init()
     list->tail = NULL;
     list->size = 0;
 
-    //log_write(DEBUG, "dcl_init: finished");
+    log_write(DEBUG, "dcl_init: finished");
 
     return list;
 }
@@ -35,13 +35,14 @@ int dcl_add_last(dclist_t *list, lvalue_t value)
 {
     if(!list)
         return EINVAL;
-    //log_write(DEBUG, "dcl_add_last(value=%d): started", value);
+    log_write(DEBUG, "dcl_add_last(value=%d): started", value);
 
 
     dcl_item_t *item = (dcl_item_t *)calloc(1, sizeof(dcl_item_t));
     if(!item)
     {
-        //log_write(ERROR, "dcl_add_last(value=%d): can't allocate memory for item", value);
+        log_write(ERROR, "dcl_add_last(value=%d): can't allocate memory for item",
+                  value);
         return ENOMEM;
     }
 
@@ -64,7 +65,7 @@ int dcl_add_last(dclist_t *list, lvalue_t value)
     }
     list->size ++;
 
-    //log_write(DEBUG, "dcl_add_last(value=%d): finished", value);
+    log_write(DEBUG, "dcl_add_last(value=%d): finished", value);
     return 0;
 }
 
@@ -75,11 +76,11 @@ int dcl_del_first(dclist_t *list)
     if(!list)
         return EINVAL;
 
-    //log_write(DEBUG, "dcl_del_first: started");
+    log_write(DEBUG, "dcl_del_first: started");
 
     if(!list->size)
     {
-        //log_write(INFO, "dcl_del_first: trying del from empty list");
+        log_write(INFO, "dcl_del_first: trying del from empty list");
         return ENODATA;
     }
 
@@ -99,7 +100,7 @@ int dcl_del_first(dclist_t *list)
     }
     list->size --;
 
-    //log_write(DEBUG, "dcl_del_first: finished");
+    log_write(DEBUG, "dcl_del_first: finished");
     return 0;
 }
 
@@ -109,7 +110,7 @@ int dcl_del_by_value(dclist_t *list, lvalue_t value)
 {
     if(!list)
         return EINVAL;
-    //log_write(INFO, "dcl_del_by_value: started");    
+    log_write(INFO, "dcl_del_by_value: started");    
 
 
     dcl_item_t *curr_item = list->head;
@@ -143,12 +144,12 @@ int dcl_del_by_value(dclist_t *list, lvalue_t value)
         curr_item = NULL;
 
         list->size--;
-        //log_write(INFO, "dcl_del_by_value: finished");
+        log_write(INFO, "dcl_del_by_value: finished");
         return 0;
     }
 
 
-    //log_write(INFO, "dcl_del_by_value: finished");
+    log_write(INFO, "dcl_del_by_value: finished");
     return ENOKEY;
 }
 
@@ -159,13 +160,13 @@ int dcl_deinit(dclist_t *list)
     if(!list)
         return EINVAL;
 
-    //log_write(DEBUG, "dcl_deinit: started");
+    log_write(DEBUG, "dcl_deinit: started");
 
     while(dcl_del_first(list) != ENODATA);
 
     free(list);
 
-    //log_write(DEBUG, "dcl_deinit: finished");
+    log_write(DEBUG, "dcl_deinit: finished");
     return 0;
 }
 

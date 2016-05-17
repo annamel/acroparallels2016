@@ -5,6 +5,7 @@
 
 #include "sys/mman.h"
 #include "unistd.h"
+#include <pthread.h>
 
 
 
@@ -50,19 +51,23 @@ struct chunk
 //      free_list - list of free chunks
 //      pool - array of chunk arrays
 //             each of arrays has
-//      file_size - save filesize for perfomance
-//      page_size - save pagesize for perfomance
+//      file_size - storing the filesize for optimization
+//      page_size - storing the pagesize for optimization
 struct chpool
 {
     int fd;
     int prot;
+
     off_t file_size;
     off_t page_size;
+
     size_t arrays_cnt;
     chunk_t **pool;
     sset_t *sset;
     dclist_t *zero_list;
     dclist_t *free_list;
+
+    pthread_mutex_t mutex;
 };
 
 
@@ -72,10 +77,8 @@ struct chpool
 //      index - offset in pagesizes
 //      len - size in pagesizes
 //      chpool - pool of chunks which contains this chunk
-//
 //  - RETURNED VALUE
-//      all is good => new chunk pointer
-//      something goes wrong => NULL(see logfile and errno)
+//
 chunk_t *ch_init(off_t index, off_t len, chpool_t *chpool);
 
 
