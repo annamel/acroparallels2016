@@ -61,7 +61,6 @@ ret_code_t hash_table_construct(hash_table_t ** hash_table_ptr, size_t size)
                 }
 
         new_hash_table->size = size;
-        DEL(size);
 
         new_hash_table->entry = (hash_table_elem_t **) calloc(new_hash_table->size, sizeof(hash_table_elem_t *));
         if (!new_hash_table->entry)
