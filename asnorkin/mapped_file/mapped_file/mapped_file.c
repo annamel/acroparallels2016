@@ -109,6 +109,9 @@ ssize_t mf_read(mf_handle_t mf, void *buf, size_t count, off_t offset)
         return -1;
     }
     //log_write(INFO, "mf_read: started");
+    if(((chpool_t *)mf)->arrays_cnt == 1 &&
+       ((chpool_t *)mf)->free_list->size == DEFAULT_ARRAY_SIZE)
+        mf_map_all((chpool_t*)mf);
 
 
     off_t pgsz = ((chpool_t *)mf)->page_size;
@@ -148,6 +151,9 @@ ssize_t mf_write(mf_handle_t mf, const void *buf, size_t count, off_t offset)
         return -1;
     }
     //log_write(DEBUG, "mf_write: started");
+    if(((chpool_t *)mf)->arrays_cnt == 1 &&
+       ((chpool_t *)mf)->free_list->size == DEFAULT_ARRAY_SIZE)
+        mf_map_all((chpool_t*)mf);
 
 
     off_t pgsz = ((chpool_t *)mf)->page_size;
@@ -188,6 +194,9 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size,
         return NULL;
     }
     //log_write(INFO, "mf_map: started");
+    if(((chpool_t *)mf)->arrays_cnt == 1 &&
+       ((chpool_t *)mf)->free_list->size == DEFAULT_ARRAY_SIZE)
+        mf_map_all((chpool_t*)mf);
 
 
     if(!size)

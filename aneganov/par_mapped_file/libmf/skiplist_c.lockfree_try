@@ -1,0 +1,309 @@
+/* 
+Skip Lists are a probabilistic alternative to balanced trees, as
+described in the June 1990 issue of CACM and were invented by 
+William Pugh in 1987. 
+
+This implementation is based on the code of Gray Watson implementation (http://256.com/sources/skip/docs/),
+but there is a number of significant differences.
+
+The insertion routine has been implemented so as to use the
+dirty hack described in the CACM paper: if a random level is
+generated that is more than the current maximum level, the
+current maximum level plus one is used instead.
+*/
+
+#include <stdlib.h>
+#include <limits.h>
+#include <errno.h>
+#include <stdint.h>
+#include <pthread.h>
+#include <string.h>
+
+#include "mf_malloc.h"
+#include "log.h"
+#include "bug.h"
+#include "mfdef.h"
+#include "skiplist.h"
+
+static pthread_mutex_t r = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t w = PTHREAD_MUTEX_INITIALIZER;
+static int r_count = 0;
+
+static void r_shared_lock() {
+	pthread_mutex_lock(&r);
+	r_count++;
+	if(r_count == 1) {
+		pthread_mutex_lock(&w);
+	}
+	pthread_mutex_unlock(&r);
+}
+
+static void r_shared_unlock() {
+	pthread_mutex_lock(&r);
+	r_count--;
+	if(r_count == 0) {
+		pthread_mutex_unlock(&w);
+	}
+	pthread_mutex_unlock(&r);
+}
+
+typedef struct skiplist_node {
+	skey_t key;
+	val_t val;
+	struct skiplist_node * forward[0];
+} node_t;
+
+typedef struct skiplist { 
+	node_t * head;
+	node_t nil;
+	int lvl;
+	int max_lvl;
+	node_t freelist;
+} skiplist_t;
+
+static inline uint64_t sk_random() {
+	return rand();
+}
+
+int skiplist_construct(int max_lvl, skiplist_t **newlist_ptr) {
+	if(unlikely(newlist_ptr == NULL || max_lvl < 0)) {
+		return EINVAL;
+	}
+
+	int err = 0;
+	if(unlikely((err = mf_malloc(sizeof(skiplist_t) + sizeof(node_t *), (void **)newlist_ptr)))) {
+		return err;
+	}
+
+	skiplist_t *newlist = *newlist_ptr;
+	newlist->lvl = 0;
+	newlist->max_lvl = max_lvl;
+	newlist->nil.key = (skey_t)((uint64_t)(-1) >> 1);
+	newlist->nil.val = NULL;
+	log_write(LOG_DEBUG, "nil.key = %jx\n", newlist->nil.key);
+
+	if(unlikely((err = mf_malloc(sizeof(node_t) + (max_lvl+1) * sizeof(node_t *), (void **)&newlist->head)))) {
+		goto done;
+	}
+
+	memset(newlist->head, 0, sizeof(node_t) + (max_lvl+1) * sizeof(node_t *));
+
+	for(int i = 0; i < max_lvl + 1; i++)
+		newlist->head->forward[i] = &newlist->nil;
+
+	newlist->freelist.forward[0] = &newlist->nil;
+
+done:
+	//mf_free(newlist_ptr);
+	return err;
+}
+
+void skiplist_destruct(skiplist_t *list) {
+	if(list == NULL) {
+		return;
+	}
+
+	node_t * p = list->head;
+	node_t *q;
+	do {
+		q = p->forward[0];
+		mf_free(p);
+		p = q;
+	} while (p != &list->nil);
+
+	p = list->freelist.forward[0];
+	while(p != &list->nil) {
+		q = p->forward[0];
+		mf_free(p);
+		p = q;
+	}
+
+	mf_free(list);
+}
+
+static int random_level(skiplist_t *list) {
+    int level = 0;
+    while (sk_random() < RAND_MAX/2 && level < list->max_lvl)
+        level++;
+    return level > list->max_lvl ? list->max_lvl : level;
+}
+
+static node_t *find(const skiplist_t *list, skey_t key, node_t **prevs, node_t **prev) {
+	int k;
+	node_t *p;
+	node_t *q;
+
+	k = list->lvl;
+	p = list->head;
+	do {
+		while (q = p->forward[k], q->key < key) {
+			p = q;
+		}
+		if(prevs) {
+			prevs[k] = p;
+		}
+	} while(--k >= 0);
+
+	if(prev) *prev = p;
+	return q;	
+}
+
+int skiplist_add(skiplist_t *list, skey_t key, val_t val) {
+	if(unlikely(list == NULL)) {
+		return EINVAL;
+	}
+
+	log_write(LOG_DEBUG, "skiplist_add: val = %p\n", val);
+
+	int err = 0;
+
+	node_t **prevs;
+	if (unlikely((err = mf_malloc((list->max_lvl + 1)*sizeof(node_t *), (void **)&prevs)))) {
+		return err;
+	}
+
+	r_shared_lock();
+
+	node_t *nearest = find(list, key, prevs, NULL);
+
+	if (nearest->key == key) {
+		__sync_bool_compare_and_swap(&nearest->val, nearest->val, val);
+		return 0;
+	};
+
+	int rlvl = random_level(list);
+	if (rlvl > list->lvl) {	
+		rlvl = ++list->lvl;
+		prevs[rlvl] = list->head;
+	};
+
+	node_t *newnode;
+
+	if (unlikely((err = mf_malloc(sizeof(node_t) + (rlvl+1) * sizeof(node_t *), (void **)&newnode)))) {
+		goto done;
+	}
+
+	newnode->key = key;
+	newnode->val = val;
+
+	for(int i = 0; i <= rlvl; i++) {
+		node_t *next;
+		do {
+			do {
+				next = prevs[i]->forward[i];
+				if(next->key < key) {
+					find(list, key, prevs, NULL);
+				}
+			} while( !__sync_bool_compare_and_swap(&next, prevs[i]->forward[i], prevs[i]->forward[i]) );
+			newnode->forward[i] = next;
+		} while( !__sync_bool_compare_and_swap(&prevs[i]->forward[i], next, newnode) );
+	}
+
+done:
+	r_shared_unlock();
+
+	mf_free(prevs);
+	return err;
+}
+
+int skiplist_del(skiplist_t *list, skey_t key) {
+	if(unlikely(list == NULL)) {
+		return EINVAL;
+	}
+
+	int err = 0;
+
+	node_t **prevs;
+	if (unlikely((err = mf_malloc((list->max_lvl + 1)*sizeof(node_t *), (void **)&prevs)))) {
+		return err;
+	}
+
+	pthread_mutex_lock(&w);
+	node_t *nearest = find(list, key, prevs, NULL);
+
+	if (nearest->key == key) {
+		for(int k = 0; k <= list->lvl && prevs[k]->forward[k] == nearest; k++) {
+			prevs[k]->forward[k] = nearest->forward[k];
+		}
+		
+		nearest->forward[0] = list->freelist.forward[0];
+		list->freelist.forward[0] = nearest;
+
+		int m = list->lvl;
+		while( list->head->forward[m] == &list->nil && m > 0 ) {
+			m--;
+		}
+
+		list->lvl = m;
+	}
+	else {
+		log_write(LOG_WARN, "marked = %d, deleted = %d\n", marked, deleted);
+		err = ENOKEY;
+	}
+	pthread_mutex_unlock(&w);
+
+	mf_free(prevs);
+	return err;
+} 
+
+int skiplist_get(const skiplist_t *list, skey_t key, val_t *val_ptr) {
+	if(unlikely(list == NULL || val_ptr == NULL)) {
+		return EINVAL;
+	}
+
+	r_shared_lock();
+
+	node_t *nearest = find(list, key, NULL, NULL);
+
+	if (nearest->key != key) {
+		log_write(LOG_WARN, "marked = %d, deleted = %d\n", marked, deleted);
+		return ENOKEY;
+	}
+
+	*val_ptr = nearest->val;
+
+	r_shared_unlock();
+
+	return 0;
+}
+
+int skiplist_lookup_le(const skiplist_t *list, skey_t key, val_t *val_ptr) {
+	if(unlikely(list == NULL || val_ptr == NULL)) {
+		return EINVAL;
+	}
+
+	r_shared_lock();
+	node_t *prev;
+	node_t *nearest = find(list, key, NULL, &prev);
+
+	if (nearest->key != key) {
+		if(prev->key >= key || prev->val == NULL) {
+			return ENOKEY;
+		}
+		else nearest = prev;
+	}
+
+	log_write(LOG_DEBUG, "skiplist_lookup_le: nearest->val = %p\n", nearest->val);
+	*val_ptr = nearest->val;
+	r_shared_unlock();
+
+	return 0;
+}
+
+int skiplist_lookup_ge(const skiplist_t *list, skey_t key, val_t *val_ptr) {
+	if(unlikely(list == NULL || val_ptr == NULL)) {
+		return EINVAL;
+	}
+	r_shared_lock();
+	node_t *nearest = find(list, key, NULL, NULL);
+
+	if (nearest->key != key && nearest->val == NULL) {
+		return ENOKEY;
+	}
+
+	log_write(LOG_DEBUG, "skiplist_lookup_le: nearest->val = %p\n", nearest->val);
+	*val_ptr = nearest->val;
+	r_shared_unlock();
+
+	return 0;
+}
