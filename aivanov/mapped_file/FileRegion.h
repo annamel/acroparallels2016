@@ -8,6 +8,14 @@
 #include <stdint.h>
 #include <list>
 
+#define CHECK(x) 	\
+do					\
+{					\
+	auto ret = x;	\
+	(void) ret;		\
+	assert(ret);	\
+} while (true)
+
 class CFileRegion
 {
 private:

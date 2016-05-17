@@ -16,6 +16,7 @@ private:
 	off_t								size_;
 	std::list<CFileRegion*>				regionPool_;
 	CFileRegion*						cache_;
+	pthread_rwlock_t					rwLock_;
 	
 	bool shrinkCache_();
 	ssize_t fileCopy_(off_t offset, size_t size, uint8_t* to, const uint8_t* from);

@@ -16,9 +16,9 @@ CFileRegion::CFileRegion(off_t offset, size_t size) :
 CFileRegion* CFileRegion::takeChild(CFileRegion* region)
 {
 	assert(doesInclude(region));
-	
-	if (isMapped())
-		return this;
+	assert(!isReferenced() || isMapped());
+	//if (isMapped())
+	//	return this;
 	
 	auto next = children_.upper_bound(region);
 		
@@ -29,13 +29,13 @@ CFileRegion* CFileRegion::takeChild(CFileRegion* region)
 		if ((*prev)->doesInclude(region))
 			return (*prev)->takeChild(region);
 			
-		if (parent_ && !region->isReferenced())
+		if (isMapped() && !region->isReferenced())
 			return this;
 		
 		if (region->doesInclude(*prev))
 			region->readopt_(*prev);
 	}
-	else if (parent_ && !region->isReferenced())
+	else if (isMapped() && !region->isReferenced())
 		return this;
 	
 	while (next != children_.end() && region->doesInclude(*next))
@@ -61,7 +61,6 @@ CFileRegion* CFileRegion::maxAt(off_t offset)
 	return (*prev)->doesInclude(&temp) ? *prev : NULL;
 }
 
-//#define REGION_PROTECTION
 void CFileRegion::map(int fd)
 {	
 	#ifdef REGION_PROTECTION
@@ -119,14 +118,14 @@ void CFileRegion::readopt_(CFileRegion* child)
 
 CFileRegion::~CFileRegion()
 {	
-	assert(!isReferenced());
+	//assert(!isReferenced());
 	
 	for (auto it = children_.begin(); it != children_.end(); it = children_.begin())
 	{
 		CFileRegion* child = *it;
 		
 		if (parent_)
-			parent_->readopt_(child);
+			parent_->takeChild(child);
 		else
 		{
 			child->orphan_();

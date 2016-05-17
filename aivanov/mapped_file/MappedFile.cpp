@@ -9,6 +9,17 @@
 
 size_t CMappedFile::pageSize = 0;
 
+#ifdef MAPPED_FILE_MT
+	#define MF_LOCK_READ() CHECK(!pthread_rwlock_rdlock(&rwLock_))
+	#define MF_LOCK_WRITE() CHECK(!pthread_rwlock_wrlock(&rwLock_))
+	#define MF_UNLOCK() CHECK(!pthread_rwlock_unlock(&rwLock_))
+#else
+	#define MF_LOCK_READ()
+	#define MF_LOCK_WRITE()
+	#define MF_UNLOCK()
+#endif
+
+#define REGION_RECT_UNIT (pageSize * 0x10000)
 
 CMappedFile::CMappedFile(const char* fileName) :
 	desc_(-1),
@@ -22,6 +33,10 @@ CMappedFile::CMappedFile(const char* fileName) :
 
 	desc_ = open(fileName, O_RDWR | O_CREAT, 0755);
 	
+	#ifdef MAPPED_FILE_MT
+		CHECK(!pthread_rwlock_init(&rwLock_, NULL));
+	#endif
+
 	if (isValid())
 	{
 		struct stat buf = {};
@@ -36,19 +51,34 @@ CMappedFile::CMappedFile(const char* fileName) :
 
 CMappedFile::~CMappedFile()
 {
+	MF_LOCK_WRITE();
+	MF_LOCK_READ();
+	
 	if (entireFile_)
 		unmap(entireFile_);
 	
 	if (cache_)
 		unmap(cache_);
+	
+	#ifdef MAPPED_FILE_MT
+		CHECK(!pthread_rwlock_destroy(&rwLock_));
+	#endif
 		
 	close(desc_);
 }
 
-#define REGION_RECT_UNIT (pageSize * 0x10000)
-
 CFileRegion* CMappedFile::map(off_t offset, off_t size, void** address)
 {
+	MF_LOCK_WRITE();
+	
+	if (offset + size < size_)
+	{
+		CFileRegion* biggerRegion = map(offset, size_ - offset, address);
+		
+		if (biggerRegion)
+			return biggerRegion;
+	}
+	
 	off_t mapOffset = (offset / REGION_RECT_UNIT) * REGION_RECT_UNIT;
 	size_t memoryRegionSize = ((size + (offset - mapOffset) + REGION_RECT_UNIT - 1) / REGION_RECT_UNIT) * REGION_RECT_UNIT;
 	size_t mapSize = std::min(memoryRegionSize, size_t(size_ - mapOffset));
@@ -60,26 +90,36 @@ CFileRegion* CMappedFile::map(off_t offset, off_t size, void** address)
 	}
 	
 	CFileRegion* newRegion = new CFileRegion(mapOffset, mapSize);
+	
+	//MF_LOCK_WRITE()
 	CFileRegion* region = root_.takeChild(newRegion);
+	//MF_UNLOCK()
 	
 	if (region == newRegion)
 	{
-		do
+		region->map(desc_);
+		
+		if (!region->isMapped())
 		{
-			region->map(desc_);
-			
-		} while (!region->isMapped() && shrinkCache_());
+			//MF_LOCK_WRITE()
+			while (!region->isMapped() && shrinkCache_())
+				region->map(desc_);
+			//MF_UNLOCK()
+		}
 		
 		if (!region->isMapped())
 		{
 			delete region;
+			MF_UNLOCK();
 			return NULL;
 		}
 	}
 	else
 	{
+		//MF_LOCK_WRITE()
 		if (!region->isReferenced())
 			regionPool_.erase(region->poolIterator);
+		//MF_UNLOCK()
 			
 		delete newRegion;
 	}
@@ -88,7 +128,8 @@ CFileRegion* CMappedFile::map(off_t offset, off_t size, void** address)
 	
 	if (address)
 		*address = region->getAddress(offset);
-		
+	
+	MF_UNLOCK();
 	return region;
 }
 
@@ -99,6 +140,8 @@ ssize_t CMappedFile::fileCopy_(off_t offset, size_t size, uint8_t* to, const uin
 	
 	size = std::min(size, size_t(std::max(size_ - offset, off_t(0))));
 	
+	MF_LOCK_READ();
+		
 	size_t bytesProcessed = 0;
 	while (size)
 	{
@@ -106,10 +149,14 @@ ssize_t CMappedFile::fileCopy_(off_t offset, size_t size, uint8_t* to, const uin
 				
 		if (!region)
 		{
+			MF_UNLOCK();
+			
 			if (cache_)
 				unmap(cache_);
 				
 			region = cache_= map(offset, 1, NULL);
+			
+			MF_LOCK_READ();
 		}
 		
 		assert(region);
@@ -128,11 +175,15 @@ ssize_t CMappedFile::fileCopy_(off_t offset, size_t size, uint8_t* to, const uin
 		size -= mappedSize;
 	}
 	
+	MF_UNLOCK();
+	
 	return bytesProcessed;
 }
 
 void CMappedFile::unmap(CFileRegion* region)
 {
+	MF_LOCK_WRITE();
+	
 	assert(region);
 	assert(region->isMapped());
 	assert(region->getParent());
@@ -142,15 +193,12 @@ void CMappedFile::unmap(CFileRegion* region)
 	if (!region->isReferenced())
 	{
 		if (!region->getParent()->isMapped())
-		{
 			region->poolIterator = regionPool_.insert(regionPool_.end(), region);
-		}
 		else
-		{
-			printf("deleting %p\n", region);
 			delete region;
-		}
 	}
+	
+	MF_UNLOCK();
 }
 
 bool CMappedFile::shrinkCache_()
