@@ -15,7 +15,8 @@ SAVEIFS=$IFS
 IFS=$(echo -en ";\n\b")
 LDFLAGS=$LDFLAGS\ "-lmappedfile -lm -lrt -lpthread"
 UNAME=$(uname)
-CFLAGS=$CFLAGS\ "-std=gnu11"
+CFLAGS=$CFLAGS\ "-Ofast -DNDEBUG -s -std=gnu11"
+CXXFLAGS=$CXXFLAGS\ "-Ofast -DNDEBUG -s -std=gnu11"
 if [ $UNAME == "Darwin" ]; then
 	CFLAGS=$CFLAGS\ -DNORT
 	CXXFLAGS=$CXXFLAGS\ -DNORT
