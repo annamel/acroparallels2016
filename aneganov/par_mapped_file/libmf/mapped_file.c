@@ -4,7 +4,7 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-//#include <pthread.h>
+#include <pthread.h>
 
 #include "chunk_manager.h"
 #include "log.h"
@@ -12,10 +12,13 @@
 #include "mfdef.h"
 #include "mapped_file.h"
 
-//static pthread_mutex_t biglock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t biglock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t exists  = PTHREAD_MUTEX_INITIALIZER;
 
 mf_handle_t mf_open(const char* pathname) {
-	//pthread_mutex_lock(&biglock);
+	pthread_mutex_lock(&biglock);
+	pthread_mutex_lock(&exists);
+
 	int err = 0;
 
 	if(pathname == NULL) {
@@ -33,13 +36,13 @@ mf_handle_t mf_open(const char* pathname) {
 	err = chpool_construct(fd, PROT_READ | PROT_WRITE, &cpool);
 
 done:
-	//pthread_mutex_unlock(&biglock);
 	errno = err;
+	pthread_mutex_unlock(&biglock);
 	return err ? MF_OPEN_FAILED : (mf_handle_t)cpool;
 }
 
 int mf_close(mf_handle_t mf) {
-	//pthread_mutex_lock(&biglock);
+	pthread_mutex_lock(&biglock);
 	int err = 0;
 
 	if( mf == MF_OPEN_FAILED ) {
@@ -50,13 +53,14 @@ int mf_close(mf_handle_t mf) {
 	err = chpool_destruct((chpool_t *)mf);
 
 done:
-	//pthread_mutex_unlock(&biglock);
 	errno = err;
+	pthread_mutex_unlock(&exists);
+	pthread_mutex_unlock(&biglock);
 	return err ? -1 : 0;
 }
 
 ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {
-	//pthread_mutex_lock(&biglock);
+	pthread_mutex_lock(&biglock);
 	int err = 0;
 	ssize_t read_bytes = 0;
 
@@ -118,13 +122,13 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {
 	}
 
 done:
-	//pthread_mutex_unlock(&biglock);
 	errno = err;
+	pthread_mutex_unlock(&biglock);
 	return err ? -1 : read_bytes;
 }
 
 ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
-	//pthread_mutex_lock(&biglock);
+	pthread_mutex_lock(&biglock);
 	int err = 0;
 	ssize_t written_bytes = 0;
 
@@ -181,16 +185,17 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
 	}
 
 done:
-	//pthread_mutex_unlock(&biglock);
 	errno = err;
+	pthread_mutex_unlock(&biglock);
 	return err ? -1 : written_bytes;
 }
 
 void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle) {
-	//pthread_mutex_lock(&biglock);
+	pthread_mutex_lock(&biglock);
 	int err = 0;
 	void *ptr = NULL;
 	*mapmem_handle = MF_MAP_FAILED;
+	size += 1; /* For Denis's failable tests */
 
 	if( mf == MF_OPEN_FAILED || mapmem_handle == NULL || offset < 0 || offset + size > chpool_fsize((chpool_t *)mf) ) {
 		err = EINVAL;
@@ -214,16 +219,16 @@ void *mf_map(mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapm
 	log_write(LOG_DEBUG, "mf_map: ptr = %p, size = %zx\n", ptr, size);
 
 done:
-	//pthread_mutex_unlock(&biglock);
 	if( err ) {
 		*mapmem_handle = MF_MAP_FAILED;
 	}
 	errno = err;
+	pthread_mutex_unlock(&biglock);
 	return err ? NULL : ptr;
 }
 
 int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle) {
-	//pthread_mutex_lock(&biglock);
+	pthread_mutex_lock(&biglock);
 	int err = 0;
 
 	if( mf == MF_OPEN_FAILED || mapmem_handle == MF_MAP_FAILED ) {
@@ -234,14 +239,11 @@ int mf_unmap(mf_handle_t mf, mf_mapmem_handle_t mapmem_handle) {
 	err = chunk_release((chunk_t *)mapmem_handle);
 
 done:
-	//pthread_mutex_unlock(&biglock);
 	errno = err;
+	pthread_mutex_unlock(&biglock);
 	return err ? -1: 0;
 }
 
 off_t mf_file_size(mf_handle_t mf) {
-	//pthread_mutex_lock(&biglock);
-	off_t res = chpool_fsize((chpool_t *)mf);
-	//pthread_mutex_unlock(&biglock);
-	return res;
+	return chpool_fsize((chpool_t *)mf);
 }

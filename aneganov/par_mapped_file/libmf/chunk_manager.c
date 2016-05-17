@@ -8,7 +8,6 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/resource.h>
-#include <pthread.h>
 
 #include "list.h"
 #include "mfdef.h"
@@ -16,7 +15,6 @@
 #include "map.h"
 #include "log.h"
 #include "bug.h"
-#include "multitreading.h"
 #include "chunk.h"
 #include "chunk_manager.h"
 
@@ -33,10 +31,6 @@ struct chunk_pool {
 	map_t *map;
 }; /* chpool_t */
 
-static struct shared_mutex list_mutex  = {PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, 0};
-static struct shared_mutex chunk_mutex = {PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, 0};
-static pthread_mutex_t exists_mutex  = PTHREAD_MUTEX_INITIALIZER;
-
 static int chunk_destruct(chunk_t *chunk) {
 	if( munmap(chunk->payload, chunk->key.len * chunk->cpool->pg_sz) == -1 ) {
 		return errno;
@@ -47,80 +41,47 @@ static int chunk_destruct(chunk_t *chunk) {
 }
 
 static int chpool_del(list_t *pos) {
-	read_shared_lock(&list_mutex);
-
 	if(list_empty(pos)) {
-		read_shared_unlock(&list_mutex);
 		return EBUSY;
 	}
 
 	chunk_t *chunk = list_entry(pos, chunk_t, list);
 
-	read_shared_unlock(&list_mutex);
-
-	read_shared_lock(&chunk_mutex);
-
 	if(chunk == NULL || chunk->ref_cnt != 0) {
-		read_shared_unlock(&chunk_mutex);
 		return EBUSY;
 	}
 
-	write_exclusive_lock(&list_mutex);
 	list_del(&chunk->list);
-	write_exclusive_unlock(&list_mutex);
 
 	int err = map_del(chunk->cpool->map, &chunk->key, chunk->is_indexed);
 	if(unlikely(err && err != ENOKEY))
 		return err;
 
-	__sync_fetch_and_sub(&chunk->cpool->nr_pages, chunk->key.len);
+	chunk->cpool->nr_pages -= chunk->key.len;
 
-	read_shared_unlock(&chunk_mutex);
-
-	write_exclusive_lock(&chunk_mutex);
-	err = chunk_destruct(chunk);
-	write_exclusive_unlock(&chunk_mutex);
-
-	return err;
+	return chunk_destruct(chunk);
 }
 
 static int chpool_add(chunk_t *chunk) {
 	log_write(LOG_DEBUG, "chpool_add: adding new chunk to chpool...\n");
-	int err = 0;
-
-	read_shared_lock(&chunk_mutex);
 	chpool_t *cpool = chunk->cpool;
-	off_t chunk_key_len = chunk->key.len;
-	read_shared_unlock(&chunk_mutex);
 
-	while( cpool->nr_pages + chunk_key_len > cpool->threshold) {
-		err = chpool_del(cpool->head.next);
-		if( err ) {
-			break;
-		}
-	}
+	int err = 0;
+	while( cpool->nr_pages + chunk->key.len > cpool->threshold && !(err = chpool_del(cpool->head.next)) );
 
 	if(unlikely(err && err != EBUSY)) {
 		return err;
 	}
 
-	read_shared_lock(&chunk_mutex);
-
-	write_exclusive_lock(&list_mutex);
 	list_add_tail(&chunk->list, &cpool->head);
-	write_exclusive_unlock(&list_mutex);
 
 	err = map_add(cpool->map, &chunk->key, chunk);
 	if (unlikely(err && err != EKEYREJECTED)) {
 		log_write(LOG_DEBUG, "map_add: %s", strerror(err));
-		read_shared_unlock(&chunk_mutex);
 		return err;
 	}
 
-	__sync_fetch_and_add(&chunk->cpool->nr_pages, chunk->key.len);
-
-	read_shared_unlock(&chunk_mutex);
-
+	cpool->nr_pages += chunk->key.len;
 	return 0;
 }
 
@@ -129,20 +90,16 @@ static int chunk_get(chpool_t *cpool, off_t idx, off_t len, chunk_t **chunk) {
 
 	hkey_t key = {{.idx = idx, .len = len}};
 
-	read_shared_lock(&chunk_mutex);
-
 	int err = map_lookup_le(cpool->map, &key, chunk);
 	if(err) {
-		goto end;
+		return err;
 	}
 
 	if( (*chunk)->key.idx + (*chunk)->key.len < idx + len ) {
-		err = ENOKEY;
+		return ENOKEY;
 	}
 
-end:
-	read_shared_unlock(&chunk_mutex);
-	return err;
+	return 0;
 }
 
 static inline off_t get_chunk_idx(chpool_t *cpool, off_t offset) {
@@ -156,7 +113,7 @@ static inline off_t get_chunk_len(chpool_t *cpool, off_t offset, size_t size) {
 static int chunk_init(off_t idx, off_t len, chpool_t *cpool, chunk_t *chunk) {
 	chunk->key.idx = idx;
 	chunk->key.len = len;
-	chunk->ref_cnt = 1;
+	chunk->ref_cnt = 0;
 	chunk->cpool = cpool;
 	chunk->payload = mmap(NULL, chunk->key.len * cpool->pg_sz, cpool->prot, MAP_SHARED, cpool->fd, chunk->key.idx * cpool->pg_sz);
 	log_write(LOG_DEBUG, "chunk_init: offset = %jd, chunk->payload == %p\n", chunk->key.idx * cpool->pg_sz, chunk->payload);
@@ -212,19 +169,14 @@ int chunk_acquire(chpool_t *cpool,  off_t offset, size_t size, chunk_t **chunk_p
 			if(unlikely((err = chunk_construct(cpool, idx, len, chunk_ptr)))) {
 				return err;
 			}
-			break;
 		case 0:
-			write_exclusive_lock(&chunk_mutex);
 			(*chunk_ptr)->ref_cnt++;
-			write_exclusive_unlock(&chunk_mutex);
 			return 0;
 			break;
 		default:
 			return err;
 			break;
 	}
-
-	return err;
 }
 
 int chunk_find(chpool_t *cpool, off_t offset, size_t size, chunk_t **chunk) {
@@ -250,10 +202,7 @@ int chunk_find(chpool_t *cpool, off_t offset, size_t size, chunk_t **chunk) {
 	}
 
 	log_write(LOG_DEBUG, "chunk_find: success, chunk = %p\n", *chunk);
-
-	write_exclusive_lock(&chunk_mutex);
 	(*chunk)->ref_cnt++;
-	write_exclusive_lock(&chunk_mutex);
 	return 0;
 }
 
@@ -262,20 +211,15 @@ int chunk_release(chunk_t *chunk) {
 		return EINVAL;
 	}
 
-	write_exclusive_lock(&chunk_mutex);
 	if(chunk->ref_cnt == 0) {
 		return EAGAIN;
 	}
 
 	if(--chunk->ref_cnt == 0) {
 		if(chunk->is_indexed) {
-			write_exclusive_lock(&list_mutex);
 			list_move(&chunk->list, &chunk->cpool->head);
-			write_exclusive_lock(&list_mutex);
-			write_exclusive_unlock(&chunk_mutex);
 		}
 		else {
-			write_exclusive_unlock(&chunk_mutex);
 			return chpool_del(&chunk->list);
 		}
 	}
@@ -289,8 +233,6 @@ int chpool_construct(int fd, int prot, chpool_t **cpool_ptr) {
 		return EINVAL;
 	}
 #endif
-
-	pthread_mutex_lock(&exists_mutex);
 
 	int err;
 	if(unlikely((err = mf_malloc(sizeof(chpool_t), (void **)cpool_ptr)))) {
@@ -377,13 +319,10 @@ int chpool_destruct(chpool_t *cpool) {
 
 	mf_free(cpool);
 
-	pthread_mutex_unlock(&exists_mutex);
-
 	return 0;
 }
 
 int chunk_get_mem(chunk_t *chunk, off_t offset, void **buf, off_t *border) {
-	read_shared_lock(&chunk_mutex);
 #ifdef DEBUG
 	if(unlikely(chunk == NULL || buf == NULL)) {
 		return EINVAL;
@@ -406,7 +345,6 @@ int chunk_get_mem(chunk_t *chunk, off_t offset, void **buf, off_t *border) {
 
 	log_write(LOG_DEBUG, "chunk_get_mem: chunk->payload == %p, *buf = %p\n", chunk->payload, *buf);
 
-	read_shared_unlock(&chunk_mutex);
 	return 0;
 }
 
