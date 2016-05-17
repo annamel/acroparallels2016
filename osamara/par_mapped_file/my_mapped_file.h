@@ -31,7 +31,7 @@ typedef struct  {
 	int fd;
 	long long int mapped;
 	long long int fsize;
-	pthread_rwlock_t rwlock_lock;
+	pthread_rwlock_t rwlock_lock, rwlock_file;
 	mapmem_handle_t* r_map;
 } handle_t;
 
