@@ -47,6 +47,8 @@ typedef struct Mapped_memory
         off_t offset;
         size_t size;
 
+        void* mmaped_ptr;
+
         size_t ref_cnt;
         } mf_mapmem_handle_str;
 
@@ -175,8 +177,12 @@ return 0;
  */
 void *mf_map (mf_handle_t mf, off_t offset, size_t size, mf_mapmem_handle_t *mapmem_handle)
 {
+off_t rounded_offset = 0;
 mf_handle_ptr mf_ptr = (mf_handle_ptr)mf;
-// mf_mapmem_handle_ptr mapmem_ptr = (mf_mapmem_handle_ptr)mapmem_handle;
+mf_mapmem_handle_ptr mapmem_ptr = (mf_mapmem_handle_ptr)mapmem_handle;
+iterator_ptr found_elem = NULL;
+iterator_ptr next_elem = NULL;
+hash_entry_t* found_entry = NULL;
 
 if ((mf == NULL) || (offset < 0) || (offset > mf_ptr->file_size) || (size <= 0) || (mapmem_handle == NULL))
         {
@@ -193,11 +199,34 @@ if (mf_ptr->is_initialized != 1)
 if (mf_ptr->is_fully_mapped == 1)
         return mf_ptr->mmaped_ptr + offset;
 
-/*
-mapmem_ptr->mf     = mf_ptr;
-mapmem_ptr->offset = offset;
-mapmem_ptr->size   = size;
-*/
+rounded_offset = (offset / mf_ptr->page_size) * mf_ptr->page_size;
+if ((found_elem = find_elem (mf_ptr->ht, &rounded_offset, sizeof (rounded_offset))) != NULL)
+        {
+        found_entry = get_real_entry (found_elem);
+
+        while (is_end (found_elem))
+                {
+                if ((offset == (((mf_mapmem_handle_ptr)(found_entry))->offset))
+                   || (size <= (((mf_mapmem_handle_ptr)(found_entry))->size)))
+                        {
+                        ((mf_mapmem_handle_ptr)(found_entry))->ref_cnt++;
+                        *mapmem_handle = (mf_mapmem_handle_ptr)found_entry;
+                        return ((mf_mapmem_handle_ptr)(found_entry))->mmaped_ptr;
+                        }
+                if ((next_elem = move_next (found_elem)) != NULL)
+                        found_elem = next_elem;
+                }
+        }
+
+if ((mapmem_ptr->mmaped_ptr = mmap (NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, mf_ptr->fd, rounded_offset)) != NULL)
+        {
+        mapmem_ptr->mf      = mf_ptr;
+        mapmem_ptr->offset  = offset;
+        mapmem_ptr->size    = size;
+        mapmem_ptr->ref_cnt = 1;
+
+        Hash_table_add_elem (mf_ptr->ht, &rounded_offset, sizeof (rounded_offset), mapmem_ptr, sizeof (*mapmem_ptr));
+        }
 
 return MF_MAP_FAILED;
 }
@@ -207,9 +236,13 @@ return MF_MAP_FAILED;
  */
 int mf_unmap (mf_handle_t mf, mf_mapmem_handle_t mapmem_handle)
 {
+off_t rounded_offset = 0;
 mf_handle_ptr mf_ptr = (mf_handle_ptr)mf;
+mf_mapmem_handle_ptr mapmem_ptr = (mf_mapmem_handle_ptr)mapmem_handle;
+iterator_ptr found_elem = NULL;
+iterator_ptr next_elem = NULL;
+hash_entry_t* found_entry = NULL;
 
-// if ((mf == NULL) || (mapmem_handle == NULL))
 if (mf == NULL)
         {
         errno = EINVAL;
@@ -219,8 +252,26 @@ if (mf == NULL)
 if (mf_ptr->is_fully_mapped == 1)
         return 0;
 
+rounded_offset = (mapmem_ptr->offset / mf_ptr->page_size) * mf_ptr->page_size;
+if ((found_elem = find_elem (mf_ptr->ht, &rounded_offset, sizeof (rounded_offset))) != NULL)
+        {
+        found_entry = get_real_entry (found_elem);
 
+        while (is_end (found_elem))
+                {
+                if ((mapmem_ptr->offset == (((mf_mapmem_handle_ptr)(found_entry))->offset))
+                   || (mapmem_ptr->size <= (((mf_mapmem_handle_ptr)(found_entry))->size)))
+                        {
+                        ((mf_mapmem_handle_ptr)(found_entry))->ref_cnt--;
+                        if (((mf_mapmem_handle_ptr)(found_entry))->ref_cnt == 0)
+                                Hash_table_delete_elem (&found_elem);
 
+                        return 0;
+                        }
+                if ((next_elem = move_next (found_elem)) != NULL)
+                        found_elem = next_elem;
+                }
+        }
 
 return 0;
 }
@@ -231,6 +282,8 @@ return 0;
 ssize_t mf_read (mf_handle_t mf, void* buf, size_t count, off_t offset)
 {
 mf_handle_ptr mf_ptr = (mf_handle_ptr)mf;
+mf_mapmem_handle_ptr mapmem_ptr = NULL;
+void* mmaped_ptr = NULL;
 
 if ((mf == NULL) || (buf == NULL) || (count <= 0) || (offset < 0) || (offset > mf_ptr->file_size))
         {
@@ -252,10 +305,10 @@ if (mf_ptr->is_fully_mapped == 1)
         return count;
         }
 
+mmaped_ptr = mf_map (mf, offset, count, (mf_mapmem_handle_t)mapmem_ptr);
+memcpy (buf, mmaped_ptr, mapmem_ptr->size);
 
-
-
-return -1;
+return mapmem_ptr->size;
 }
 
 /*
@@ -264,6 +317,8 @@ return -1;
 ssize_t mf_write (mf_handle_t mf, const void* buf, size_t count, off_t offset)
 {
 mf_handle_ptr mf_ptr = (mf_handle_ptr)mf;
+mf_mapmem_handle_ptr mapmem_ptr = NULL;
+void* mmaped_ptr = NULL;
 
 if ((mf == NULL) || (buf == NULL) || (count <= 0) || (offset < 0) || (offset > mf_ptr->file_size))
         {
@@ -285,10 +340,10 @@ if (mf_ptr->is_fully_mapped == 1)
         return count;
         }
 
+mmaped_ptr = mf_map (mf, offset, count, (mf_mapmem_handle_t)mapmem_ptr);
+memcpy (mmaped_ptr, buf, mapmem_ptr->size);
 
-
-
-return -1;
+return mapmem_ptr->size;
 }
 
 /*
