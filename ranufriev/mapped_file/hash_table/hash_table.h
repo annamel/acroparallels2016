@@ -94,6 +94,7 @@ int          is_end    (const iterator_ptr usr_iter);         /* -1 - error;
 hash_key_t*   get_key   (const iterator_ptr usr_iter);
 hash_entry_t* get_entry (const iterator_ptr usr_iter);
 //------------------------------------------------------------------------------
+hash_entry_t* get_real_entry (const iterator_ptr usr_iter);
 //==============================================================================
 
 

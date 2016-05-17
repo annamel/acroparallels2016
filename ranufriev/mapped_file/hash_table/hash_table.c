@@ -726,5 +726,48 @@ error_calloc:
         my_errno = mem_err;
         return NULL;
 }
+//------------------------------------------------------------------------------
+hash_entry_t* get_real_entry (const iterator_ptr usr_iter)
+{
+hash_elem_t* hash_elem = NULL;
+
+if (usr_iter == NULL)
+        {
+        my_errno = wrong_args;
+        return NULL;
+        }
+
+#if (IS_DEBUG_ON == 1)
+if (usr_iter->hash_table == NULL)
+        assert (!"internal error in get_entry: usr_iter->hash_table == NULL");
+if (usr_iter->list_node == NULL)
+        assert (!"internal error in get_entry: usr_iter->list_node == NULL");
+#endif
+
+hash_elem = container_of (usr_iter->list_node, hash_elem_t, list_node);
+
+return hash_elem->entry;
+
+/*
+entry_buffer = calloc (1, hash_elem->entry_size);
+if (entry_buffer == NULL)
+        goto error_calloc;
+
+if (! memcpy (entry_buffer, hash_elem->entry, hash_elem->entry_size))
+        goto error_memcpy;
+
+return entry_buffer;
+
+
+error_memcpy:
+        free (entry_buffer);
+        #if (IS_DEBUG_ON == 1)
+        entry_buffer = NULL;
+        #endif
+error_calloc:
+        my_errno = mem_err;
+        return NULL;
+*/
+}
 //==============================================================================
 
