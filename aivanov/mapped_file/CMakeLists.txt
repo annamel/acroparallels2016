@@ -3,7 +3,7 @@ project (mapped_file)
 
 set(LOG OFF)
 set(REGION_PROTECTION OFF)
-set(MAPPED_FILE_MT ON)
+set(MAPPED_FILE_MT OFF)
 
 if (LOG)
 	add_definitions (-DLOG)
