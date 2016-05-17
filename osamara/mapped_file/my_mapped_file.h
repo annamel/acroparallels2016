@@ -17,15 +17,18 @@ typedef struct {
 	int offset, size;
 	
 } group;
-typedef struct  {
-	int fd;
-} my_mf_handle_t;
-
 typedef struct {
 	off_t offset;
 	size_t size;
 	uint64_t refCounter;
 	void* ptr, *true_ptr;
-} my_mf_mapmem_handle_t;
+} mapmem_handle_t;
+typedef struct  {
+	int fd;
+	int mapped;
+	mapmem_handle_t* r_map;
+} handle_t;
+
+
 #endif
 
