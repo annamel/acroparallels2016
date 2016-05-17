@@ -29,7 +29,6 @@ mf_handle_t mf_open(const char* pathname){
 		return NULL;
 	}
 	pthread_rwlock_init(&mf->rwlock_lock, NULL);
-	pthread_rwlock_init(&mf->rwlock_file, NULL);
 	//printf("Open success\n");
 	//fflush(stdout);
 	//printf("---A\n");fflush(stdout);
@@ -69,8 +68,6 @@ int mf_close(mf_handle_t mf){
 	close (my_mf->fd);
 	free(my_mf->r_map);
 	free(my_mf);
-	pthread_rwlock_destroy(&((handle_t*)mf)->rwlock_lock);
-	pthread_rwlock_destroy(&((handle_t*)mf)->rwlock_file);
 	return 0;
 }
 // mapmem_handle_t *  mf->r_map = NULL;
@@ -87,10 +84,9 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t size, off_t offset){
 	//printf("or: size:%d\n offset: %d fsize: %d mapsize: %d", size,offset ,my_mf->fsize);
 	//printf("mm: %d\n", mm);fflush(stdout);
 	size = min(my_mf->fsize-offset, min(mm->size, size));
-	pthread_rwlock_wrlock(&my_mf->rwlock_file);
+	
 	//printf("%d\n", size);
 	memcpy(buf, buff, size);
-	pthread_rwlock_unlock(&my_mf->rwlock_file);
 	//printf("CC\n");fflush(stdout);
 	mf_unmap(mf, mapped_mem);
 	// if (offset + size > filesize) return max(0, filesize - offset); else return size        ---------offset---filesize---offset+size
@@ -102,9 +98,7 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t size, off_t offset){
 	if (((handle_t*)mf)->fd == -1) return 0;
 	mf_mapmem_handle_t mapped_mem;
 	void* buff = mf_map(mf, offset, size, &mapped_mem);
-	pthread_rwlock_wrlock(&((handle_t*)mf)->rwlock_file);
 	memcpy(buff, buf, size);
-	pthread_rwlock_unlock(&((handle_t*)mf)->rwlock_file);
 	//mf_unmap(mf, mf_mapmem_hamdle_t);
 	return (ssize_t) size;
 }
