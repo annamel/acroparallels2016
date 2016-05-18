@@ -8,4 +8,6 @@ tester/test_results.html
 
 *.txt
 
+!CMakeLists.txt
+
 *.a
