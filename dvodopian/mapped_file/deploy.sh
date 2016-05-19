@@ -5,5 +5,5 @@ DESTINATION="$HOME/Programming/Parallels/acroparallels2016/dvodopian/mapped_file
 
 shopt -s extglob
 
-cp ./out/Release/* ./out/
-cp -R ./!(tests) "$DESTINATION"
+cp -f ./out/Release/* ./out/
+cp -Rf ./!(tests) "$DESTINATION"

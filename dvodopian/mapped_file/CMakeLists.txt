@@ -4,8 +4,6 @@ project(file_mapper_project)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
-set()
-
 
 add_subdirectory(file_mapper)
 #add_subdirectory(api_adapter)
@@ -29,7 +27,7 @@ add_executable(file_mapper_project main.c)
 #install(TARGETS mapped_file EXPORT mappedfile DESTINATION out)
 
 #--------------
-add_library(mappedfile STATIC mapped_file/mapped_file.c mapped_file/mapped_file.h)
-target_include_directories(mappedfile "key_set" "sorted_list" "chunk_manager")
-
-target_link_libraries(mappedfile key_set sorted_list chunk_manager)
+#add_library(mappedfile STATIC mapped_file/mapped_file.c mapped_file/mapped_file.h)
+#target_include_directories(mappedfile "key_set" "sorted_list" "chunk_manager")
+#
+#target_link_libraries(mappedfile key_set sorted_list chunk_manager)
