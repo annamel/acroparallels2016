@@ -51,23 +51,35 @@ struct chunk
 //      free_list - list of free chunks
 //      pool - array of chunk arrays
 //             each of arrays has
-//      file_size - storing the filesize for optimization
-//      page_size - storing the pagesize for optimization
+//      file_size - save filesize for perfomance
+//      page_size - save pagesize for perfomance
 struct chpool
 {
     int fd;
     int prot;
+    pthread_mutex_t flock;
 
     off_t file_size;
     off_t page_size;
 
+    chunk_t *last_chunk;
+    chunk_t *all_file;
+    int is_all_map;
+
     size_t arrays_cnt;
     chunk_t **pool;
-    sset_t *sset;
-    dclist_t *zero_list;
-    dclist_t *free_list;
 
-    pthread_mutex_t mutex;
+    sset_t *ht;
+    pthread_mutex_t ht_write_lock;
+    int ht_reads_numb;
+
+    dclist_t *zero_list;
+    pthread_mutex_t zl_write_lock;
+    int zl_reads_numb;
+
+    dclist_t *free_list;
+    pthread_mutex_t fl_write_lock;
+    int fl_reads_numb;
 };
 
 
@@ -77,8 +89,10 @@ struct chpool
 //      index - offset in pagesizes
 //      len - size in pagesizes
 //      chpool - pool of chunks which contains this chunk
-//  - RETURNED VALUE
 //
+//  - RETURNED VALUE
+//      all is good => new chunk pointer
+//      something goes wrong => NULL(see logfile and errno)
 chunk_t *ch_init(off_t index, off_t len, chpool_t *chpool);
 
 
