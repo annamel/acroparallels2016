@@ -195,11 +195,11 @@ done
 PWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 rm -f $PWD/out.txt
 
-IFS=$SAVEIFS
-jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True $PWD/test_results.ipynb
 
 if [ -e $PWD/test_results.html ]
 then
-     python -mwebbrowser file://$PWD/test_results.html
+    IFS=$SAVEIFS
+    jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True $PWD/test_results.ipynb
+    python -mwebbrowser file://$PWD/test_results.html
 fi
 
