@@ -76,7 +76,7 @@ int mf_close(mf_handle_t mf) {
 /*
  * Returns -1 on failure
  */
-ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {  //todo:block
+ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {
     file_handle* hp = (file_handle*) mf;
     if(!hp) return -1;
     if(offset < 0) return -1;  // wtf?
@@ -96,7 +96,7 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {  //todo
 /*
  * Returns -1 on failure
  */
-ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {  //todo: block
+ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) {
     file_handle* hp = (file_handle*) mf;
     if(!hp) return -1;
     if(offset < 0) return -1;  // wtf?
