@@ -21,9 +21,19 @@ struct Mmaped_file{
     size_t chunk_count;
     int fd;
     off_t size;
+    char bigmmap;
 };
 
 #define DEFAULT_CHUNK_SIZE 1024*1024*16
+
+inline void* __mmap_file(int fd, off_t length) {
+
+    void* tmp = mmap(NULL, length, PROT_READ | PROT_WRITE,  MAP_SHARED, fd, 0);
+    if(tmp == (void*)-1)
+        return 0;
+
+    return tmp;
+}
 
 void* mf_open(const char* pathname) {
     if(!pathname)
@@ -41,12 +51,6 @@ void* mf_open(const char* pathname) {
 
     mf -> fd = fd;
 
-    mf -> pool = init_pool();
-    if(!mf -> pool) {
-        close(fd);
-        free(mf);
-        return 0;
-    }
 
     struct stat finfo = {0};
     int err = fstat(fd, &finfo);
@@ -59,6 +63,22 @@ void* mf_open(const char* pathname) {
         chunk_size *= 2;
         chunk_count = finfo.st_size / chunk_size;
     }
+
+    mf -> pool = __mmap_file(fd, finfo.st_size);
+    if(mf -> pool) {
+        mf -> bigmmap++;
+        return 0;
+    }
+
+
+    mf -> pool = init_pool();
+    if(!mf -> pool) {
+        close(fd);
+        free(mf);
+        return 0;
+    }
+
+
 
     mf -> ii = init_ii(chunk_count);
     if(!mf -> ii) {
@@ -79,9 +99,16 @@ int mf_close(void* tmp) {
     struct Mmaped_file* mf = tmp;
 
     if(!tmp)
-        return -1;
+        return 0;
 
     close(mf -> fd);
+
+    if(mf -> bigmmap) {
+        munmap(mf -> pool, mf -> size);
+        free(mf);
+        return 0;
+    }
+
     destruct_ii(mf -> ii);
     destruct_pool(mf -> pool);
 
@@ -168,6 +195,12 @@ ssize_t mf_read(void* tmp, void* buf, size_t count, off_t offset) {
     struct Mmaped_file* mf = tmp;
     size_t tmp1 = count;
 
+    if(mf -> bigmmap) {
+        void* source = ((void*)mf->pool) + offset;
+        memcpy(buf, source, count);
+        return count;
+    }
+
     do {
 
         size_t read_count = mf -> chunk_size - offset % mf -> chunk_size;
@@ -191,6 +224,13 @@ ssize_t mf_read(void* tmp, void* buf, size_t count, off_t offset) {
 
 ssize_t mf_write(void* tmp, void* buf, size_t count, off_t offset) {
     struct Mmaped_file* mf = tmp;
+    size_t tmp1 = count;
+
+    if(mf -> bigmmap) {
+        void* source = ((void*)mf->pool) + offset;
+        memcpy(source, buf, count);
+        return count;
+    }
 
     do {
 
@@ -208,10 +248,15 @@ ssize_t mf_write(void* tmp, void* buf, size_t count, off_t offset) {
         memcpy(source, buf, write_count);
     } while(count != 0);
 
-    return 0;
+    return tmp1;
 }
 
 void *mf_map(void* tmp, off_t offset, size_t size, void** mapmem_handle) {
+
+    struct Mmaped_file* mf = tmp;
+    if(mf -> bigmmap) {
+        return mf -> pool + offset;
+    }
 
     return get_ptr(tmp, offset, size, mapmem_handle);
 }
