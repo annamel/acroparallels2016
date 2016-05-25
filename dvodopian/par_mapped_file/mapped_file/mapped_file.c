@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <memory.h>
 #include <sys/mman.h>
+#include <pthread.h>
 
 #include "mapped_file.h"
 
@@ -19,6 +20,8 @@ typedef struct {
     off_t           file_size;
 
     void* mem;
+    pthread_mutex_t mem_init_lock;
+    pthread_rwlock_t mem_rw_lock;
 } file_handle;
 
 
@@ -47,6 +50,8 @@ mf_handle_t mf_open(const char *pathname) {
     hp->file_size = file_stat.st_size;
 
     hp->mem = NULL;
+    pthread_mutex_init(&hp->mem_init_lock, NULL);
+    pthread_rwlock_init(&hp->mem_rw_lock, NULL);
 
     return hp;
 }
@@ -59,6 +64,9 @@ int mf_close(mf_handle_t mf) {
     if(!hp) return -1;
 
     int r1 = unmap(hp);
+    pthread_mutex_destroy(&hp->mem_init_lock);
+    pthread_rwlock_destroy(&hp->mem_rw_lock);
+
     int r2 = close(hp->file_descriptor);
 
     free(hp);
@@ -78,7 +86,9 @@ ssize_t mf_read(mf_handle_t mf, void* buf, size_t count, off_t offset) {  //todo
 
     if(map(hp)) return -1;
 
+    pthread_rwlock_rdlock(&hp->mem_rw_lock);
     memcpy(buf, hp->mem + offset, count);
+    pthread_rwlock_unlock(&hp->mem_rw_lock);
 
     return count;
 }
@@ -96,7 +106,9 @@ ssize_t mf_write(mf_handle_t mf, const void* buf, size_t count, off_t offset) { 
 
     if(map(hp)) return -1;
 
+    pthread_rwlock_wrlock(&hp->mem_rw_lock);
     memcpy(hp->mem + offset, buf, count);
+    pthread_rwlock_unlock(&hp->mem_rw_lock);
 
     return count;
 }
@@ -149,18 +161,28 @@ off_t mf_file_size(mf_handle_t mf) {
 
 /* if failed returns -1, if success returns 0 */
 
-int map(file_handle * hp) {  //todo: block
+int map(file_handle * hp) {
     if(hp->mem) return 0;
-    hp->mem = mmap(NULL, (size_t) hp->file_size, PROT_WRITE, MAP_SHARED, hp->file_descriptor, 0);
+
+    pthread_mutex_lock(&hp->mem_init_lock);
+    if(!hp->mem) {
+        hp->mem = mmap(NULL, (size_t) hp->file_size, PROT_WRITE, MAP_SHARED, hp->file_descriptor, 0);
+    }
+    pthread_mutex_unlock(&hp->mem_init_lock);
 
     return (MAP_FAILED != hp->mem) ? 0 : -1;
 }
 
-int unmap(file_handle * hp) {  //todo: block
+int unmap(file_handle * hp) {
     if(!hp->mem) return 0;
 
-    int r = munmap(hp->mem, (size_t) hp->file_size);
-    hp->mem = NULL;
+    int r = 0;
+    pthread_mutex_lock(&hp->mem_init_lock);
+    if(hp->mem) {
+        r = munmap(hp->mem, (size_t) hp->file_size);
+        hp->mem = NULL;
+    }
+    pthread_mutex_unlock(&hp->mem_init_lock);
 
     return r;
 }
