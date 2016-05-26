@@ -21,6 +21,7 @@ struct Mmaped_file{
     size_t chunk_count;
     int fd;
     off_t size;
+    ssize_t state;
     char bigmmap;
 };
 
@@ -125,6 +126,17 @@ void try_free_chunks(struct Mmaped_file* mf) {return;}
 
 void* map_chunk(struct Mmaped_file* mf, off_t position, size_t length) {
 
+    ssize_t current_state, new_state;
+    do {
+        current_state = mf -> state;
+
+        while(current_state != 0)
+            current_state = mf -> state;
+
+        new_state = -1;
+
+    } while(!__sync_bool_compare_and_swap(&(mf->state), current_state, new_state));
+
     void* tmp  = 0;
     position = position / (off_t) mf -> chunk_size * mf -> chunk_size;
     length = CALC_SIZE_IN_CHUNKS(length, mf -> chunk_size);
@@ -145,40 +157,75 @@ void* map_chunk(struct Mmaped_file* mf, off_t position, size_t length) {
         else
             break;
 
-        if(i == 4)
+        if(i == 4) {
+            mf -> state = 0;
             return 0;
+        }
     }
 
     position = position / mf -> chunk_size;
     length = length / mf -> chunk_size;
 
     struct Chunk* item = allocate_chunk(mf -> pool, tmp, position, length);
-    if(!item)
+    if(!item) {
+        mf -> state = 0;
         return 0;
+    }
 
     int add_res = add_item(mf -> ii, item, position, position + length);
-    if(add_res != length)
+    if(add_res != length) {
+        mf -> state = 0;
         return 0;
+    }
 
+    mf -> state = 0;
     return item -> ptr;
 }
 
+void lower_state(struct Mmaped_file* mf) {
+    ssize_t current_state, new_state;
+    do {
+        current_state = mf ->state;
+
+        new_state = current_state - 1;
+
+    } while(!__sync_bool_compare_and_swap(&(mf->state), current_state, new_state));
+}
+
+void upper_state(struct Mmaped_file* mf) {
+    ssize_t current_state, new_state;
+    do {
+        current_state = mf ->state;
+
+        while(current_state != -1)
+            current_state = mf -> state;
+
+        new_state = mf -> state + 1;
+
+    } while(!__sync_bool_compare_and_swap(&(mf->state), current_state, new_state));
+}
 
 void* get_ptr(struct Mmaped_file* mf, off_t position, size_t length, void** chunk_addr) { //actually somewhere here must be controlled refcount
     if(!mf)
         return 0;
 
+    upper_state(mf);
+
     struct Ii_element* item = mf -> ii -> data[position / mf -> chunk_size];
 
-    if(!item)
+    if(!item) {
+        lower_state(mf);
         return map_chunk(mf, position, length);
+    }
 
 
     struct Chunk* curr_chunk = (struct Chunk*)item->item;
 
     while(curr_chunk -> offset + curr_chunk -> size > position / mf -> chunk_size + CALC_SIZE_IN_CHUNKS(length, mf -> chunk_size)) {
-        if(!item->next)
+        if(!item->next) {
+            lower_state(mf);
             return map_chunk(mf, position, length);
+        }
 
         item = item -> next;
         curr_chunk = (struct Chunk*)item->item;
@@ -189,6 +236,7 @@ void* get_ptr(struct Mmaped_file* mf, off_t position, size_t length, void** chun
         *chunk_addr = curr_chunk;
     }
 
+    lower_state(mf);
     return curr_chunk -> ptr;
 }
 
