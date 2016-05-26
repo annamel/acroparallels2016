@@ -11,6 +11,7 @@
 
 #include "../dc_list/dc_list.h"
 #include "../hash_table/hash_table.h"
+#include "../skiplist/skiplist.h"
 #include "../typedefs.h"
 
 
@@ -36,6 +37,12 @@ struct chunk
     chpool_t *chpool;
 };
 
+
+#ifdef SKIPLIST
+typedef skiplist_t fstruct_t;
+#else SKIPLIST
+typedef htable_t fstruct_t;
+#endif
 
 
 //  The pool of chunks structure
@@ -69,9 +76,9 @@ struct chpool
     size_t arrays_cnt;
     chunk_t **pool;
 
-    sset_t *ht;
-    pthread_mutex_t ht_write_lock;
-    int ht_reads_numb;
+    fstruct_t *fstr;
+    pthread_mutex_t fstr_write_lock;
+    int fstr_reads_numb;
 
     dclist_t *zero_list;
     pthread_mutex_t zl_write_lock;
@@ -132,11 +139,6 @@ chpool_t *chp_init(int fd, int prot);
 //  Deinitialize chunk pool
 //  IT DOESN'T FREE CHUNK POOL POINTER!
 int chp_deinit(chpool_t *chpool);
-
-
-
-//  This func returns chunk which contains finded chunk
-int chp_find(chpool_t *chpool, off_t index, off_t len, chunk_t **chunk);
 
 
 

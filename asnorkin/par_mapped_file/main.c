@@ -5,9 +5,7 @@
 #include "logger/logger.h"
 #include "chunk_manager/chunk_manager.h"
 #include "mapped_file/mapped_file.h"
-#include "asnorkin_test.h"
 #include "hash_table/hash_table.h"
-
 
 
 /*int main(void)

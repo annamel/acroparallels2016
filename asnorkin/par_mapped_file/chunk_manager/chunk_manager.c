@@ -14,7 +14,8 @@
 
 #include "../logger/logger.h"
 #include "../dc_list/dc_list.h"
-#include "../sorted_set/sorted_set.h"
+
+
 
 int PAGESIZE = 0;
 
@@ -25,6 +26,11 @@ static int chp_fill(int fd, int prot, chpool_t *chpool);
 static int chp_get_free_chptr(chpool_t *chpool, chunk_t **chunk);
 static int chp_add_loaf(chpool_t *chpool);
 static int loafs_deinit(chpool_t *chpool);
+static int chp_fstr_del(chpool_t *chpool, off_t index, off_t len);
+static int chp_fstr_add(chpool_t *chpool, off_t index, chunk_t *chunk);
+static int chp_fstr_find(chpool_t *chpool, off_t index, off_t len, chunk_t **chunk);
+static int chp_fstr_deinit(chpool_t *chpool);
+static fstruct_t *chp_fstr_init();
 
 
 
@@ -36,13 +42,9 @@ chunk_t *ch_init(off_t index, off_t len, chpool_t *chpool)
     int error = 0;
 
 
-    chunk_t *new_chunk;
+    chunk_t *new_chunk;    
+    error = chp_fstr_find(chpool, index, len, &new_chunk);
 
-    pthread_mutex_lock(&chpool->ht_write_lock);
-    chpool->fl_reads_numb++;
-    pthread_mutex_unlock(&chpool->ht_write_lock);
-    error = ht_find(chpool->ht, index, len, &new_chunk);
-    chpool->fl_reads_numb--;
 
     if(!error)
     {
@@ -109,11 +111,7 @@ int ch_deinit(chunk_t *chunk)
     pthread_mutex_unlock(&chpool->flock);
 
 
-    pthread_mutex_lock(&chpool->ht_write_lock);
-    while(chpool->ht_reads_numb)
-        continue;
-    error = ht_del(chunk->chpool->ht, chunk->index, chunk->len);
-    pthread_mutex_unlock(&chpool->ht_write_lock);
+    error = chp_fstr_del(chunk->chpool, chunk->index, chunk->len);
     if(error)
     {
         //log_write(WARNING, "ch_deinit: can't delete chunk from set");
@@ -248,18 +246,12 @@ static int ch_fill(off_t index, off_t len, chpool_t *chpool, chunk_t *chunk)
     }
 
 
-    pthread_mutex_lock(&chpool->ht_write_lock);
-    while(chpool->ht_reads_numb)
-        continue;
-    error = ht_add(chpool->ht, index, chunk);
-    pthread_mutex_unlock(&chpool->ht_write_lock);
-
-    return error;
+    return chp_fstr_add(chpool, index, chunk);
 }
 
 //*****************************************************************************
 chpool_t *chp_init(int fd, int prot)
-{
+{    
     if(fd < 0 || (!(prot & PROT_READ) && !(prot & PROT_WRITE)) )
     {
         //log_write(ERROR, "chp_init: invaid input");
@@ -322,7 +314,7 @@ int chp_deinit(chpool_t *chpool)
     }
 
 
-    error = ht_deinit(chpool->ht);
+    error = chp_fstr_deinit(chpool);
     if(error)
     {
         //log_write(ERROR, "chp_deinit: can't deinit the set");
@@ -336,31 +328,15 @@ int chp_deinit(chpool_t *chpool)
 
 
 
-int chp_find(chpool_t *chpool, off_t index, off_t len, chunk_t **chunk)
-{
-    if(!chpool || !chunk)
-        return EINVAL;    
-
-    pthread_mutex_lock(&chpool->ht_write_lock);
-    chpool->ht_reads_numb++;
-    pthread_mutex_unlock(&chpool->ht_write_lock);
-    int error = ht_find(chpool->ht, index, len, chunk);
-    chpool->ht_reads_numb--;
-
-    return error;
-}
-
-
-
 static int chp_fill(int fd, int prot, chpool_t *chpool)
 {
     chpool->free_list = dcl_init();
     chpool->zero_list = dcl_init();
-    chpool->ht = ht_init(DEFAULT_HT_SIZE, hash_fnv1a);
+    chpool->fstr = chp_fstr_init();
     chpool->pool = (chunk_t **)calloc(1, sizeof(chunk_t *));
     *(chpool->pool) = (chunk_t *)calloc(DEFAULT_ARRAY_SIZE, sizeof(chunk_t));
 
-    if(!chpool->free_list || !chpool->zero_list || !chpool->ht
+    if(!chpool->free_list || !chpool->zero_list || !chpool->fstr
                           || !chpool->pool || !(*(chpool->pool)))
     {
         //log_write(ERROR, "chp_init: chunk containing structs init has failed");
@@ -535,3 +511,96 @@ off_t chp_file_size(int fd)
     //log_write(INFO,"ch_file_size: finished");
     return sb.st_size;
 }
+
+
+
+#if (SKIPLIST_ON == 0)
+static int chp_fstr_find(chpool_t *chpool, off_t index, off_t len, chunk_t **chunk)
+{
+    if(!chpool || !chunk)
+        return EINVAL;
+
+    pthread_mutex_lock(&chpool->fstr_write_lock);
+    chpool->fstr_reads_numb++;
+    pthread_mutex_unlock(&chpool->fstr_write_lock);
+    int error = ht_find(chpool->fstr, index, len, chunk);
+    chpool->fstr_reads_numb--;
+
+    return error;
+}
+
+static int chp_fstr_del(chpool_t *chpool, off_t index, off_t len)
+{
+    pthread_mutex_lock(&chpool->fstr_write_lock);
+    while(chpool->fstr_reads_numb)
+        continue;
+    int error = ht_del(chpool->fstr, index, len);
+    pthread_mutex_unlock(&chpool->fstr_write_lock);
+
+    return error;
+}
+
+static int chp_fstr_add(chpool_t *chpool, off_t index, chunk_t *chunk)
+{
+    pthread_mutex_lock(&chpool->fstr_write_lock);
+    while(chpool->fstr_reads_numb)
+        continue;
+    int error = ht_add(chpool->fstr, (hkey_t)index, (hvalue_t)chunk);
+    pthread_mutex_unlock(&chpool->fstr_write_lock);
+}
+
+static fstruct_t *chp_fstr_init()
+{
+    return ht_init(DEFAULT_HT_SIZE, hash_fnv1a);
+}
+
+static int chp_fstr_deinit(chpool_t *chpool)
+{
+    return ht_deinit(chpool->fstr);
+}
+#else
+static int chp_fstr_find(chpool_t *chpool, off_t index, off_t len, chunk_t **chunk)
+{
+    if(!chpool || !chunk)
+        return EINVAL;
+
+    pthread_mutex_lock(&chpool->fstr_write_lock);
+    chpool->fstr_reads_numb++;
+    pthread_mutex_unlock(&chpool->fstr_write_lock);
+    int error = skiplist_find((skiplist_t *)chpool->fstr, index, len, chunk);
+    chpool->fstr_reads_numb--;
+
+    return error;
+}
+
+static int chp_fstr_del(chpool_t *chpool, off_t index, off_t len)
+{
+    pthread_mutex_lock(&chpool->fstr_write_lock);
+    while(chpool->fstr_reads_numb)
+        continue;
+    int error = skiplist_del((skiplist_t *)chpool->fstr, index);
+    pthread_mutex_unlock(&chpool->fstr_write_lock);
+
+    return error;
+}
+
+static int chp_fstr_add(chpool_t *chpool, off_t index, chunk_t *chunk)
+{
+    pthread_mutex_lock(&chpool->fstr_write_lock);
+    while(chpool->fstr_reads_numb)
+        continue;
+    int error = skiplist_add((skiplist_t *)chpool->fstr, index, chunk);
+    pthread_mutex_unlock(&chpool->fstr_write_lock);
+}
+
+static fstruct_t *chp_fstr_init()
+{
+    return skiplist_init();
+}
+
+static int chp_fstr_deinit(chpool_t *chpool)
+{
+    return skiplist_deinit(chpool->fstr);
+}
+
+#endif
